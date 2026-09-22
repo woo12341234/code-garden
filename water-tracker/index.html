@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>물 섭취량 트래커</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>💧 물 섭취량 트래커</h1>
+      <p class="subtitle" id="today-label"></p>
+    </header>
+
+    <section class="progress-card">
+      <div class="progress-ring-wrap">
+        <svg class="progress-ring" width="180" height="180" viewBox="0 0 180 180">
+          <circle class="progress-ring__bg" cx="90" cy="90" r="80" />
+          <circle class="progress-ring__fg" id="progress-circle" cx="90" cy="90" r="80" />
+        </svg>
+        <div class="progress-ring__label">
+          <span id="current-amount">0</span>
+          <span class="unit">ml</span>
+          <div class="goal-text">목표 <span id="goal-amount">2000</span>ml</div>
+        </div>
+      </div>
+      <div class="percent" id="percent-label">0%</div>
+    </section>
+
+    <section class="quick-add">
+      <button class="quick-btn" data-amount="100">+100ml</button>
+      <button class="quick-btn" data-amount="200">+200ml</button>
+      <button class="quick-btn" data-amount="350">+350ml</button>
+      <button class="quick-btn" data-amount="500">+500ml</button>
+    </section>
+
+    <section class="custom-add">
+      <input type="number" id="custom-amount" placeholder="직접 입력 (ml)" min="1" />
+      <button id="custom-add-btn">추가</button>
+    </section>
+
+    <section class="settings">
+      <label for="goal-input">일일 목표(ml)</label>
+      <input type="number" id="goal-input" min="100" step="100" />
+      <button id="reset-day-btn" class="secondary">오늘 기록 초기화</button>
+    </section>
+
+    <section class="history">
+      <h2>오늘의 기록</h2>
+      <ul id="log-list" class="log-list"></ul>
+    </section>
+
+    <section class="week-history">
+      <h2>최근 7일</h2>
+      <div id="week-chart" class="week-chart"></div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
