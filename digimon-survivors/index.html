@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digimon Survivors</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div id="hp-bar-wrap"><div id="hp-bar"></div><span id="hp-text"></span></div>
+    <div id="xp-bar-wrap"><div id="xp-bar"></div></div>
+    <div id="top-right">
+      <div id="timer">00:00</div>
+      <div id="level">Lv.1</div>
+      <div id="kills">킬 0</div>
+    </div>
+  </div>
+
+  <div id="start-screen" class="overlay">
+    <h1>Digimon Survivors</h1>
+    <p>WASD / 방향키로 이동하세요. 공격은 자동입니다.</p>
+    <p class="hint">assets/ 폴더에 디지몬 스프라이트를 넣으면 자동으로 적용됩니다.</p>
+    <button id="start-btn">게임 시작</button>
+  </div>
+
+  <div id="levelup-screen" class="overlay hidden">
+    <h2>레벨 업!</h2>
+    <div id="upgrade-choices"></div>
+  </div>
+
+  <div id="gameover-screen" class="overlay hidden">
+    <h2>게임 오버</h2>
+    <p id="gameover-stats"></p>
+    <button id="restart-btn">다시 시작</button>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
