@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>타워 디펜스</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🏰 타워 디펜스</h1>
+      <div class="stat-bar">
+        <div class="stat gold">💰 <span id="gold">150</span></div>
+        <div class="stat life">❤️ <span id="life">20</span></div>
+        <div class="stat wave">🌊 웨이브 <span id="wave">0</span></div>
+      </div>
+    </header>
+
+    <div class="game-area">
+      <div class="board-wrap">
+        <canvas id="board" width="720" height="480"></canvas>
+        <div id="overlay" class="overlay hidden">
+          <div class="overlay-box">
+            <h2 id="overlay-title">게임 오버</h2>
+            <p id="overlay-desc"></p>
+            <button id="restart-btn">다시 시작</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <section class="shop">
+          <h2>타워 상점</h2>
+          <button class="tower-btn" data-type="cannon">
+            <span class="swatch cannon"></span>
+            <span class="tower-name">캐논</span>
+            <span class="tower-cost">50G</span>
+          </button>
+          <button class="tower-btn" data-type="sniper">
+            <span class="swatch sniper"></span>
+            <span class="tower-name">저격수</span>
+            <span class="tower-cost">100G</span>
+          </button>
+          <button class="tower-btn" data-type="slow">
+            <span class="swatch slow"></span>
+            <span class="tower-name">슬로우</span>
+            <span class="tower-cost">75G</span>
+          </button>
+          <p class="hint" id="build-hint">타워를 선택하고 빈 칸을 클릭하세요.</p>
+        </section>
+
+        <section class="selected-info hidden" id="selected-panel">
+          <h2>선택된 타워</h2>
+          <p id="selected-name"></p>
+          <p id="selected-stats"></p>
+          <button id="upgrade-btn">업그레이드 (<span id="upgrade-cost"></span>G)</button>
+          <button id="sell-btn">판매 (+<span id="sell-value"></span>G)</button>
+        </section>
+
+        <section class="wave-control">
+          <button id="start-wave-btn">다음 웨이브 시작</button>
+          <p class="hint" id="wave-hint">준비되면 웨이브를 시작하세요.</p>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
