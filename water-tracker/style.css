@@ -1,0 +1,298 @@
+:root {
+  --blue-50: #eff8ff;
+  --blue-100: #d6ecff;
+  --blue-400: #4aa8ff;
+  --blue-500: #2b8cf0;
+  --blue-600: #1d6fd1;
+  --ink: #1c2733;
+  --ink-soft: #5b6b7a;
+  --bg: #f4f9fd;
+  --card-bg: #ffffff;
+  --border: #e1ecf5;
+  --danger: #e0563f;
+  --radius: 16px;
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-ring-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring__bg {
+  fill: none;
+  stroke: var(--blue-100);
+  stroke-width: 14;
+}
+
+.progress-ring__fg {
+  fill: none;
+  stroke: var(--blue-500);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 502.4;
+  stroke-dashoffset: 502.4;
+  transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;
+}
+
+.progress-ring__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#current-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--blue-600);
+  line-height: 1;
+}
+
+.unit {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.goal-text {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.percent {
+  font-weight: 600;
+  color: var(--blue-500);
+}
+
+.quick-add {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.quick-btn {
+  border: none;
+  background: var(--blue-50);
+  color: var(--blue-600);
+  font-weight: 600;
+  padding: 14px 4px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.quick-btn:hover { background: var(--blue-100); }
+.quick-btn:active { transform: scale(0.95); }
+
+.custom-add {
+  display: flex;
+  gap: 10px;
+}
+
+.custom-add input {
+  flex: 1;
+  min-width: 0;
+}
+
+#custom-add-btn {
+  background: var(--blue-500);
+  color: #fff;
+  border: none;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#custom-add-btn:hover { background: var(--blue-600); }
+
+input[type="number"] {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+input[type="number"]:focus {
+  outline: 2px solid var(--blue-400);
+  outline-offset: 1px;
+}
+
+.settings {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.settings #goal-input {
+  width: 100px;
+}
+
+.secondary {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.secondary:hover {
+  background: #fdece8;
+}
+
+.history h2,
+.week-history h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.log-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--blue-50);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.log-list .log-time {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.log-list .log-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 4px;
+}
+
+.log-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  padding: 12px 0;
+}
+
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 140px;
+}
+
+.week-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 6px;
+}
+
+.week-bar {
+  width: 100%;
+  max-width: 28px;
+  background: var(--blue-100);
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  min-height: 4px;
+  transition: height 0.3s ease;
+}
+
+.week-bar.goal-met {
+  background: var(--blue-500);
+}
+
+.week-bar-label {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.week-bar-wrap.is-today .week-bar-label {
+  color: var(--blue-600);
+  font-weight: 700;
+}
