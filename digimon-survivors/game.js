@@ -240,33 +240,38 @@
     }
   }
 
+  // max = how many times an upgrade can be picked per run; apply(p, n) gets n = which pick this is (1-based).
   const UPGRADES = [
     {
+      id: 'shot', max: 6,
       icon: () => ({ fire: '🔥', leaf: '🍃' }[player.branch] || '💧'),
       title: () => `${shotName()} 강화`,
       desc: '데미지 +4, 2번 강화할 때마다 발사 수 +1',
-      apply(p) {
-        const w = p.weapons.shot;
-        w.level++;
-        w.damage += 4;
-        if (w.level % 2 === 1) w.count++;
+      apply(p, n) {
+        p.weapons.shot.damage += 4;
+        if (n % 2 === 0) p.weapons.shot.count++;
       },
     },
-    { icon: '⚡', title: '연사력 증가', desc: '발사 간격 -12%', apply(p) { p.weapons.shot.cooldown *= 0.88; } },
+    { id: 'rapid', max: 4, icon: '⚡', title: '연사력 증가', desc: '발사 간격 -12%', apply(p) { p.weapons.shot.cooldown *= 0.88; } },
     {
-      icon: '⭐',
+      id: 'orbit', max: 5, icon: '⭐',
       title: () => (player.weapons.orbit ? '별빛 수호 강화' : '별빛 수호 획득'),
       desc: () => (player.weapons.orbit ? '별 +1개, 별 데미지 +3' : '주위를 빙글빙글 도는 별이 적을 막아줘요'),
       apply(p) { addOrbitStar(p); },
     },
     {
-      icon: '💖', title: '튼튼한 몸', desc: '최대 HP +20, HP 20 회복',
+      id: 'hp', max: 5, icon: '💖', title: '튼튼한 몸', desc: '최대 HP +20, HP 20 회복',
       apply(p) { p.maxHp += 20; p.hp = Math.min(p.maxHp, p.hp + 20); },
     },
-    { icon: '👟', title: '날쌘 발', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
-    { icon: '🧲', title: '자석 꼬리', desc: '아이템 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
-    { icon: '🌿', title: '회복의 이슬', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
+    { id: 'speed', max: 3, icon: '👟', title: '날쌘 발', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
+    { id: 'magnet', max: 3, icon: '🧲', title: '자석 꼬리', desc: '아이템 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
+    { id: 'regen', max: 4, icon: '🌿', title: '회복의 이슬', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
   ];
+  // Offered to fill the row once the other upgrades are maxed out.
+  const SNACK = {
+    id: 'snack', icon: '🍰', title: '맛있는 간식', desc: 'HP 30 회복',
+    apply(p) { p.hp = Math.min(p.maxHp, p.hp + 30); },
+  };
 
   // ---------- Utility ----------
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
@@ -295,10 +300,10 @@
       form: 'mongsil', stage: 1, branch: null,
       radius: SPRITE_DEFS.mongsil.size * 0.3,
       speed: 190, maxHp: 100, hp: 100, regen: 0, pickupRadius: 100,
-      level: 1, xp: 0, xpToNext: 8,
+      level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {
-        shot: { level: 1, damage: 10, count: 1, pierce: 1, cooldown: 0.7, timer: 0.3, speed: 380, sprite: 'bubble', radius: 9 },
+        shot: { damage: 10, count: 1, pierce: 1, cooldown: 0.7, timer: 0.3, speed: 380, sprite: 'bubble', radius: 9 },
         orbit: null,
       },
     };
@@ -380,7 +385,7 @@
     while (player.xp >= player.xpToNext) {
       player.xp -= player.xpToNext;
       player.level++;
-      player.xpToNext = Math.floor(player.xpToNext * 1.16 + 4);
+      player.xpToNext = Math.floor(player.xpToNext * 1.2 + 5);
       modalQueue.push({ type: 'upgrade' });
       burst(player.x, player.y, 14, ['#fff6b0', '#ffffff', '#b8f0e0'], 120, 0.5, 3);
       checkEvolution();
@@ -399,10 +404,16 @@
         pick: () => { evolveTo(id); checkEvolution(); },
       })));
     } else {
-      showChoice('레벨 업!', '능력을 하나 골라주세요', shuffled(UPGRADES).slice(0, 3).map((u) => ({
-        icon: val(u.icon), title: val(u.title), desc: val(u.desc),
-        pick: () => u.apply(player),
-      })));
+      const offer = shuffled(UPGRADES.filter((u) => (player.picks[u.id] || 0) < u.max)).slice(0, 3);
+      if (offer.length < 3) offer.push(SNACK);
+      showChoice('레벨 업!', '능력을 하나 골라주세요', offer.map((u) => {
+        const n = (player.picks[u.id] || 0) + 1;
+        return {
+          icon: val(u.icon), title: val(u.title), desc: val(u.desc),
+          stars: u.max ? '★'.repeat(n) + '☆'.repeat(u.max - n) : '',
+          pick: () => { player.picks[u.id] = n; u.apply(player, n); },
+        };
+      }));
     }
   }
 
@@ -421,7 +432,8 @@
         icon.textContent = opt.icon;
         card.append(icon);
       }
-      for (const [cls, text] of [['title', opt.title], ['desc', opt.desc], ['key', `[${i + 1}]`]]) {
+      for (const [cls, text] of [['title', opt.title], ['stars', opt.stars], ['desc', opt.desc], ['key', `[${i + 1}]`]]) {
+        if (!text) continue;
         const el = document.createElement('div');
         el.className = cls;
         el.textContent = text;
@@ -457,7 +469,7 @@
   }
 
   function spawnEnemy(type) {
-    const hp = type.hp * (1 + elapsed / 150);
+    const hp = type.hp * (1 + elapsed / 120 + (elapsed / 300) ** 2);
     const e = { type, x: 0, y: 0, hp, maxHp: hp, contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2 };
     placeOnRing(e);
     enemies.push(e);
