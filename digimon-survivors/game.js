@@ -225,7 +225,9 @@
     bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, minTime: 60, barY: 32 },
   };
   const MAX_ENEMIES = 260;
-  const BOSS_INTERVAL = 45;
+  // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 1:30).
+  const EVENT_INTERVAL = 60;
+  const WAVE_START = 90;
 
   // ---------- Upgrades ----------
   const val = (v) => (typeof v === 'function' ? v() : v);
@@ -290,7 +292,7 @@
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover
   let player, enemies, projectiles, pickups, particles, floatTexts;
-  let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, modalDelay = 0, flash = 0, anim = 0;
+  let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, waveTimer = 0, modalDelay = 0, flash = 0, anim = 0;
   const modalQueue = [];
   const keys = new Set();
 
@@ -317,6 +319,7 @@
     kills = 0;
     spawnTimer = 0;
     bossTimer = 0;
+    waveTimer = 0;
     modalDelay = 0;
     flash = 0;
     ui.portrait.src = spritePath(FORMS.mongsil.sprite);
@@ -461,18 +464,32 @@
     return pool[0];
   }
 
-  function placeOnRing(e) {
-    const a = Math.random() * Math.PI * 2;
-    const d = Math.hypot(viewW, viewH) / 2 + 40;
+  function placeOnRing(e, a = Math.random() * Math.PI * 2, d = Math.hypot(viewW, viewH) / 2 + 40) {
     e.x = player.x + Math.cos(a) * d;
     e.y = player.y + Math.sin(a) * d;
   }
 
-  function spawnEnemy(type) {
-    const hp = type.hp * (1 + elapsed / 120 + (elapsed / 300) ** 2);
-    const e = { type, x: 0, y: 0, hp, maxHp: hp, contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2 };
-    placeOnRing(e);
+  // Enemies get tougher, faster and hit harder the longer the run goes.
+  function spawnEnemy(type, angle, distance) {
+    const t = elapsed;
+    const hp = type.hp * (1 + t / 120 + (t / 300) ** 2);
+    const e = {
+      type, x: 0, y: 0, hp, maxHp: hp,
+      speed: type.speed * (1 + Math.min(t / 360, 0.5)),
+      damage: Math.round(type.damage * (1 + t / 180)),
+      contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2,
+    };
+    placeOnRing(e, angle, distance);
     enemies.push(e);
+  }
+
+  // A closing ring of enemies that forces the player to break out.
+  function spawnSurroundWave() {
+    const type = elapsed >= 180 ? ENEMY_TYPES.mushroom : ENEMY_TYPES.slime;
+    const n = 20 + Math.floor(elapsed / 15);
+    const r = Math.min(viewW, viewH) / 2 + 60;
+    for (let i = 0; i < n; i++) spawnEnemy(type, (i / n) * Math.PI * 2, r);
+    showBanner(`${type.name} 떼가 몰려와요!`, 'boss');
   }
 
   function updateSpawner(dt) {
@@ -485,9 +502,16 @@
     if (elapsed >= ENEMY_TYPES.bat.minTime) {
       bossTimer -= dt;
       if (bossTimer <= 0) {
-        bossTimer = BOSS_INTERVAL;
+        bossTimer = EVENT_INTERVAL;
         spawnEnemy(ENEMY_TYPES.bat);
         showBanner(`${ENEMY_TYPES.bat.name} 등장!`, 'boss');
+      }
+    }
+    if (elapsed >= WAVE_START) {
+      waveTimer -= dt;
+      if (waveTimer <= 0) {
+        waveTimer = EVENT_INTERVAL;
+        spawnSurroundWave();
       }
     }
   }
@@ -579,15 +603,15 @@
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
       if (d > farLimit) { placeOnRing(e); continue; }
-      e.x += (dx / d) * e.type.speed * dt;
-      e.y += (dy / d) * e.type.speed * dt;
+      e.x += (dx / d) * e.speed * dt;
+      e.y += (dy / d) * e.speed * dt;
       if (e.flash > 0) e.flash -= dt;
       if (e.contactCd > 0) e.contactCd -= dt;
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
-        player.hp -= e.type.damage;
+        player.hp -= e.damage;
         player.invuln = 0.5;
         e.contactCd = 0.6;
-        addFloatText(player.x, player.y - player.radius - 6, `-${e.type.damage}`, '#ff6b8e');
+        addFloatText(player.x, player.y - player.radius - 6, `-${e.damage}`, '#ff6b8e');
         if (player.hp <= 0) {
           player.hp = 0;
           gameOver();
