@@ -225,9 +225,9 @@
     bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, minTime: 60, barY: 32 },
   };
   const MAX_ENEMIES = 260;
-  // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 1:30).
+  // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
-  const WAVE_START = 90;
+  const WAVE_START = 150;
 
   // ---------- Upgrades ----------
   const val = (v) => (typeof v === 'function' ? v() : v);
@@ -476,7 +476,7 @@
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
       speed: type.speed * (1 + Math.min(t / 360, 0.5)),
-      damage: Math.round(type.damage * (1 + t / 180)),
+      damage: Math.round(type.damage * (1 + t / 240)),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2,
     };
     placeOnRing(e, angle, distance);
@@ -486,7 +486,7 @@
   // A closing ring of enemies that forces the player to break out.
   function spawnSurroundWave() {
     const type = elapsed >= 180 ? ENEMY_TYPES.mushroom : ENEMY_TYPES.slime;
-    const n = 20 + Math.floor(elapsed / 15);
+    const n = 16 + Math.floor(elapsed / 20);
     const r = Math.min(viewW, viewH) / 2 + 60;
     for (let i = 0; i < n; i++) spawnEnemy(type, (i / n) * Math.PI * 2, r);
     showBanner(`${type.name} 떼가 몰려와요!`, 'boss');
