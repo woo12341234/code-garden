@@ -585,12 +585,16 @@
     if (keys.has('KeyS') || keys.has('ArrowDown')) dy += 1;
     if (keys.has('KeyA') || keys.has('ArrowLeft')) dx -= 1;
     if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1;
+    if (stick.active && Math.hypot(stick.dx, stick.dy) > 8) {
+      dx = stick.dx;
+      dy = stick.dy;
+    }
     player.moving = dx !== 0 || dy !== 0;
     if (player.moving) {
       const len = Math.hypot(dx, dy);
       player.x += (dx / len) * player.speed * dt;
       player.y += (dy / len) * player.speed * dt;
-      if (dx !== 0) player.facing = dx;
+      if (dx !== 0) player.facing = Math.sign(dx);
     }
     if (player.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.regen * dt);
     if (player.invuln > 0) player.invuln -= dt;
@@ -849,6 +853,19 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
+    if (stick.active) {
+      const len = Math.hypot(stick.dx, stick.dy);
+      const k = len > 40 ? 40 / len : 1;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.beginPath();
+      ctx.arc(stick.ox, stick.oy, 44, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 143, 180, 0.8)';
+      ctx.beginPath();
+      ctx.arc(stick.ox + stick.dx * k, stick.oy + stick.dy * k, 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     if (flash > 0) {
       ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, flash * 1.6)})`;
       ctx.fillRect(0, 0, viewW, viewH);
@@ -927,6 +944,24 @@
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
+
+  // Touch / mouse drag acts as a floating joystick anchored where the drag started.
+  const stick = { active: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
+  canvas.addEventListener('pointerdown', (e) => {
+    if (state !== 'playing') return;
+    const r = canvas.getBoundingClientRect();
+    Object.assign(stick, { active: true, id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, dx: 0, dy: 0 });
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!stick.active || e.pointerId !== stick.id) return;
+    const r = canvas.getBoundingClientRect();
+    stick.dx = e.clientX - r.left - stick.ox;
+    stick.dy = e.clientY - r.top - stick.oy;
+  });
+  const endStick = (e) => { if (e.pointerId === stick.id) stick.active = false; };
+  canvas.addEventListener('pointerup', endStick);
+  canvas.addEventListener('pointercancel', endStick);
   $('start-btn').addEventListener('click', startGame);
   $('restart-btn').addEventListener('click', startGame);
 
