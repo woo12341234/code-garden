@@ -392,7 +392,7 @@
       desc: '요정들이 적을 쫓아가서 콕 때려요',
       up: '데미지 +3, 2단계마다 요정 +1',
       max: 6,
-      create: () => ({ damage: 7, count: 2, cooldown: 1.2, timer: 0.3, speed: 300 }),
+      create: () => ({ damage: 7, count: 2, cooldown: 1.35, timer: 0.3, speed: 300 }),
       upgrade(w) { w.damage += 3; if (w.level % 2 === 0) w.count++; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -644,8 +644,8 @@
     },
     pado: {
       line: 'seal', stage: 3, branch: 'wave', name: '파도물범', sprite: 'pado',
-      desc: '파도형! 방울 요정 2단계 강화, 요정 데미지 ×1.3, 최대 HP +20',
-      apply(p) { p.maxHp += 20; grantWeapon(p, 'fairy', 2).damage *= 1.3; },
+      desc: '파도형! 방울 요정 2단계 강화, 요정 데미지 ×1.15, 최대 HP +20',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'fairy', 2).damage *= 1.15; },
     },
     sanho: {
       line: 'seal', stage: 3, branch: 'coral', name: '산호물범', sprite: 'sanho',
