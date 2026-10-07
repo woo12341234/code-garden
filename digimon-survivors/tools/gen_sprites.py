@@ -436,6 +436,350 @@ def heart():
     s.save('heart.png')
 
 
+# ============ Bird line (삐약이) ============
+
+BEAK = rgba(255, 150, 60)
+
+
+def _beak(s, y):
+    s.poly([(10.6, y), (13.4, y), (12, y + 1.9)], BEAK)
+
+
+def piyak():
+    """Stage 1: round chick."""
+    s = Sprite(24)
+    base = rgba(255, 222, 95)
+    s.ellipse_sym(5.2, 15.5, 1.7, 2.3, mul(base, 0.88), hl=False)
+    s.ellipse(12, 14.5, 7.2, 6.6, base)
+    s.ellipse_sym(9, 21.2, 1.8, 1.1, BEAK, shade=False)
+    for x, y in [(12, 7), (11, 6), (13, 6), (12, 5)]:
+        s.put(x, y, base)
+    s.eyes(8, 12)
+    _beak(s, 14.6)
+    s.blush(6, 15)
+    s.outline()
+    s.save('piyak.png')
+
+
+def _bird_body(s, base, belly, big=False):
+    k = 1.12 if big else 1.0
+    s.ellipse(12, 17.6, 5.8 * k, 4.6 * k, base)
+    s.ellipse(12, 18.4, 3.4 * k, 3.0 * k, belly, hl=False)
+    s.ellipse_sym(9.2, 22.2, 1.9, 1.1, BEAK, shade=False)
+
+
+def jjaek():
+    """Stage 2: little songbird."""
+    s = Sprite(24)
+    base = rgba(255, 200, 80)
+    s.poly([(16, 18), (21.5, 14.5), (22, 17.5), (17, 20.5)], mul(base, 0.85))
+    s.ellipse_sym(6.2, 17.2, 2.0, 2.8, mul(base, 0.88), hl=False)
+    _bird_body(s, base, CREAM)
+    s.ellipse(12, 10.6, 6.6, 5.6, base)
+    s.poly([(10.8, 5.6), (13.2, 5.6), (14.2, 2.0)], rgba(255, 140, 90))
+    s.eyes(8, 9)
+    _beak(s, 11.6)
+    s.blush(6, 12)
+    s.outline()
+    s.save('jjaek.png')
+
+
+def jjirit():
+    """Stage 3 (thunder): spark bird."""
+    s = Sprite(24)
+    base = rgba(255, 215, 70)
+    wing = rgba(255, 238, 150)
+    blue = rgba(110, 175, 255)
+    s.poly_sym([(8, 13), (1.5, 8.5), (1, 13), (3, 16), (6.5, 17)], wing)
+    s.ellipse_sym(1.8, 10.5, 1.0, 1.4, blue, shade=False, hl=False)
+    s.poly([(16, 18.5), (22.5, 15), (23, 18.5), (17.5, 21)], blue)
+    _bird_body(s, base, CREAM)
+    s.ellipse(12, 10.4, 6.8, 5.8, base)
+    s.poly([(11, 5.8), (13.6, 5.8), (12.6, 4), (14.8, 4), (11.4, 0.4), (12.2, 3), (10.2, 3)], blue)
+    s.eyes(8, 9)
+    _beak(s, 11.6)
+    s.blush(6, 12)
+    s.outline()
+    s.save('jjirit.png')
+
+
+def beongae():
+    """Stage 4 (thunder): thunder king bird."""
+    s = Sprite(24)
+    base = rgba(255, 200, 50)
+    wing = rgba(255, 232, 130)
+    blue = rgba(95, 160, 255)
+    s.poly_sym([(8, 11.5), (0.3, 3.2), (0.3, 10), (2, 15), (5.5, 17)], wing)
+    for x, y in [(1, 5), (1, 8), (2, 11)]:
+        s.put(x, y, blue)
+        s.put(s.mirror_x(x), y, blue)
+    s.poly([(16.5, 19), (23.5, 15.5), (23.5, 19.5), (18, 22)], blue)
+    _bird_body(s, base, rgba(255, 246, 215), big=True)
+    s.ellipse(12, 10, 7.4, 6.2, base)
+    s.poly([(10.6, 5), (13.8, 5), (12.8, 3.2), (15.6, 3.2), (11.4, -0.5), (12.2, 2.2), (9.4, 2.2)], blue)
+    s.eyes(8, 8, h=4)
+    _beak(s, 12)
+    s.blush(6, 12)
+    s.outline()
+    s.sparkle(2, 19, rgba(190, 220, 255))
+    s.sparkle(21, 3, rgba(190, 220, 255))
+    s.save('beongae.png')
+
+
+def sallang():
+    """Stage 3 (wind): breeze bird."""
+    s = Sprite(24)
+    base = rgba(130, 222, 195)
+    wing = rgba(195, 245, 225)
+    s.poly_sym([(8, 13.5), (2.2, 10.5), (1.5, 14.5), (5.5, 17)], wing)
+    s.poly([(16, 18), (22.5, 19.5), (21, 21), (23, 22.5), (17, 21.5)], mul(base, 0.85))
+    _bird_body(s, base, CREAM)
+    s.ellipse(12, 10.4, 6.8, 5.8, base)
+    s.poly([(11, 5.6), (12.6, 5.4), (9.5, 1.2), (8.2, 2)], wing)
+    s.poly([(12, 5.4), (13.6, 5.6), (16.4, 1.6), (15, 1)], wing)
+    s.eyes(8, 9)
+    _beak(s, 11.6)
+    s.blush(6, 12)
+    s.outline()
+    s.save('sallang.png')
+
+
+def hoeori():
+    """Stage 4 (wind): whirlwind bird."""
+    s = Sprite(24)
+    base = rgba(105, 205, 200)
+    wing = rgba(200, 245, 240)
+    s.poly_sym([(8, 12), (0.3, 5), (0.5, 11), (2.5, 15.5), (6, 17)], wing)
+    for x, y in [(2, 7), (3, 8), (2, 10), (3, 11)]:
+        s.put(x, y, mul(wing, 0.82))
+        s.put(s.mirror_x(x), y, mul(wing, 0.82))
+    s.poly([(16.5, 19), (23.5, 20), (22, 21.5), (23.8, 23.5), (17.5, 22)], mul(base, 0.85))
+    _bird_body(s, base, rgba(250, 250, 240), big=True)
+    s.ellipse(12, 10, 7.4, 6.2, base)
+    s.poly([(10.6, 5), (12.4, 4.6), (8, 0.2), (6.6, 1.2)], wing)
+    s.poly([(11.6, 4.6), (13.4, 5), (17.4, 1.2), (16, 0.2)], wing)
+    s.eyes(8, 8, h=4)
+    _beak(s, 12)
+    s.blush(6, 12)
+    s.outline()
+    s.sparkle(2, 19, wing)
+    s.sparkle(21, 3, wing)
+    s.save('hoeori.png')
+
+
+# ============ Beast line (뭉치) ============
+
+NOSE = rgba(70, 45, 55)
+
+
+def mungchi():
+    """Stage 1: fluffy ball."""
+    s = Sprite(24)
+    base = rgba(242, 222, 200)
+    s.ellipse_sym(6.8, 9, 2.4, 2.4, mul(base, 0.9), hl=False)
+    s.ellipse(12, 14.5, 7.6, 6.6, base)
+    for x, y in [(4, 12), (19, 12), (4, 16), (19, 16)]:
+        s.put(x, y, base)
+    s.ellipse_sym(8.5, 21, 2.0, 1.2, mul(base, 0.85), shade=False)
+    s.eyes(8, 12)
+    s.put(11, 15, NOSE)
+    s.put(12, 15, NOSE)
+    s.blush(6, 15)
+    s.outline()
+    s.save('mungchi.png')
+
+
+def meongmung():
+    """Stage 2: puppy."""
+    s = Sprite(24)
+    base = rgba(228, 180, 128)
+    ear = rgba(170, 115, 80)
+    s.ellipse(18.6, 17.5, 1.4, 2.4, base, hl=False)
+    s.ellipse(12, 17.6, 5.6, 4.6, base)
+    s.ellipse(12, 18.4, 3.3, 3.0, CREAM, hl=False)
+    s.ellipse_sym(9, 22, 2.0, 1.2, mul(base, 0.85), shade=False)
+    s.ellipse(12, 10.6, 6.8, 5.8, base)
+    s.ellipse_sym(5.2, 10.6, 1.9, 3.4, ear, hl=False)
+    s.ellipse(12, 12.6, 2.6, 1.8, CREAM, shade=False, hl=False)
+    s.eyes(8, 9)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.put(11, 13, MOUTH)
+    s.put(12, 13, MOUTH)
+    s.blush(6, 12)
+    s.outline()
+    s.save('meongmung.png')
+
+
+def _beast_body(s, base, belly, big=False):
+    k = 1.12 if big else 1.0
+    s.ellipse(12, 17.5, 6.0 * k, 4.8 * k, base)
+    s.ellipse(12, 18.4, 3.6 * k, 3.2 * k, belly, hl=False)
+    s.ellipse_sym(8.8, 22.2, 2.3, 1.3, mul(base, 0.85), shade=False)
+
+
+def seori():
+    """Stage 3 (ice): frost wolf."""
+    s = Sprite(24)
+    base = rgba(190, 225, 255)
+    ice = rgba(120, 200, 255)
+    s.poly([(17, 17), (22.5, 12.5), (23, 16), (19, 19.5)], base)
+    _beast_body(s, base, rgba(250, 252, 255))
+    s.ellipse(12, 10.4, 7.0, 5.8, base)
+    s.poly_sym([(6, 7.5), (5.2, 1.6), (9.4, 5.2)], base)
+    s.poly_sym([(6.4, 6.4), (6, 3.4), (8.2, 5.2)], rgba(255, 190, 210))
+    s.poly([(11, 6), (13, 6), (12, 3.6)], ice)
+    s.ellipse(12, 12.6, 2.6, 1.7, rgba(250, 252, 255), shade=False, hl=False)
+    s.eyes(8, 9)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.blush(6, 12)
+    s.outline()
+    s.save('seori.png')
+
+
+def nunbora():
+    """Stage 4 (ice): blizzard wolf."""
+    s = Sprite(24)
+    base = rgba(160, 205, 250)
+    ice = rgba(225, 245, 255)
+    s.poly([(17, 17), (23.5, 11), (23.8, 15.5), (19.5, 20)], base)
+    _beast_body(s, base, ice, big=True)
+    s.ellipse(12, 10, 7.6, 6.2, base)
+    s.poly_sym([(5.6, 7), (4.6, 0.8), (9.2, 4.6)], base)
+    s.poly([(9.6, 4.8), (10.6, 1.2), (12, 3.6), (13.4, 1.2), (14.4, 4.8)], ice)
+    s.ellipse(12, 12.4, 2.8, 1.8, ice, shade=False, hl=False)
+    s.eyes(8, 8, h=4)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.blush(6, 12)
+    s.outline()
+    s.sparkle(2, 19, ice)
+    s.sparkle(21, 3, ice)
+    s.save('nunbora.png')
+
+
+def bawi():
+    """Stage 3 (rock): rock bear."""
+    s = Sprite(24)
+    base = rgba(175, 135, 100)
+    rock = rgba(160, 160, 170)
+    _beast_body(s, base, rgba(235, 210, 175))
+    s.ellipse(12, 10.6, 7.2, 5.8, base)
+    s.ellipse_sym(6, 5.8, 2.2, 2.2, base, hl=False)
+    s.ellipse_sym(6, 5.8, 1.0, 1.0, rgba(235, 210, 175), shade=False, hl=False)
+    s.poly_sym([(5.5, 16), (6.5, 13), (8.5, 14.5), (8, 17)], rock)
+    s.ellipse(12, 12.8, 2.8, 1.8, rgba(235, 210, 175), shade=False, hl=False)
+    s.eyes(8, 9)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.blush(6, 12)
+    s.outline()
+    s.save('bawi.png')
+
+
+def sanmaek():
+    """Stage 4 (rock): mountain bear."""
+    s = Sprite(24)
+    base = rgba(150, 120, 95)
+    rock = rgba(150, 152, 165)
+    moss = rgba(130, 195, 110)
+    _beast_body(s, base, rgba(230, 205, 170), big=True)
+    s.ellipse(12, 10.4, 7.8, 6.2, base)
+    s.ellipse_sym(5.4, 5.6, 2.3, 2.3, base, hl=False)
+    s.poly([(8, 5.4), (10, 1.6), (12, 4), (14, 0.6), (16, 5.4)], rock)
+    s.put(14, 2, rgba(245, 245, 250))
+    s.put(10, 3, moss)
+    s.poly_sym([(4.6, 17), (5.6, 12.6), (8.8, 14), (8.4, 17.6)], rock)
+    s.put(6, 14, moss)
+    s.put(s.mirror_x(6), 14, moss)
+    s.ellipse(12, 12.6, 3.0, 1.9, rgba(230, 205, 170), shade=False, hl=False)
+    s.eyes(8, 8, h=4)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.blush(6, 12)
+    s.outline()
+    s.save('sanmaek.png')
+
+
+# ============ More wild monsters ============
+
+def bee():
+    s = Sprite(24)
+    base = rgba(255, 215, 80)
+    s.ellipse_sym(8.6, 9.6, 2.6, 2.1, rgba(235, 245, 255, 220), shade=False, hl=False)
+    s.ellipse(12, 14, 5.4, 4.4, base)
+    for x in range(8, 17):
+        for y in (13, 16):
+            if s.px[y][x] is not None:
+                s.put(x, y, rgba(90, 65, 70))
+    s.poly([(11.2, 18), (12.8, 18), (12, 20.4)], rgba(90, 65, 70))
+    s.eyes(9, 11, h=2, w=1, shine=False)
+    s.blush(8, 14, w=1)
+    s.outline()
+    s.save('bee.png')
+
+
+def turtle():
+    s = Sprite(24)
+    shell = rgba(120, 180, 110)
+    skin = rgba(225, 200, 140)
+    s.ellipse_sym(6.2, 19.4, 2.0, 1.4, skin, shade=False)
+    s.ellipse(12, 13, 8.4, 6.2, shell)
+    for x, y in [(9, 10), (12, 9), (15, 10), (10, 13), (14, 13), (12, 14)]:
+        s.put(x, y, mul(shell, 0.72))
+    s.ellipse(12, 18.6, 3.8, 3.0, skin, hl=False)
+    s.eyes(10, 18, h=2, w=1, shine=False)
+    s.blush(9, 20, w=1)
+    s.outline()
+    s.save('turtle.png')
+
+
+def ghost():
+    s = Sprite(24)
+    base = rgba(238, 232, 255, 235)
+    s.ellipse(12, 11.5, 6.6, 6.4, base)
+    s.poly([(5.4, 11.5), (18.6, 11.5), (18.6, 19), (16.6, 21), (14.4, 19), (12, 21), (9.6, 19), (7.4, 21), (5.4, 19)], base)
+    s.eyes(9, 11, h=2, w=1, shine=False)
+    s.blush(8, 13, w=1)
+    s.put(11, 14, MOUTH)
+    s.put(12, 14, MOUTH)
+    s.outline()
+    s.save('ghost.png')
+
+
+def kingshroom():
+    s = Sprite(32)
+    cap = rgba(185, 110, 225)
+    stem = rgba(252, 236, 205)
+    gold = rgba(255, 212, 80)
+    s.ellipse(16, 22.5, 6.5, 6.0, stem, hl=False)
+    s.ellipse_sym(12.5, 28.4, 2.4, 1.4, mul(stem, 0.85), shade=False)
+    s.ellipse(16, 15, 12.5, 8.6, cap, ymax=18)
+    for cx, cy, rx, ry in [(9.5, 12.5, 2.0, 1.6), (17.5, 9.5, 2.3, 1.7), (23.5, 14, 1.6, 1.3), (14, 16, 1.4, 1.0)]:
+        s.ellipse(cx, cy, rx, ry, WHITE, shade=False, hl=False)
+    s.poly([(11.5, 7.2), (11.5, 3.5), (13.5, 5.5), (16, 2.5), (18.5, 5.5), (20.5, 3.5), (20.5, 7.2)], gold)
+    s.put(16, 5, rgba(255, 110, 140))
+    s.eyes(12, 21)
+    for x, y in [(11, 19), (12, 19), (13, 20)]:
+        s.put(x, y, EYE)
+        s.put(s.mirror_x(x), y, EYE)
+    for x in range(14, 18):
+        s.put(x, 25, MOUTH)
+    s.blush(10, 24)
+    s.outline()
+    s.save('kingshroom.png')
+
+
+def feather():
+    s = Sprite(12)
+    s.poly([(11.6, 6), (8, 3.2), (2.5, 4), (0.6, 6), (2.5, 8), (8, 8.8)], rgba(255, 246, 215))
+    for x in range(1, 11):
+        s.put(x, 6, rgba(230, 180, 90))
+    s.outline()
+    s.save('feather.png')
+
+
 if __name__ == '__main__':
     mongsil()
     kkomul()
@@ -453,3 +797,7 @@ if __name__ == '__main__':
     gem('gem.png', rgba(120, 225, 200), 10)
     gem('gem_big.png', rgba(255, 150, 205), 12)
     heart()
+    for fn in (piyak, jjaek, jjirit, beongae, sallang, hoeori,
+               mungchi, meongmung, seori, nunbora, bawi, sanmaek,
+               bee, turtle, ghost, kingshroom, feather):
+        fn()

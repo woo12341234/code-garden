@@ -21,9 +21,9 @@
   const ui = {
     hud: $('hud'), hpBar: $('hp-bar'), hpText: $('hp-text'), xpBar: $('xp-bar'),
     timer: $('timer'), level: $('level'), kills: $('kills'), formName: $('form-name'),
-    portrait: $('portrait'), evoHint: $('evo-hint'),
+    portrait: $('portrait'), evoHint: $('evo-hint'), weaponRow: $('weapon-row'),
     banner: $('banner'), bannerMain: $('banner-main'), bannerSub: $('banner-sub'),
-    start: $('start-screen'), evoChart: $('evo-chart'),
+    start: $('start-screen'), evoChart: $('evo-chart'), dexCount: $('dex-count'),
     choice: $('choice-screen'), choiceTitle: $('choice-title'),
     choiceSubtitle: $('choice-subtitle'), choiceCards: $('choice-cards'),
     pause: $('pause-screen'),
@@ -40,12 +40,29 @@
     ipsae: { size: 60, color: '#7dcd73', emoji: '🌿' },
     taeyang: { size: 72, color: '#ffb946', emoji: '☀️' },
     kkotip: { size: 72, color: '#73c87d', emoji: '🌸' },
+    piyak: { size: 48, color: '#ffde5f', emoji: '🐤' },
+    jjaek: { size: 48, color: '#ffc850', emoji: '🐦' },
+    jjirit: { size: 60, color: '#ffd746', emoji: '⚡' },
+    beongae: { size: 72, color: '#ffc832', emoji: '⚡' },
+    sallang: { size: 60, color: '#82dec3', emoji: '🍃' },
+    hoeori: { size: 72, color: '#69cdc8', emoji: '🌀' },
+    mungchi: { size: 48, color: '#f2dec8', emoji: '🐾' },
+    meongmung: { size: 48, color: '#e4b480', emoji: '🐶' },
+    seori: { size: 60, color: '#bee1ff', emoji: '❄️' },
+    nunbora: { size: 72, color: '#a0cdfa', emoji: '❄️' },
+    bawi: { size: 60, color: '#af8764', emoji: '🪨' },
+    sanmaek: { size: 72, color: '#96785f', emoji: '⛰️' },
     slime: { size: 48, color: '#ffde73', emoji: '💧' },
     mushroom: { size: 48, color: '#f06464', emoji: '🍄' },
+    bee: { size: 48, color: '#ffd750', emoji: '🐝' },
+    turtle: { size: 48, color: '#78b46e', emoji: '🐢' },
+    ghost: { size: 48, color: '#eee8ff', emoji: '👻' },
     bat: { size: 64, color: '#a070de', emoji: '🦇' },
+    kingshroom: { size: 64, color: '#b96ee1', emoji: '🍄' },
     bubble: { size: 24, color: '#aae1ff' },
     fireball: { size: 28, color: '#ff9646' },
     leaf: { size: 24, color: '#87d46e' },
+    feather: { size: 24, color: '#fff6d7' },
     star: { size: 28, color: '#ffe164', emoji: '⭐' },
     gem: { size: 20, color: '#78e1c8' },
     gem_big: { size: 24, color: '#ff96cd' },
@@ -157,25 +174,173 @@
     bgPattern = ctx.createPattern(tile, 'repeat');
   }
 
-  // ---------- Evolution line ----------
+  // ---------- Weapons ----------
+  // Every weapon has a level (1..max). Cooldowns are scaled by player.haste.
+  const MAX_WEAPONS = 4;
+
+  const WEAPONS = {
+    shot: {
+      name: () => ({ fire: '불꽃탄', leaf: '잎새탄' }[player.branch] || '방울탄'),
+      icon: () => ({ fire: '🔥', leaf: '🍃' }[player.branch] || '💧'),
+      desc: '가장 가까운 적에게 탄을 쏴요',
+      up: '데미지 +4, 2단계마다 발사 수 +1',
+      max: 7,
+      create: () => ({ damage: 10, count: 1, pierce: 1, cooldown: 0.7, timer: 0.3, speed: 380, sprite: 'bubble', radius: 9 }),
+      upgrade(w) { w.damage += 4; if (w.level % 2 === 1) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const target = nearestEnemy(520);
+        if (!target) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(target.y - player.y, target.x - player.x);
+        for (let i = 0; i < w.count; i++) {
+          const a = base + (i - (w.count - 1) / 2) * 0.22;
+          projectiles.push({
+            x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            damage: w.damage, pierce: w.pierce, radius: w.radius, sprite: w.sprite, life: 1.5, hit: new Set(),
+          });
+        }
+      },
+    },
+    orbit: {
+      name: () => '별빛 수호',
+      icon: () => '⭐',
+      desc: '주위를 빙글빙글 도는 별이 적을 막아줘요',
+      up: '별 +1개, 별 데미지 +3',
+      max: 6,
+      create: () => ({ count: 1, damage: 8, dist: 58, angle: 0, hits: new Map() }),
+      upgrade(w) { w.count++; w.damage += 3; },
+      update(w, dt) {
+        w.angle += dt * 2.6;
+        for (const [e, t] of w.hits) {
+          if (t <= dt) w.hits.delete(e);
+          else w.hits.set(e, t - dt);
+        }
+        for (const pt of orbitPoints()) {
+          for (let j = enemies.length - 1; j >= 0; j--) {
+            const e = enemies[j];
+            if (w.hits.has(e) || dist(pt.x, pt.y, e.x, e.y) >= 12 + e.type.radius) continue;
+            w.hits.set(e, 0.4);
+            damageEnemy(e, j, w.damage, e.x - player.x, e.y - player.y);
+          }
+        }
+      },
+    },
+    boomerang: {
+      name: () => (player.branch === 'wind' ? '회오리 깃털' : '깃털 부메랑'),
+      icon: () => '🪶',
+      desc: '날아갔다 돌아오며 길 위의 적을 모두 때려요',
+      up: '데미지 +5, 2단계마다 깃털 +1',
+      max: 6,
+      create: () => ({ damage: 12, count: 1, cooldown: 1.3, timer: 0.4, range: 230, speed: 420 }),
+      upgrade(w) { w.damage += 5; if (w.level % 2 === 0) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const target = nearestEnemy(450);
+        if (!target) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(target.y - player.y, target.x - player.x);
+        for (let i = 0; i < w.count; i++) {
+          const a = base + (i - (w.count - 1) / 2) * 0.5;
+          projectiles.push({
+            kind: 'boomerang', x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            damage: w.damage, pierce: Infinity, radius: 12, sprite: 'feather', life: 4,
+            traveled: 0, range: w.range, returning: false, hit: new Set(),
+          });
+        }
+      },
+    },
+    lightning: {
+      name: () => '번개',
+      icon: () => '⚡',
+      desc: '주변의 적에게 번개가 떨어져요',
+      up: '번개 +1개, 데미지 +6',
+      max: 6,
+      create: () => ({ damage: 20, count: 1, cooldown: 1.8, timer: 0.8, range: 420 }),
+      upgrade(w) { w.count++; w.damage += 6; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const near = enemies.filter((e) => dist(e.x, e.y, player.x, player.y) < w.range);
+        if (!near.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (const e of shuffled(near).slice(0, w.count)) {
+          fx.push({ kind: 'bolt', x: e.x, y: e.y, life: 0.25, max: 0.25, seed: Math.random() * 100 });
+          damageEnemy(e, enemies.indexOf(e), w.damage, 0, 0);
+        }
+      },
+    },
+    aura: {
+      name: () => '서리 오라',
+      icon: () => '❄️',
+      desc: '주변 적을 얼려서 느리게 하고 계속 아프게 해요',
+      up: '범위 +10, 데미지 +3',
+      max: 6,
+      create: () => ({ damage: 5, radius: 70, tick: 0.5, timer: 0, slow: 0.35 }),
+      upgrade(w) { w.radius += 10; w.damage += 3; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.tick;
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(e.x, e.y, player.x, player.y) < w.radius + e.type.radius) damageEnemy(e, j, w.damage, 0, 0, 0, true);
+        }
+      },
+    },
+    quake: {
+      name: () => '박치기 충격파',
+      icon: () => '💥',
+      desc: '주기적으로 둥글게 퍼지는 충격파로 적을 밀쳐내요',
+      up: '데미지 +6, 범위 +15',
+      max: 6,
+      create: () => ({ damage: 16, radius: 100, cooldown: 1.8, timer: 0.6 }),
+      upgrade(w) { w.damage += 6; w.radius += 15; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        if (!nearestEnemy(w.radius + 40)) return;
+        w.timer = w.cooldown * player.haste;
+        fx.push({ kind: 'ring', x: player.x, y: player.y, r: w.radius, life: 0.35, max: 0.35 });
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(e.x, e.y, player.x, player.y) < w.radius + e.type.radius) {
+            damageEnemy(e, j, w.damage, e.x - player.x, e.y - player.y, 24);
+          }
+        }
+      },
+    },
+  };
+
+  function grantWeapon(p, id, times = 1) {
+    for (let i = 0; i < times; i++) {
+      const w = p.weapons[id];
+      if (!w) p.weapons[id] = { ...WEAPONS[id].create(), level: 1 };
+      else { w.level++; WEAPONS[id].upgrade(w); }
+    }
+    return p.weapons[id];
+  }
+
+  // ---------- Starters & evolution lines ----------
   // STAGE_LEVELS[i] = level at which stage i+1 is reached.
   const STAGE_LEVELS = [1, 4, 8, 13];
 
+  const LINES = {
+    water: { starter: 'mongsil', desc: '균형형 · 방울탄으로 시작', hp: 100, speed: 190, weapon: 'shot' },
+    bird: { starter: 'piyak', desc: '날쌘형 · 깃털 부메랑으로 시작 (HP 낮음)', hp: 85, speed: 215, weapon: 'boomerang' },
+    beast: { starter: 'mungchi', desc: '튼튼형 · 충격파로 시작 (느림)', hp: 125, speed: 175, weapon: 'quake' },
+  };
+
   const FORMS = {
-    mongsil: {
-      stage: 1, name: '몽실이', sprite: 'mongsil',
-      apply() {},
-    },
+    // 몽실이 계열
+    mongsil: { line: 'water', stage: 1, name: '몽실이', sprite: 'mongsil', apply() {} },
     kkomul: {
-      stage: 2, name: '꼬물룡', sprite: 'kkomul',
-      desc: '최대 HP +20, 방울탄 데미지 +3',
-      apply(p) { p.maxHp += 20; p.weapons.shot.damage += 3; },
+      line: 'water', stage: 2, name: '꼬물룡', sprite: 'kkomul',
+      desc: '최대 HP +20, 방울탄 강화',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'shot'); },
     },
     hwareu: {
-      stage: 3, branch: 'fire', name: '화르룡', sprite: 'hwareu',
+      line: 'water', stage: 3, branch: 'fire', name: '화르룡', sprite: 'hwareu',
       desc: '공격형! 방울탄이 불꽃탄으로 바뀌어요. 데미지 ×1.4, 최대 HP +20',
       apply(p) {
-        const w = p.weapons.shot;
+        const w = grantWeapon(p, 'shot', 0) || grantWeapon(p, 'shot');
         p.maxHp += 20;
         w.damage *= 1.4;
         w.sprite = 'fireball';
@@ -183,18 +348,18 @@
       },
     },
     ipsae: {
-      stage: 3, branch: 'leaf', name: '잎새룡', sprite: 'ipsae',
-      desc: '생존형! 잎새탄 + 별빛 수호 +1, 초당 회복 +1.5, 속도 +10%, 최대 HP +30',
+      line: 'water', stage: 3, branch: 'leaf', name: '잎새룡', sprite: 'ipsae',
+      desc: '생존형! 잎새탄 + 별빛 수호 강화, 초당 회복 +1.5, 속도 +10%, 최대 HP +30',
       apply(p) {
         p.maxHp += 30;
         p.regen += 1.5;
         p.speed *= 1.1;
-        p.weapons.shot.sprite = 'leaf';
-        addOrbitStar(p);
+        if (p.weapons.shot) p.weapons.shot.sprite = 'leaf';
+        grantWeapon(p, 'orbit');
       },
     },
     taeyang: {
-      stage: 4, branch: 'fire', name: '태양룡', sprite: 'taeyang',
+      line: 'water', stage: 4, branch: 'fire', name: '태양룡', sprite: 'taeyang',
       desc: '불꽃탄 +2발, 관통 +2, 데미지 ×1.3',
       apply(p) {
         const w = p.weapons.shot;
@@ -205,77 +370,144 @@
       },
     },
     kkotip: {
-      stage: 4, branch: 'leaf', name: '꽃잎룡', sprite: 'kkotip',
-      desc: '별빛 수호 +2, 별 데미지 ×1.5, 초당 회복 +2',
+      line: 'water', stage: 4, branch: 'leaf', name: '꽃잎룡', sprite: 'kkotip',
+      desc: '별빛 수호 2단계 강화, 별 데미지 ×1.5, 초당 회복 +2',
       apply(p) {
         p.maxHp += 40;
         p.regen += 2;
-        addOrbitStar(p);
-        addOrbitStar(p);
-        p.weapons.orbit.damage *= 1.5;
+        grantWeapon(p, 'orbit', 2).damage *= 1.5;
+      },
+    },
+
+    // 삐약이 계열
+    piyak: { line: 'bird', stage: 1, name: '삐약이', sprite: 'piyak', apply() {} },
+    jjaek: {
+      line: 'bird', stage: 2, name: '짹짹이', sprite: 'jjaek',
+      desc: '최대 HP +20, 깃털 부메랑 강화',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'boomerang'); },
+    },
+    jjirit: {
+      line: 'bird', stage: 3, branch: 'thunder', name: '찌릿새', sprite: 'jjirit',
+      desc: '번개형! 번개 2단계 획득·강화, 속도 +10%, 최대 HP +20',
+      apply(p) { p.maxHp += 20; p.speed *= 1.1; grantWeapon(p, 'lightning', 2); },
+    },
+    sallang: {
+      line: 'bird', stage: 3, branch: 'wind', name: '살랑새', sprite: 'sallang',
+      desc: '바람형! 깃털 부메랑 2단계 강화, 깃털 데미지 ×1.3, 속도 +15%',
+      apply(p) { p.maxHp += 20; p.speed *= 1.15; grantWeapon(p, 'boomerang', 2).damage *= 1.3; },
+    },
+    beongae: {
+      line: 'bird', stage: 4, branch: 'thunder', name: '번개왕새', sprite: 'beongae',
+      desc: '번개 2단계 강화, 번개 데미지 ×1.5, 번개 대기시간 -25%',
+      apply(p) {
+        const w = grantWeapon(p, 'lightning', 2);
+        p.maxHp += 30;
+        w.damage *= 1.5;
+        w.cooldown *= 0.75;
+      },
+    },
+    hoeori: {
+      line: 'bird', stage: 4, branch: 'wind', name: '회오리새', sprite: 'hoeori',
+      desc: '깃털 +2개, 깃털 데미지 ×1.4, 사거리 증가',
+      apply(p) {
+        const w = grantWeapon(p, 'boomerang', 0) || grantWeapon(p, 'boomerang');
+        p.maxHp += 30;
+        w.count += 2;
+        w.damage *= 1.4;
+        w.range += 60;
+      },
+    },
+
+    // 뭉치 계열
+    mungchi: { line: 'beast', stage: 1, name: '뭉치', sprite: 'mungchi', apply() {} },
+    meongmung: {
+      line: 'beast', stage: 2, name: '멍뭉이', sprite: 'meongmung',
+      desc: '최대 HP +25, 충격파 강화',
+      apply(p) { p.maxHp += 25; grantWeapon(p, 'quake'); },
+    },
+    seori: {
+      line: 'beast', stage: 3, branch: 'ice', name: '서리늑대', sprite: 'seori',
+      desc: '얼음형! 서리 오라 2단계 획득·강화, 오라 범위 +20, 최대 HP +25',
+      apply(p) { p.maxHp += 25; grantWeapon(p, 'aura', 2).radius += 20; },
+    },
+    bawi: {
+      line: 'beast', stage: 3, branch: 'rock', name: '바위곰', sprite: 'bawi',
+      desc: '바위형! 충격파 데미지 ×1.4, 범위 +25, 최대 HP +40',
+      apply(p) {
+        const w = grantWeapon(p, 'quake', 0) || grantWeapon(p, 'quake');
+        p.maxHp += 40;
+        w.damage *= 1.4;
+        w.radius += 25;
+      },
+    },
+    nunbora: {
+      line: 'beast', stage: 4, branch: 'ice', name: '눈보라늑대', sprite: 'nunbora',
+      desc: '서리 오라 데미지 ×1.8, 범위 +30, 적을 더 느리게',
+      apply(p) {
+        const w = grantWeapon(p, 'aura', 0) || grantWeapon(p, 'aura');
+        p.maxHp += 30;
+        w.damage *= 1.8;
+        w.radius += 30;
+        w.slow = 0.55;
+      },
+    },
+    sanmaek: {
+      line: 'beast', stage: 4, branch: 'rock', name: '산맥곰', sprite: 'sanmaek',
+      desc: '충격파 대기시간 -30%, 데미지 ×1.5, 범위 +20, 최대 HP +60',
+      apply(p) {
+        const w = p.weapons.quake;
+        p.maxHp += 60;
+        w.cooldown *= 0.7;
+        w.damage *= 1.5;
+        w.radius += 20;
       },
     },
   };
-  const formsAtStage = (stage) => Object.keys(FORMS).filter((id) => FORMS[id].stage === stage);
+  const formsOf = (line, stage) => Object.keys(FORMS).filter((id) => FORMS[id].line === line && FORMS[id].stage === stage);
 
   // ---------- Enemies ----------
   const ENEMY_TYPES = {
     slime: { name: '말랑이', sprite: 'slime', hp: 10, speed: 85, damage: 6, radius: 13, xp: 3, weight: 3, barY: 18 },
     mushroom: { name: '버섯돌이', sprite: 'mushroom', hp: 26, speed: 62, damage: 10, radius: 15, xp: 7, weight: 2, minTime: 35, barY: 24 },
-    bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, minTime: 60, barY: 32 },
+    bee: { name: '꼬마벌', sprite: 'bee', hp: 8, speed: 125, damage: 5, radius: 11, xp: 3, weight: 2, minTime: 75, barY: 16, move: 'zigzag' },
+    turtle: { name: '돌거북', sprite: 'turtle', hp: 70, speed: 38, damage: 14, radius: 18, xp: 12, weight: 1, minTime: 150, barY: 22 },
+    ghost: { name: '둥실유령', sprite: 'ghost', hp: 22, speed: 92, damage: 9, radius: 14, xp: 8, weight: 1.5, minTime: 210, barY: 20, move: 'float', alpha: 0.8 },
+    bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, barY: 32 },
+    kingshroom: { name: '버섯대왕', sprite: 'kingshroom', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
   };
+  const BOSSES = [ENEMY_TYPES.bat, ENEMY_TYPES.kingshroom];
   const MAX_ENEMIES = 260;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
+  const BOSS_START = 60;
   const WAVE_START = 150;
 
-  // ---------- Upgrades ----------
-  const val = (v) => (typeof v === 'function' ? v() : v);
-  const shotName = () => ({ fire: '불꽃탄', leaf: '잎새탄' }[player.branch] || '방울탄');
-
-  function addOrbitStar(p) {
-    if (!p.weapons.orbit) {
-      p.weapons.orbit = { count: 1, damage: 8, dist: 58, angle: 0, hits: new Map() };
-    } else {
-      p.weapons.orbit.count++;
-      p.weapons.orbit.damage += 3;
-    }
-  }
-
-  // max = how many times an upgrade can be picked per run; apply(p, n) gets n = which pick this is (1-based).
-  const UPGRADES = [
-    {
-      id: 'shot', max: 6,
-      icon: () => ({ fire: '🔥', leaf: '🍃' }[player.branch] || '💧'),
-      title: () => `${shotName()} 강화`,
-      desc: '데미지 +4, 2번 강화할 때마다 발사 수 +1',
-      apply(p, n) {
-        p.weapons.shot.damage += 4;
-        if (n % 2 === 0) p.weapons.shot.count++;
-      },
-    },
-    { id: 'rapid', max: 4, icon: '⚡', title: '연사력 증가', desc: '발사 간격 -12%', apply(p) { p.weapons.shot.cooldown *= 0.88; } },
-    {
-      id: 'orbit', max: 5, icon: '⭐',
-      title: () => (player.weapons.orbit ? '별빛 수호 강화' : '별빛 수호 획득'),
-      desc: () => (player.weapons.orbit ? '별 +1개, 별 데미지 +3' : '주위를 빙글빙글 도는 별이 적을 막아줘요'),
-      apply(p) { addOrbitStar(p); },
-    },
+  // ---------- Passive upgrades ----------
+  const PASSIVES = [
     {
       id: 'hp', max: 5, icon: '💖', title: '튼튼한 몸', desc: '최대 HP +20, HP 20 회복',
       apply(p) { p.maxHp += 20; p.hp = Math.min(p.maxHp, p.hp + 20); },
     },
+    { id: 'haste', max: 4, icon: '⏱️', title: '재빠른 공격', desc: '모든 무기 대기시간 -10%', apply(p) { p.haste *= 0.9; } },
     { id: 'speed', max: 3, icon: '👟', title: '날쌘 발', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
     { id: 'magnet', max: 3, icon: '🧲', title: '자석 꼬리', desc: '아이템 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
     { id: 'regen', max: 4, icon: '🌿', title: '회복의 이슬', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
   ];
-  // Offered to fill the row once the other upgrades are maxed out.
-  const SNACK = {
-    id: 'snack', icon: '🍰', title: '맛있는 간식', desc: 'HP 30 회복',
-    apply(p) { p.hp = Math.min(p.maxHp, p.hp + 30); },
-  };
+  // Offered to fill the row once everything else is maxed out.
+  const SNACK = { icon: '🍰', title: '맛있는 간식', desc: 'HP 30 회복', pick: () => { player.hp = Math.min(player.maxHp, player.hp + 30); } };
+
+  // ---------- Pokédex-style record of every form seen (per browser) ----------
+  const DEX_KEY = 'mongsil-survivors-dex';
+  let seen = new Set();
+  try { seen = new Set(JSON.parse(localStorage.getItem(DEX_KEY) || '[]')); } catch (e) { /* storage unavailable */ }
+  function markSeen(id) {
+    if (seen.has(id)) return;
+    seen.add(id);
+    try { localStorage.setItem(DEX_KEY, JSON.stringify([...seen])); } catch (e) { /* storage unavailable */ }
+  }
 
   // ---------- Utility ----------
+  const val = (v) => (typeof v === 'function' ? v() : v);
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const fmtTime = (sec) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
@@ -291,38 +523,40 @@
 
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover
-  let player, enemies, projectiles, pickups, particles, floatTexts;
-  let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, waveTimer = 0, modalDelay = 0, flash = 0, anim = 0;
+  let player, enemies, projectiles, pickups, particles, floatTexts, fx;
+  let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
+  let modalDelay = 0, flash = 0, anim = 0;
   const modalQueue = [];
   const keys = new Set();
 
-  function resetGame() {
+  function resetGame(lineId = 'water') {
+    const line = LINES[lineId];
     player = {
       x: 0, y: 0,
-      form: 'mongsil', stage: 1, branch: null,
-      radius: SPRITE_DEFS.mongsil.size * 0.3,
-      speed: 190, maxHp: 100, hp: 100, regen: 0, pickupRadius: 100,
+      line: lineId, form: line.starter, stage: 1, branch: null,
+      radius: SPRITE_DEFS[line.starter].size * 0.3,
+      speed: line.speed, maxHp: line.hp, hp: line.hp, regen: 0, pickupRadius: 100, haste: 1,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
-      weapons: {
-        shot: { damage: 10, count: 1, pierce: 1, cooldown: 0.7, timer: 0.3, speed: 380, sprite: 'bubble', radius: 9 },
-        orbit: null,
-      },
+      weapons: {},
     };
+    grantWeapon(player, line.weapon);
     enemies = [];
     projectiles = [];
     pickups = [];
     particles = [];
     floatTexts = [];
+    fx = [];
     modalQueue.length = 0;
     elapsed = 0;
     kills = 0;
     spawnTimer = 0;
     bossTimer = 0;
+    bossCount = 0;
     waveTimer = 0;
     modalDelay = 0;
     flash = 0;
-    ui.portrait.src = spritePath(FORMS.mongsil.sprite);
+    ui.portrait.src = spritePath(line.starter);
   }
 
   // ---------- Effects ----------
@@ -356,7 +590,7 @@
   function checkEvolution() {
     const target = stageForLevel(player.level);
     while (player.stage < target) {
-      const options = formsAtStage(player.stage + 1).filter((id) => !player.branch || FORMS[id].branch === player.branch);
+      const options = formsOf(player.line, player.stage + 1).filter((id) => !player.branch || FORMS[id].branch === player.branch);
       if (options.length > 1) {
         if (!modalQueue.some((m) => m.type === 'branch')) modalQueue.unshift({ type: 'branch', options });
         return;
@@ -381,6 +615,7 @@
     burst(player.x, player.y, 40, ['#fff6b0', '#ffffff', '#ffc2dc', '#b8ecff'], 280, 0.9, 5, true);
     showBanner(`${from.name} → ${to.name} 진화!`, '', to.desc);
     ui.portrait.src = spritePath(to.sprite);
+    markSeen(id);
   }
 
   function gainXp(amount) {
@@ -395,28 +630,50 @@
     }
   }
 
-  // ---------- Choice modals (level-up upgrades & branch evolution) ----------
+  // ---------- Choice modals (starter pick, level-up upgrades, branch evolution) ----------
+  function upgradeOffers() {
+    const cards = [];
+    const owned = Object.keys(player.weapons).length;
+    for (const [id, W] of Object.entries(WEAPONS)) {
+      const w = player.weapons[id];
+      if (w ? w.level >= W.max : owned >= MAX_WEAPONS) continue;
+      const n = w ? w.level + 1 : 1;
+      cards.push({
+        icon: W.icon(), title: `${W.name()} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc,
+        stars: '★'.repeat(n) + '☆'.repeat(W.max - n),
+        pick: () => grantWeapon(player, id),
+      });
+    }
+    for (const u of PASSIVES) {
+      const n = (player.picks[u.id] || 0) + 1;
+      if (n > u.max) continue;
+      cards.push({
+        icon: u.icon, title: u.title, desc: u.desc, stars: '★'.repeat(n) + '☆'.repeat(u.max - n),
+        pick: () => { player.picks[u.id] = n; u.apply(player); },
+      });
+    }
+    const offer = shuffled(cards).slice(0, 3);
+    if (offer.length < 3) offer.push(SNACK);
+    return offer;
+  }
+
   function openNextModal() {
     const m = modalQueue.shift();
     if (!m) return;
     state = 'choice';
     ui.banner.classList.remove('show');
-    if (m.type === 'branch') {
+    if (m.type === 'starter') {
+      showChoice('누구와 모험할까요?', '시작 몬스터마다 진화 계열과 무기가 달라요', Object.entries(LINES).map(([id, L]) => ({
+        img: L.starter, title: FORMS[L.starter].name, desc: L.desc, big: true,
+        pick: () => { resetGame(id); markSeen(L.starter); updateHud(); },
+      })));
+    } else if (m.type === 'branch') {
       showChoice('진화의 갈림길!', `${FORMS[player.form].name}이(가) 어떤 모습으로 진화할까요?`, m.options.map((id) => ({
         img: FORMS[id].sprite, title: FORMS[id].name, desc: FORMS[id].desc, big: true,
         pick: () => { evolveTo(id); checkEvolution(); },
       })));
     } else {
-      const offer = shuffled(UPGRADES.filter((u) => (player.picks[u.id] || 0) < u.max)).slice(0, 3);
-      if (offer.length < 3) offer.push(SNACK);
-      showChoice('레벨 업!', '능력을 하나 골라주세요', offer.map((u) => {
-        const n = (player.picks[u.id] || 0) + 1;
-        return {
-          icon: val(u.icon), title: val(u.title), desc: val(u.desc),
-          stars: u.max ? '★'.repeat(n) + '☆'.repeat(u.max - n) : '',
-          pick: () => { player.picks[u.id] = n; u.apply(player, n); },
-        };
-      }));
+      showChoice('레벨 업!', '능력을 하나 골라주세요', upgradeOffers());
     }
   }
 
@@ -485,7 +742,7 @@
 
   // A closing ring of enemies that forces the player to break out.
   function spawnSurroundWave() {
-    const type = elapsed >= 180 ? ENEMY_TYPES.mushroom : ENEMY_TYPES.slime;
+    const type = elapsed >= 300 ? ENEMY_TYPES.bee : elapsed >= 180 ? ENEMY_TYPES.mushroom : ENEMY_TYPES.slime;
     const n = 16 + Math.floor(elapsed / 20);
     const r = Math.min(viewW, viewH) / 2 + 60;
     for (let i = 0; i < n; i++) spawnEnemy(type, (i / n) * Math.PI * 2, r);
@@ -499,12 +756,13 @@
       const n = 1 + Math.floor(elapsed / 60);
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
-    if (elapsed >= ENEMY_TYPES.bat.minTime) {
+    if (elapsed >= BOSS_START) {
       bossTimer -= dt;
       if (bossTimer <= 0) {
         bossTimer = EVENT_INTERVAL;
-        spawnEnemy(ENEMY_TYPES.bat);
-        showBanner(`${ENEMY_TYPES.bat.name} 등장!`, 'boss');
+        const boss = BOSSES[bossCount++ % BOSSES.length];
+        spawnEnemy(boss);
+        showBanner(`${boss.name} 등장!`, 'boss');
       }
     }
     if (elapsed >= WAVE_START) {
@@ -527,14 +785,14 @@
     return best;
   }
 
-  function damageEnemy(e, idx, amount, kx, ky) {
+  function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     e.hp -= amount;
     e.flash = 0.1;
     const k = Math.hypot(kx, ky) || 1;
-    const push = e.type.boss ? 1 : 6;
-    e.x += (kx / k) * push;
-    e.y += (ky / k) * push;
-    addFloatText(e.x, e.y - e.type.radius, String(Math.round(amount)), '#fff');
+    const p = e.type.boss ? push / 6 : push;
+    e.x += (kx / k) * p;
+    e.y += (ky / k) * p;
+    if (!quiet) addFloatText(e.x, e.y - e.type.radius, String(Math.round(amount)), '#fff');
     if (e.hp <= 0) killEnemy(e, idx);
   }
 
@@ -545,24 +803,6 @@
     pickups.push({ kind: e.type.xp >= 20 ? 'gem_big' : 'gem', value: e.type.xp, x: e.x, y: e.y });
     if (e.type.boss || Math.random() < 0.025) {
       pickups.push({ kind: 'heart', value: 25, x: e.x + 14, y: e.y + 6 });
-    }
-  }
-
-  function fireShot(dt) {
-    const w = player.weapons.shot;
-    w.timer -= dt;
-    if (w.timer > 0) return;
-    const target = nearestEnemy(520);
-    if (!target) return;
-    w.timer = w.cooldown;
-    const base = Math.atan2(target.y - player.y, target.x - player.x);
-    for (let i = 0; i < w.count; i++) {
-      const a = base + (i - (w.count - 1) / 2) * 0.22;
-      projectiles.push({
-        x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
-        damage: w.damage, pierce: w.pierce, radius: w.radius, sprite: w.sprite,
-        life: 1.5, hit: new Set(),
-      });
     }
   }
 
@@ -603,12 +843,21 @@
 
   function updateEnemies(dt) {
     const farLimit = Math.hypot(viewW, viewH) * 0.85;
+    const aura = player.weapons.aura;
     for (const e of enemies) {
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
       if (d > farLimit) { placeOnRing(e); continue; }
-      e.x += (dx / d) * e.speed * dt;
-      e.y += (dy / d) * e.speed * dt;
+      let speed = e.speed;
+      if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
+      if (aura && d < aura.radius + e.type.radius) speed *= 1 - aura.slow;
+      e.x += (dx / d) * speed * dt;
+      e.y += (dy / d) * speed * dt;
+      if (e.type.move === 'zigzag') {
+        const wiggle = Math.sin(elapsed * 8 + e.phase) * speed * 0.7 * dt;
+        e.x += (-dy / d) * wiggle;
+        e.y += (dx / d) * wiggle;
+      }
       if (e.flash > 0) e.flash -= dt;
       if (e.contactCd > 0) e.contactCd -= dt;
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
@@ -643,39 +892,45 @@
     }
   }
 
+  function moveBoomerang(p, dt) {
+    const speed = Math.hypot(p.vx, p.vy);
+    if (!p.returning) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.traveled += speed * dt;
+      if (p.traveled >= p.range) {
+        p.returning = true;
+        p.hit.clear();
+      }
+      return false;
+    }
+    const d = dist(p.x, p.y, player.x, player.y) || 1;
+    const step = speed * 1.15 * dt;
+    p.x += ((player.x - p.x) / d) * step;
+    p.y += ((player.y - p.y) / d) * step;
+    return d < player.radius + 6;
+  }
+
   function updateProjectiles(dt) {
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
       p.life -= dt;
       let dead = p.life <= 0;
+      if (p.kind === 'boomerang') {
+        p.spin = (p.spin || 0) + dt * 14;
+        if (moveBoomerang(p, dt)) dead = true;
+      } else {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+      }
       for (let j = enemies.length - 1; j >= 0 && !dead; j--) {
         const e = enemies[j];
         if (p.hit.has(e) || dist(p.x, p.y, e.x, e.y) >= p.radius + e.type.radius) continue;
         p.hit.add(e);
-        damageEnemy(e, j, p.damage, p.vx, p.vy);
+        damageEnemy(e, j, p.damage, e.x - p.x, e.y - p.y);
         if (--p.pierce <= 0) dead = true;
       }
       if (dead) projectiles.splice(i, 1);
-    }
-  }
-
-  function updateOrbit(dt) {
-    const w = player.weapons.orbit;
-    if (!w) return;
-    w.angle += dt * 2.6;
-    for (const [e, t] of w.hits) {
-      if (t <= dt) w.hits.delete(e);
-      else w.hits.set(e, t - dt);
-    }
-    for (const pt of orbitPoints()) {
-      for (let j = enemies.length - 1; j >= 0; j--) {
-        const e = enemies[j];
-        if (w.hits.has(e) || dist(pt.x, pt.y, e.x, e.y) >= 12 + e.type.radius) continue;
-        w.hits.set(e, 0.4);
-        damageEnemy(e, j, w.damage, e.x - player.x, e.y - player.y);
-      }
     }
   }
 
@@ -718,6 +973,9 @@
       f.life -= dt;
       if (f.life <= 0) floatTexts.splice(i, 1);
     }
+    for (let i = fx.length - 1; i >= 0; i--) {
+      if ((fx[i].life -= dt) <= 0) fx.splice(i, 1);
+    }
     if (flash > 0) flash -= dt;
   }
 
@@ -728,9 +986,8 @@
     updateSpawner(dt);
     updateEnemies(dt);
     if (state !== 'playing') return;
-    fireShot(dt);
+    for (const [id, w] of Object.entries(player.weapons)) WEAPONS[id].update(w, dt);
     updateProjectiles(dt);
-    updateOrbit(dt);
     updatePickups(dt);
     updateEffects(dt);
     if (modalQueue.length && modalDelay <= 0) openNextModal();
@@ -748,6 +1005,8 @@
     ui.evoHint.textContent = player.stage < STAGE_LEVELS.length
       ? `다음 진화: Lv.${STAGE_LEVELS[player.stage]}`
       : '최종 진화 완료!';
+    ui.weaponRow.textContent = Object.entries(player.weapons)
+      .map(([id, w]) => `${WEAPONS[id].icon()}${w.level}`).join('  ');
   }
 
   // ---------- Render ----------
@@ -756,6 +1015,54 @@
     ctx.beginPath();
     ctx.ellipse(x, y, r, r * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  function drawAura() {
+    const w = player.weapons.aura;
+    if (!w) return;
+    ctx.fillStyle = 'rgba(175, 225, 255, 0.22)';
+    ctx.strokeStyle = 'rgba(140, 205, 255, 0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, w.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    for (let i = 0; i < 6; i++) {
+      const a = anim * 0.8 + (i / 6) * Math.PI * 2;
+      const x = player.x + Math.cos(a) * w.radius * 0.8, y = player.y + Math.sin(a) * w.radius * 0.8;
+      ctx.fillRect(x - 3, y - 1, 6, 2);
+      ctx.fillRect(x - 1, y - 3, 2, 6);
+    }
+  }
+
+  function drawFx() {
+    for (const f of fx) {
+      const a = clamp(f.life / f.max, 0, 1);
+      if (f.kind === 'ring') {
+        const r = f.r * (1 - a * 0.6);
+        ctx.strokeStyle = `rgba(255, 220, 150, ${a})`;
+        ctx.lineWidth = 6 * a + 2;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (f.kind === 'bolt') {
+        ctx.strokeStyle = `rgba(255, 245, 140, ${a})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        let x = f.x, y = f.y - 160;
+        ctx.moveTo(x, y);
+        for (let i = 1; i <= 6; i++) {
+          x = f.x + (i < 6 ? Math.sin(f.seed + i * 2.3) * 12 : 0);
+          y = f.y - 160 + (160 * i) / 6;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
   }
 
   function drawPlayer() {
@@ -786,7 +1093,8 @@
     const r = t.radius;
     drawShadow(e.x, e.y + r * 0.85, r);
     const b = Math.sin(anim * 9 + e.phase);
-    drawSprite(t.sprite, e.x, e.y, { sx: 1 + 0.05 * b, sy: 1 - 0.05 * b, groundR: r, flash: e.flash > 0 });
+    const lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: 1 + 0.05 * b, sy: 1 - 0.05 * b, groundR: r, flash: e.flash > 0, alpha: t.alpha });
     if (t.boss || e.hp < e.maxHp) {
       const w = t.boss ? 56 : 26;
       const x = Math.round(e.x - w / 2), y = Math.round(e.y - t.barY);
@@ -809,6 +1117,7 @@
     ctx.fillStyle = bgPattern || '#cfeaa9';
     ctx.fillRect(camX, camY, viewW, viewH);
 
+    drawAura();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
 
     enemies.sort((a, b) => a.y - b.y);
@@ -823,7 +1132,10 @@
     if (!playerDrawn) drawPlayer();
 
     for (const pt of orbitPoints()) drawSprite('star', pt.x, pt.y, { rot: anim * 4 });
-    for (const p of projectiles) drawSprite(p.sprite, p.x, p.y, { rot: Math.atan2(p.vy, p.vx) });
+    for (const p of projectiles) {
+      drawSprite(p.sprite, p.x, p.y, { rot: p.kind === 'boomerang' ? p.spin : Math.atan2(p.vy, p.vx) });
+    }
+    drawFx();
 
     for (const p of particles) {
       ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
@@ -873,13 +1185,15 @@
   }
 
   // ---------- Screens ----------
+  // Title-screen dex: each line's tree; forms not yet met show as silhouettes.
   function buildEvoChart() {
     const node = (id) => {
       const f = FORMS[id];
+      const known = seen.has(id) || f.stage === 1;
       const el = document.createElement('div');
-      el.className = 'evo-node';
+      el.className = known ? 'evo-node' : 'evo-node unseen';
       const name = document.createElement('span');
-      name.textContent = f.name;
+      name.textContent = known ? f.name : '???';
       const lv = document.createElement('small');
       lv.textContent = `Lv.${STAGE_LEVELS[f.stage - 1]}`;
       el.append(pixelImg(f.sprite), name, lv);
@@ -891,16 +1205,25 @@
       a.textContent = '▶';
       return a;
     };
-    const branches = document.createElement('div');
-    branches.className = 'evo-branches';
-    for (const id3 of formsAtStage(3)) {
-      const id4 = formsAtStage(4).find((id) => FORMS[id].branch === FORMS[id3].branch);
-      const row = document.createElement('div');
-      row.className = 'evo-row';
-      row.append(node(id3), arrow(), node(id4));
-      branches.append(row);
+    ui.evoChart.replaceChildren();
+    for (const lineId of Object.keys(LINES)) {
+      const line = document.createElement('div');
+      line.className = 'evo-line';
+      const branches = document.createElement('div');
+      branches.className = 'evo-branches';
+      for (const id3 of formsOf(lineId, 3)) {
+        const id4 = formsOf(lineId, 4).find((id) => FORMS[id].branch === FORMS[id3].branch);
+        const row = document.createElement('div');
+        row.className = 'evo-row';
+        row.append(node(id3), arrow(), node(id4));
+        branches.append(row);
+      }
+      line.append(node(formsOf(lineId, 1)[0]), arrow(), node(formsOf(lineId, 2)[0]), arrow(), branches);
+      ui.evoChart.append(line);
     }
-    ui.evoChart.append(node(formsAtStage(1)[0]), arrow(), node(formsAtStage(2)[0]), arrow(), branches);
+    const total = Object.keys(FORMS).length;
+    const found = Object.keys(FORMS).filter((id) => seen.has(id) || FORMS[id].stage === 1).length;
+    ui.dexCount.textContent = `진화 도감 ${found} / ${total}`;
   }
 
   function startGame() {
@@ -910,6 +1233,8 @@
     ui.hud.classList.remove('hidden');
     updateHud();
     state = 'playing';
+    modalQueue.push({ type: 'starter' });
+    openNextModal();
   }
 
   function gameOver() {
@@ -919,6 +1244,7 @@
     ui.gameoverStats.textContent = `${f.name} · Lv.${player.level} · ${fmtTime(elapsed)} 생존 · ${kills}마리 처치`;
     ui.hud.classList.add('hidden');
     ui.gameover.classList.remove('hidden');
+    buildEvoChart();
   }
 
   function togglePause() {
