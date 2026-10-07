@@ -23,7 +23,7 @@
     timer: $('timer'), level: $('level'), kills: $('kills'), formName: $('form-name'),
     portrait: $('portrait'), evoHint: $('evo-hint'), weaponRow: $('weapon-row'),
     banner: $('banner'), bannerMain: $('banner-main'), bannerSub: $('banner-sub'),
-    start: $('start-screen'), evoChart: $('evo-chart'), dexCount: $('dex-count'),
+    start: $('start-screen'), evoChart: $('evo-chart'), dexCount: $('dex-count'), secretHints: $('secret-hints'),
     choice: $('choice-screen'), choiceTitle: $('choice-title'),
     choiceSubtitle: $('choice-subtitle'), choiceCards: $('choice-cards'),
     pause: $('pause-screen'),
@@ -52,12 +52,32 @@
     nunbora: { size: 72, color: '#a0cdfa', emoji: '❄️' },
     bawi: { size: 60, color: '#af8764', emoji: '🪨' },
     sanmaek: { size: 72, color: '#96785f', emoji: '⛰️' },
+    nyangkong: { size: 48, color: '#dac6ff', emoji: '🐱' },
+    nyangnyang: { size: 48, color: '#cdb4fa', emoji: '🐱' },
+    dalbit: { size: 60, color: '#7d87d7', emoji: '🌙' },
+    eunha: { size: 72, color: '#6964c3', emoji: '🌌' },
+    satang: { size: 60, color: '#ffafd4', emoji: '🍭' },
+    chukje: { size: 72, color: '#ffa0be', emoji: '🎉' },
+    pongdang: { size: 48, color: '#aae1ff', emoji: '💧' },
+    cheombeong: { size: 48, color: '#e4ecf6', emoji: '🦭' },
+    pado: { size: 60, color: '#78b9f0', emoji: '🌊' },
+    haeil: { size: 72, color: '#5096e6', emoji: '🌊' },
+    sanho: { size: 60, color: '#ffaa9b', emoji: '🪸' },
+    jinju: { size: 72, color: '#ffd7e1', emoji: '🦪' },
+    mujigae: { size: 72, color: '#faf8ff', emoji: '🌈' },
+    byeolttong: { size: 72, color: '#464b8c', emoji: '🌠' },
+    hwanggeum: { size: 72, color: '#ffc846', emoji: '👑' },
+    kkum: { size: 72, color: '#e1cdff', emoji: '💤' },
+    badayojeong: { size: 72, color: '#8cdce6', emoji: '🧚' },
     slime: { size: 48, color: '#ffde73', emoji: '💧' },
     mushroom: { size: 48, color: '#f06464', emoji: '🍄' },
     bee: { size: 48, color: '#ffd750', emoji: '🐝' },
     turtle: { size: 48, color: '#78b46e', emoji: '🐢' },
     ghost: { size: 48, color: '#eee8ff', emoji: '👻' },
+    snowman: { size: 48, color: '#f8faff', emoji: '⛄' },
+    jelly: { size: 48, color: '#ffa0c8', emoji: '🍮' },
     bat: { size: 64, color: '#a070de', emoji: '🦇' },
+    cloudking: { size: 64, color: '#aaa5cd', emoji: '⛈️' },
     kingshroom: { size: 64, color: '#b96ee1', emoji: '🍄' },
     bubble: { size: 24, color: '#aae1ff' },
     fireball: { size: 28, color: '#ff9646' },
@@ -67,6 +87,12 @@
     gem: { size: 20, color: '#78e1c8' },
     gem_big: { size: 24, color: '#ff96cd' },
     heart: { size: 24, color: '#ff6987', emoji: '❤' },
+    candy: { size: 24, color: '#ff96be', emoji: '🍬' },
+    magnet: { size: 24, color: '#ff5f6e', emoji: '🧲' },
+    bomb: { size: 24, color: '#5a556e', emoji: '💣' },
+    chest: { size: 28, color: '#cd8c55', emoji: '🎁' },
+    fairy: { size: 24, color: '#aae6ff', emoji: '🧚' },
+    shell: { size: 20, color: '#ff8c78' },
   };
   const SPRITES = {};
   const spritePath = (key) => `assets/${key}.png`;
@@ -193,8 +219,9 @@
         if (!target) return;
         w.timer = w.cooldown * player.haste;
         const base = Math.atan2(target.y - player.y, target.x - player.x);
-        for (let i = 0; i < w.count; i++) {
-          const a = base + (i - (w.count - 1) / 2) * 0.22;
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * 0.22;
           projectiles.push({
             x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
             damage: w.damage, pierce: w.pierce, radius: w.radius, sprite: w.sprite, life: 1.5, hit: new Set(),
@@ -240,8 +267,9 @@
         if (!target) return;
         w.timer = w.cooldown * player.haste;
         const base = Math.atan2(target.y - player.y, target.x - player.x);
-        for (let i = 0; i < w.count; i++) {
-          const a = base + (i - (w.count - 1) / 2) * 0.5;
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * 0.5;
           projectiles.push({
             kind: 'boomerang', x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
             damage: w.damage, pierce: Infinity, radius: 12, sprite: 'feather', life: 4,
@@ -282,7 +310,7 @@
         w.timer = w.tick;
         for (let j = enemies.length - 1; j >= 0; j--) {
           const e = enemies[j];
-          if (dist(e.x, e.y, player.x, player.y) < w.radius + e.type.radius) damageEnemy(e, j, w.damage, 0, 0, 0, true);
+          if (dist(e.x, e.y, player.x, player.y) < w.radius * player.area + e.type.radius) damageEnemy(e, j, w.damage, 0, 0, 0, true);
         }
       },
     },
@@ -296,18 +324,105 @@
       upgrade(w) { w.damage += 6; w.radius += 15; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
-        if (!nearestEnemy(w.radius + 40)) return;
+        const radius = w.radius * player.area;
+        if (!nearestEnemy(radius + 40)) return;
         w.timer = w.cooldown * player.haste;
-        fx.push({ kind: 'ring', x: player.x, y: player.y, r: w.radius, life: 0.35, max: 0.35 });
+        fx.push({ kind: 'ring', x: player.x, y: player.y, r: radius, life: 0.35, max: 0.35 });
         for (let j = enemies.length - 1; j >= 0; j--) {
           const e = enemies[j];
-          if (dist(e.x, e.y, player.x, player.y) < w.radius + e.type.radius) {
+          if (dist(e.x, e.y, player.x, player.y) < radius + e.type.radius) {
             damageEnemy(e, j, w.damage, e.x - player.x, e.y - player.y, 24);
           }
         }
       },
     },
   };
+
+  Object.assign(WEAPONS, {
+    beam: {
+      name: () => '별빛 빔',
+      icon: () => '🌈',
+      desc: '적을 꿰뚫는 긴 빛줄기를 쏴요',
+      up: '데미지 +7, 3단계마다 빔 +1',
+      max: 6,
+      create: () => ({ damage: 18, count: 1, cooldown: 2.0, timer: 0.5, length: 360, width: 14 }),
+      upgrade(w) { w.damage += 7; if (w.level % 3 === 0) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const target = nearestEnemy(w.length);
+        if (!target) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(target.y - player.y, target.x - player.x);
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * 0.35;
+          const cx = Math.cos(a), cy = Math.sin(a);
+          fx.push({ kind: 'beam', x: player.x, y: player.y, a, len: w.length, w: w.width, life: 0.3, max: 0.3 });
+          for (let j = enemies.length - 1; j >= 0; j--) {
+            const e = enemies[j];
+            const rx = e.x - player.x, ry = e.y - player.y;
+            const along = rx * cx + ry * cy;
+            if (along < 0 || along > w.length) continue;
+            if (Math.abs(rx * cy - ry * cx) < w.width + e.type.radius) damageEnemy(e, j, w.damage, cx, cy);
+          }
+        }
+      },
+    },
+    firework: {
+      name: () => '폭죽',
+      icon: () => '🎆',
+      desc: '적 무리 위로 폭죽을 쏘아 펑 터뜨려요',
+      up: '데미지 +6, 폭발 범위 +8, 2단계마다 폭죽 +1',
+      max: 6,
+      create: () => ({ damage: 16, count: 1, cooldown: 1.5, timer: 0.4, radius: 55 }),
+      upgrade(w) { w.damage += 6; w.radius += 8; if (w.level % 2 === 0) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const near = enemies.filter((e) => dist(e.x, e.y, player.x, player.y) < 420);
+        if (!near.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (const e of shuffled(near).slice(0, w.count + player.extra)) {
+          shells.push({ sx: player.x, sy: player.y, tx: e.x, ty: e.y, t: 0, dur: 0.5, damage: w.damage, radius: w.radius * player.area });
+        }
+      },
+    },
+    fairy: {
+      name: () => '방울 요정',
+      icon: () => '🧚',
+      desc: '요정들이 적을 쫓아가서 콕 때려요',
+      up: '데미지 +3, 요정 +1',
+      max: 6,
+      create: () => ({ damage: 9, count: 2, cooldown: 1.1, timer: 0.3, speed: 300 }),
+      upgrade(w) { w.damage += 3; w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        if (!nearestEnemy(500)) return;
+        w.timer = w.cooldown * player.haste;
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2 + anim;
+          projectiles.push({
+            kind: 'homing', x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            speed: w.speed, damage: w.damage, pierce: 1, radius: 9, sprite: 'fairy', life: 2.5, hit: new Set(),
+          });
+        }
+      },
+    },
+    thorn: {
+      name: () => (player.branch === 'coral' ? '산호 가시' : '가시 덩굴'),
+      icon: () => '🌵',
+      desc: '지나간 자리에 가시밭을 남겨 적을 찌르고 느리게 해요',
+      up: '데미지 +3, 가시밭 크기 +6, 유지시간 +0.5초',
+      max: 6,
+      create: () => ({ damage: 6, radius: 34, life: 3, cooldown: 0.7, timer: 0 }),
+      upgrade(w) { w.damage += 3; w.radius += 6; w.life += 0.5; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.cooldown * player.haste;
+        zones.push({ x: player.x, y: player.y, r: w.radius * player.area, damage: w.damage, life: w.life, max: w.life, tick: 0, seed: Math.random() * 10 });
+      },
+    },
+  });
 
   function grantWeapon(p, id, times = 1) {
     for (let i = 0; i < times; i++) {
@@ -318,6 +433,15 @@
     return p.weapons[id];
   }
 
+
+  // Secret forms: stage 4 alternatives that only appear when their condition is met at Lv.13.
+  const SECRET_DESC = '비밀 진화! 모든 무기 +1단계, 대기시간 -15%, 최대 HP +50';
+  function secretBoost(p) {
+    p.maxHp += 50;
+    p.haste *= 0.85;
+    for (const id of Object.keys(p.weapons)) grantWeapon(p, id);
+  }
+
   // ---------- Starters & evolution lines ----------
   // STAGE_LEVELS[i] = level at which stage i+1 is reached.
   const STAGE_LEVELS = [1, 4, 8, 13];
@@ -326,6 +450,8 @@
     water: { starter: 'mongsil', desc: '균형형 · 방울탄으로 시작', hp: 100, speed: 190, weapon: 'shot' },
     bird: { starter: 'piyak', desc: '날쌘형 · 깃털 부메랑으로 시작 (HP 낮음)', hp: 85, speed: 215, weapon: 'boomerang' },
     beast: { starter: 'mungchi', desc: '튼튼형 · 충격파로 시작 (느림)', hp: 125, speed: 175, weapon: 'quake' },
+    cat: { starter: 'nyangkong', desc: '마법형 · 폭죽으로 시작', hp: 95, speed: 195, weapon: 'firework' },
+    seal: { starter: 'pongdang', desc: '친구형 · 방울 요정으로 시작', hp: 110, speed: 185, weapon: 'fairy' },
   };
 
   const FORMS = {
@@ -463,6 +589,117 @@
       },
     },
   };
+  Object.assign(FORMS, {
+    // 냥콩이 계열
+    nyangkong: { line: 'cat', stage: 1, name: '냥콩이', sprite: 'nyangkong', apply() {} },
+    nyangnyang: {
+      line: 'cat', stage: 2, name: '냥냥이', sprite: 'nyangnyang',
+      desc: '최대 HP +20, 폭죽 강화',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'firework'); },
+    },
+    dalbit: {
+      line: 'cat', stage: 3, branch: 'moon', name: '달빛냥', sprite: 'dalbit',
+      desc: '달빛형! 별빛 빔 2단계 획득·강화, 최대 HP +20',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'beam', 2); },
+    },
+    satang: {
+      line: 'cat', stage: 3, branch: 'candy', name: '사탕냥', sprite: 'satang',
+      desc: '사탕형! 폭죽 2단계 강화, 폭발 범위 +15, 최대 HP +20',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'firework', 2).radius += 15; },
+    },
+    eunha: {
+      line: 'cat', stage: 4, branch: 'moon', name: '은하냥', sprite: 'eunha',
+      desc: '별빛 빔 데미지 ×1.6, 빔 +1, 빔이 더 굵어져요',
+      apply(p) {
+        const w = grantWeapon(p, 'beam', 0) || grantWeapon(p, 'beam');
+        p.maxHp += 30;
+        w.damage *= 1.6;
+        w.count++;
+        w.width += 6;
+      },
+    },
+    chukje: {
+      line: 'cat', stage: 4, branch: 'candy', name: '축제냥', sprite: 'chukje',
+      desc: '폭죽 +2개, 폭죽 데미지 ×1.4',
+      apply(p) {
+        const w = p.weapons.firework;
+        p.maxHp += 30;
+        w.count += 2;
+        w.damage *= 1.4;
+      },
+    },
+    kkum: {
+      line: 'cat', stage: 4, secret: true, name: '꿈냥', sprite: 'kkum', desc: SECRET_DESC,
+      hint: '폭죽과 별빛 빔이 둘 다 4단계 이상인 채 Lv.13',
+      unlock: (p) => (p.weapons.firework?.level || 0) >= 4 && (p.weapons.beam?.level || 0) >= 4,
+      apply: secretBoost,
+    },
+
+    // 퐁당이 계열
+    pongdang: { line: 'seal', stage: 1, name: '퐁당이', sprite: 'pongdang', apply() {} },
+    cheombeong: {
+      line: 'seal', stage: 2, name: '첨벙이', sprite: 'cheombeong',
+      desc: '최대 HP +20, 방울 요정 강화',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'fairy'); },
+    },
+    pado: {
+      line: 'seal', stage: 3, branch: 'wave', name: '파도물범', sprite: 'pado',
+      desc: '파도형! 방울 요정 2단계 강화, 요정 데미지 ×1.3, 최대 HP +20',
+      apply(p) { p.maxHp += 20; grantWeapon(p, 'fairy', 2).damage *= 1.3; },
+    },
+    sanho: {
+      line: 'seal', stage: 3, branch: 'coral', name: '산호물범', sprite: 'sanho',
+      desc: '산호형! 산호 가시 2단계 획득·강화, 초당 회복 +1, 최대 HP +30',
+      apply(p) { p.maxHp += 30; p.regen += 1; grantWeapon(p, 'thorn', 2); },
+    },
+    haeil: {
+      line: 'seal', stage: 4, branch: 'wave', name: '해일물범', sprite: 'haeil',
+      desc: '요정 +3, 요정 데미지 ×1.4',
+      apply(p) {
+        const w = p.weapons.fairy;
+        p.maxHp += 30;
+        w.count += 3;
+        w.damage *= 1.4;
+      },
+    },
+    jinju: {
+      line: 'seal', stage: 4, branch: 'coral', name: '진주물범', sprite: 'jinju',
+      desc: '가시 데미지 ×1.6, 가시밭 크기 +12, 초당 회복 +2, 최대 HP +40',
+      apply(p) {
+        const w = grantWeapon(p, 'thorn', 0) || grantWeapon(p, 'thorn');
+        p.maxHp += 40;
+        p.regen += 2;
+        w.damage *= 1.6;
+        w.radius += 12;
+      },
+    },
+    badayojeong: {
+      line: 'seal', stage: 4, secret: true, name: '바다요정', sprite: 'badayojeong', desc: SECRET_DESC,
+      hint: '보물상자를 2개 이상 연 채 Lv.13',
+      unlock: (p) => p.chests >= 2,
+      apply: secretBoost,
+    },
+
+    // 다른 계열의 비밀 진화
+    mujigae: {
+      line: 'water', stage: 4, secret: true, name: '무지개룡', sprite: 'mujigae', desc: SECRET_DESC,
+      hint: '무기 4칸을 모두 채운 채 Lv.13',
+      unlock: (p) => Object.keys(p.weapons).length >= 4,
+      apply: secretBoost,
+    },
+    byeolttong: {
+      line: 'bird', stage: 4, secret: true, name: '별똥새', sprite: 'byeolttong', desc: SECRET_DESC,
+      hint: '별빛 수호를 가진 채 Lv.13',
+      unlock: (p) => !!p.weapons.orbit,
+      apply: secretBoost,
+    },
+    hwanggeum: {
+      line: 'beast', stage: 4, secret: true, name: '황금곰', sprite: 'hwanggeum', desc: SECRET_DESC,
+      hint: '최대 HP 250 이상으로 Lv.13',
+      unlock: (p) => p.maxHp >= 250,
+      apply: secretBoost,
+    },
+  });
   const formsOf = (line, stage) => Object.keys(FORMS).filter((id) => FORMS[id].line === line && FORMS[id].stage === stage);
 
   // ---------- Enemies ----------
@@ -472,10 +709,14 @@
     bee: { name: '꼬마벌', sprite: 'bee', hp: 8, speed: 120, damage: 4, radius: 11, xp: 3, weight: 1.5, minTime: 75, barY: 16, move: 'zigzag' },
     turtle: { name: '돌거북', sprite: 'turtle', hp: 70, speed: 38, damage: 12, radius: 18, xp: 12, weight: 1, minTime: 150, barY: 22 },
     ghost: { name: '둥실유령', sprite: 'ghost', hp: 22, speed: 88, damage: 7, radius: 14, xp: 8, weight: 1, minTime: 210, barY: 20, move: 'float', alpha: 0.8 },
+    jelly: { name: '말랑젤리', sprite: 'jelly', hp: 24, speed: 75, damage: 8, radius: 14, xp: 6, weight: 1.2, minTime: 120, barY: 20, split: 'jellyMini' },
+    jellyMini: { name: '꼬마젤리', sprite: 'jelly', scale: 0.6, hp: 8, speed: 105, damage: 4, radius: 9, xp: 2, weight: 0, barY: 12 },
+    snowman: { name: '꼬마눈사람', sprite: 'snowman', hp: 40, speed: 55, damage: 11, radius: 15, xp: 9, weight: 1.2, minTime: 270, barY: 24 },
     bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, barY: 32 },
+    cloudking: { name: '먹구름대왕', sprite: 'cloudking', hp: 330, speed: 52, damage: 20, radius: 26, xp: 60, boss: true, barY: 34, summon: true },
     kingshroom: { name: '버섯대왕', sprite: 'kingshroom', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
   };
-  const BOSSES = [ENEMY_TYPES.bat, ENEMY_TYPES.kingshroom];
+  const BOSSES = [ENEMY_TYPES.bat, ENEMY_TYPES.kingshroom, ENEMY_TYPES.cloudking];
   const MAX_ENEMIES = 260;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
@@ -492,6 +733,12 @@
     { id: 'speed', max: 3, icon: '👟', title: '날쌘 발', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
     { id: 'magnet', max: 3, icon: '🧲', title: '자석 꼬리', desc: '아이템 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
     { id: 'regen', max: 4, icon: '🌿', title: '회복의 이슬', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
+    { id: 'crit', max: 4, icon: '🍬', title: '별사탕', desc: '치명타 확률 +10% (데미지 2배)', apply(p) { p.crit += 0.1; } },
+    { id: 'xp', max: 3, icon: '👑', title: '공부하는 왕관', desc: '얻는 경험치 +15%', apply(p) { p.xpMul += 0.15; } },
+    { id: 'armor', max: 4, icon: '🛡️', title: '단단한 껍질', desc: '받는 피해 -8%', apply(p) { p.armor *= 0.92; } },
+    { id: 'area', max: 4, icon: '🔆', title: '큰 몸짓', desc: '오라·충격파·폭죽·가시밭 범위 +12%', apply(p) { p.area *= 1.12; } },
+    { id: 'extra', max: 2, icon: '👯', title: '분신술', desc: '탄·깃털·빔·폭죽·요정 발사 수 +1', apply(p) { p.extra++; } },
+    { id: 'luck', max: 3, icon: '🍀', title: '행운 클로버', desc: '하트·사탕·자석·폭탄이 더 자주 떨어져요', apply(p) { p.luck += 0.4; } },
   ];
   // Offered to fill the row once everything else is maxed out.
   const SNACK = { icon: '🍰', title: '맛있는 간식', desc: 'HP 30 회복', pick: () => { player.hp = Math.min(player.maxHp, player.hp + 30); } };
@@ -523,7 +770,7 @@
 
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover
-  let player, enemies, projectiles, pickups, particles, floatTexts, fx;
+  let player, enemies, projectiles, pickups, particles, floatTexts, fx, shells, zones;
   let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
   let modalDelay = 0, flash = 0, anim = 0;
   const modalQueue = [];
@@ -536,6 +783,7 @@
       line: lineId, form: line.starter, stage: 1, branch: null,
       radius: SPRITE_DEFS[line.starter].size * 0.3,
       speed: line.speed, maxHp: line.hp, hp: line.hp, regen: 0, pickupRadius: 100, haste: 1,
+      crit: 0, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {},
@@ -547,6 +795,8 @@
     particles = [];
     floatTexts = [];
     fx = [];
+    shells = [];
+    zones = [];
     modalQueue.length = 0;
     elapsed = 0;
     kills = 0;
@@ -590,7 +840,9 @@
   function checkEvolution() {
     const target = stageForLevel(player.level);
     while (player.stage < target) {
-      const options = formsOf(player.line, player.stage + 1).filter((id) => !player.branch || FORMS[id].branch === player.branch);
+      const options = formsOf(player.line, player.stage + 1).filter((id) => (FORMS[id].secret
+        ? FORMS[id].unlock(player)
+        : !player.branch || FORMS[id].branch === player.branch));
       if (options.length > 1) {
         if (!modalQueue.some((m) => m.type === 'branch')) modalQueue.unshift({ type: 'branch', options });
         return;
@@ -619,7 +871,7 @@
   }
 
   function gainXp(amount) {
-    player.xp += amount;
+    player.xp += amount * player.xpMul;
     while (player.xp >= player.xpToNext) {
       player.xp -= player.xpToNext;
       player.level++;
@@ -668,10 +920,13 @@
         pick: () => { resetGame(id); markSeen(L.starter); updateHud(); },
       })));
     } else if (m.type === 'branch') {
-      showChoice('진화의 갈림길!', `${FORMS[player.form].name}이(가) 어떤 모습으로 진화할까요?`, m.options.map((id) => ({
-        img: FORMS[id].sprite, title: FORMS[id].name, desc: FORMS[id].desc, big: true,
+      const secret = m.options.some((id) => FORMS[id].secret);
+      showChoice(secret ? '비밀 진화 조건 달성!' : '진화의 갈림길!', `${FORMS[player.form].name}이(가) 어떤 모습으로 진화할까요?`, m.options.map((id) => ({
+        img: FORMS[id].sprite, title: (FORMS[id].secret ? '★ ' : '') + FORMS[id].name, desc: FORMS[id].desc, big: true,
         pick: () => { evolveTo(id); checkEvolution(); },
       })));
+    } else if (m.type === 'chest') {
+      showChoice('보물상자!', '선물 하나를 골라주세요', upgradeOffers());
     } else {
       showChoice('레벨 업!', '능력을 하나 골라주세요', upgradeOffers());
     }
@@ -712,7 +967,7 @@
 
   // ---------- Spawning ----------
   function pickEnemyType() {
-    const pool = Object.values(ENEMY_TYPES).filter((t) => !t.boss && elapsed >= (t.minTime || 0));
+    const pool = Object.values(ENEMY_TYPES).filter((t) => !t.boss && t.weight > 0 && elapsed >= (t.minTime || 0));
     let r = Math.random() * pool.reduce((s, t) => s + t.weight, 0);
     for (const t of pool) {
       r -= t.weight;
@@ -727,7 +982,7 @@
   }
 
   // Enemies get tougher, faster and hit harder the longer the run goes.
-  function spawnEnemy(type, angle, distance) {
+  function spawnEnemy(type, angle, distance, at) {
     const t = elapsed;
     const hp = type.hp * (1 + t / 120 + (t / 300) ** 2);
     const e = {
@@ -736,7 +991,12 @@
       damage: Math.round(type.damage * (1 + t / 240)),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2,
     };
-    placeOnRing(e, angle, distance);
+    if (at) {
+      e.x = at.x;
+      e.y = at.y;
+    } else {
+      placeOnRing(e, angle, distance);
+    }
     enemies.push(e);
   }
 
@@ -786,13 +1046,15 @@
   }
 
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
+    const crit = Math.random() < player.crit;
+    if (crit) amount *= 2;
     e.hp -= amount;
     e.flash = 0.1;
     const k = Math.hypot(kx, ky) || 1;
     const p = e.type.boss ? push / 6 : push;
     e.x += (kx / k) * p;
     e.y += (ky / k) * p;
-    if (!quiet) addFloatText(e.x, e.y - e.type.radius, String(Math.round(amount)), '#fff');
+    if (!quiet || crit) addFloatText(e.x, e.y - e.type.radius, crit ? `${Math.round(amount)}!` : String(Math.round(amount)), crit ? '#ffe066' : '#fff');
     if (e.hp <= 0) killEnemy(e, idx);
   }
 
@@ -801,9 +1063,17 @@
     enemies.splice(idx, 1);
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
     pickups.push({ kind: e.type.xp >= 20 ? 'gem_big' : 'gem', value: e.type.xp, x: e.x, y: e.y });
-    if (e.type.boss || Math.random() < 0.025) {
-      pickups.push({ kind: 'heart', value: 25, x: e.x + 14, y: e.y + 6 });
+    if (e.type.split) {
+      for (const dx of [-10, 10]) spawnEnemy(ENEMY_TYPES[e.type.split], 0, 0, { x: e.x + dx, y: e.y });
     }
+    if (e.type.boss) {
+      pickups.push({ kind: 'chest', x: e.x + 16, y: e.y + 6 });
+      pickups.push({ kind: 'heart', value: 25, x: e.x - 16, y: e.y + 6 });
+      return;
+    }
+    const roll = Math.random() / player.luck;
+    const drop = roll < 0.004 ? 'bomb' : roll < 0.009 ? 'magnet' : roll < 0.016 ? 'candy' : roll < 0.04 ? 'heart' : null;
+    if (drop) pickups.push({ kind: drop, value: drop === 'candy' ? 60 : 25, x: e.x + 12, y: e.y + 6 });
   }
 
   function orbitPoints() {
@@ -844,13 +1114,19 @@
   function updateEnemies(dt) {
     const farLimit = Math.hypot(viewW, viewH) * 0.85;
     const aura = player.weapons.aura;
+    const summons = [];
     for (const e of enemies) {
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
       if (d > farLimit) { placeOnRing(e); continue; }
       let speed = e.speed;
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
-      if (aura && d < aura.radius + e.type.radius) speed *= 1 - aura.slow;
+      if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
+      if (zones.some((z) => dist(z.x, z.y, e.x, e.y) < z.r + e.type.radius)) speed *= 0.7;
+      if (e.type.summon && (e.summonCd = (e.summonCd ?? 3) - dt) <= 0) {
+        e.summonCd = 5;
+        summons.push(e);
+      }
       e.x += (dx / d) * speed * dt;
       e.y += (dy / d) * speed * dt;
       if (e.type.move === 'zigzag') {
@@ -861,15 +1137,22 @@
       if (e.flash > 0) e.flash -= dt;
       if (e.contactCd > 0) e.contactCd -= dt;
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
-        player.hp -= e.damage;
+        const hurt = Math.max(1, Math.round(e.damage * player.armor));
+        player.hp -= hurt;
         player.invuln = 0.5;
         e.contactCd = 0.6;
-        addFloatText(player.x, player.y - player.radius - 6, `-${e.damage}`, '#ff6b8e');
+        addFloatText(player.x, player.y - player.radius - 6, `-${hurt}`, '#ff6b8e');
         if (player.hp <= 0) {
           player.hp = 0;
           gameOver();
           return;
         }
+      }
+    }
+    for (const boss of summons) {
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        spawnEnemy(ENEMY_TYPES.slime, 0, 0, { x: boss.x + Math.cos(a) * 40, y: boss.y + Math.sin(a) * 40 });
       }
     }
     // Push overlapping enemies apart so they don't stack into one blob.
@@ -919,6 +1202,19 @@
       if (p.kind === 'boomerang') {
         p.spin = (p.spin || 0) + dt * 14;
         if (moveBoomerang(p, dt)) dead = true;
+      } else if (p.kind === 'homing') {
+        let best = null, bestD = 400;
+        for (const e of enemies) {
+          const d = dist(p.x, p.y, e.x, e.y);
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (best) {
+          const k = Math.min(1, 6 * dt);
+          p.vx += (((best.x - p.x) / bestD) * p.speed - p.vx) * k;
+          p.vy += (((best.y - p.y) / bestD) * p.speed - p.vy) * k;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
       } else {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
@@ -946,12 +1242,57 @@
       }
       if (dist(player.x, player.y, it.x, it.y) < player.radius + 6) {
         pickups.splice(i, 1);
-        if (it.kind === 'heart') {
-          player.hp = Math.min(player.maxHp, player.hp + it.value);
-          addFloatText(player.x, player.y - player.radius - 6, `+${it.value}`, '#ff8fb4');
-        } else {
-          gainXp(it.value);
+        collect(it);
+      }
+    }
+  }
+
+  function collect(it) {
+    const head = player.y - player.radius - 6;
+    if (it.kind === 'heart' || it.kind === 'candy') {
+      player.hp = Math.min(player.maxHp, player.hp + it.value);
+      addFloatText(player.x, head, `+${it.value}`, '#ff8fb4');
+    } else if (it.kind === 'magnet') {
+      for (const g of pickups) if (g.kind === 'gem' || g.kind === 'gem_big') g.vel = 300;
+      addFloatText(player.x, head, '자석!', '#ff8fb4');
+    } else if (it.kind === 'bomb') {
+      flash = 0.25;
+      fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.5, max: 0.5 });
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (Math.abs(e.x - player.x) < viewW / 2 + 40 && Math.abs(e.y - player.y) < viewH / 2 + 40) {
+          damageEnemy(e, j, e.type.boss ? 120 : e.hp + 1, 0, 0, 0, true);
         }
+      }
+    } else if (it.kind === 'chest') {
+      player.chests++;
+      modalQueue.unshift({ type: 'chest' });
+      burst(player.x, player.y, 20, ['#ffe066', '#ffffff', '#ffc2dc'], 200, 0.6, 4, true);
+    } else {
+      gainXp(it.value);
+    }
+  }
+
+  function updateShellsAndZones(dt) {
+    for (let i = shells.length - 1; i >= 0; i--) {
+      const sh = shells[i];
+      if ((sh.t += dt) < sh.dur) continue;
+      shells.splice(i, 1);
+      fx.push({ kind: 'ring', x: sh.tx, y: sh.ty, r: sh.radius, life: 0.3, max: 0.3 });
+      burst(sh.tx, sh.ty, 10, ['#ff9ec0', '#ffe066', '#9be7ff', '#b8f0a0'], 160, 0.4, 4, true);
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (dist(e.x, e.y, sh.tx, sh.ty) < sh.radius + e.type.radius) damageEnemy(e, j, sh.damage, e.x - sh.tx, e.y - sh.ty, 10);
+      }
+    }
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const z = zones[i];
+      if ((z.life -= dt) <= 0) { zones.splice(i, 1); continue; }
+      if ((z.tick -= dt) > 0) continue;
+      z.tick = 0.5;
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (dist(e.x, e.y, z.x, z.y) < z.r + e.type.radius) damageEnemy(e, j, z.damage, 0, 0, 0, true);
       }
     }
   }
@@ -988,6 +1329,7 @@
     if (state !== 'playing') return;
     for (const [id, w] of Object.entries(player.weapons)) WEAPONS[id].update(w, dt);
     updateProjectiles(dt);
+    updateShellsAndZones(dt);
     updatePickups(dt);
     updateEffects(dt);
     if (modalQueue.length && modalDelay <= 0) openNextModal();
@@ -1024,22 +1366,66 @@
     ctx.strokeStyle = 'rgba(140, 205, 255, 0.55)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(player.x, player.y, w.radius, 0, Math.PI * 2);
+    const radius = w.radius * player.area;
+    ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     for (let i = 0; i < 6; i++) {
       const a = anim * 0.8 + (i / 6) * Math.PI * 2;
-      const x = player.x + Math.cos(a) * w.radius * 0.8, y = player.y + Math.sin(a) * w.radius * 0.8;
+      const x = player.x + Math.cos(a) * radius * 0.8, y = player.y + Math.sin(a) * radius * 0.8;
       ctx.fillRect(x - 3, y - 1, 6, 2);
       ctx.fillRect(x - 1, y - 3, 2, 6);
+    }
+  }
+
+  function drawZones() {
+    for (const z of zones) {
+      const a = clamp(z.life / 0.6, 0, 1) * 0.9;
+      ctx.fillStyle = player.branch === 'coral' ? `rgba(255, 150, 140, ${0.25 * a})` : `rgba(120, 175, 90, ${0.25 * a})`;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = player.branch === 'coral' ? `rgba(230, 90, 100, ${a})` : `rgba(70, 130, 60, ${a})`;
+      for (let i = 0; i < 7; i++) {
+        const ang = z.seed + i * 0.9, rr = z.r * (0.25 + ((i * 37) % 10) / 14);
+        const x = z.x + Math.cos(ang) * rr, y = z.y + Math.sin(ang) * rr * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y + 2);
+        ctx.lineTo(x, y - 5);
+        ctx.lineTo(x + 3, y + 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawShells() {
+    for (const sh of shells) {
+      const t = sh.t / sh.dur;
+      const x = sh.sx + (sh.tx - sh.sx) * t;
+      const y = sh.sy + (sh.ty - sh.sy) * t - Math.sin(Math.PI * t) * 70;
+      drawSprite('shell', x, y);
     }
   }
 
   function drawFx() {
     for (const f of fx) {
       const a = clamp(f.life / f.max, 0, 1);
-      if (f.kind === 'ring') {
+      if (f.kind === 'beam') {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.a);
+        ctx.globalAlpha = a;
+        const g = ctx.createLinearGradient(0, -f.w, 0, f.w);
+        g.addColorStop(0, 'rgba(255, 160, 210, 0)');
+        g.addColorStop(0.3, 'rgba(255, 200, 120, 0.9)');
+        g.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+        g.addColorStop(0.7, 'rgba(150, 220, 255, 0.9)');
+        g.addColorStop(1, 'rgba(190, 160, 255, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, -f.w, f.len, f.w * 2);
+        ctx.restore();
+      } else if (f.kind === 'ring') {
         const r = f.r * (1 - a * 0.6);
         ctx.strokeStyle = `rgba(255, 220, 150, ${a})`;
         ctx.lineWidth = 6 * a + 2;
@@ -1094,7 +1480,8 @@
     drawShadow(e.x, e.y + r * 0.85, r);
     const b = Math.sin(anim * 9 + e.phase);
     const lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
-    drawSprite(t.sprite, e.x, e.y + lift, { sx: 1 + 0.05 * b, sy: 1 - 0.05 * b, groundR: r, flash: e.flash > 0, alpha: t.alpha });
+    const sc = t.scale || 1;
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + 0.05 * b), sy: sc * (1 - 0.05 * b), groundR: r, flash: e.flash > 0, alpha: t.alpha });
     if (t.boss || e.hp < e.maxHp) {
       const w = t.boss ? 56 : 26;
       const x = Math.round(e.x - w / 2), y = Math.round(e.y - t.barY);
@@ -1118,6 +1505,7 @@
     ctx.fillRect(camX, camY, viewW, viewH);
 
     drawAura();
+    drawZones();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
 
     enemies.sort((a, b) => a.y - b.y);
@@ -1133,8 +1521,10 @@
 
     for (const pt of orbitPoints()) drawSprite('star', pt.x, pt.y, { rot: anim * 4 });
     for (const p of projectiles) {
-      drawSprite(p.sprite, p.x, p.y, { rot: p.kind === 'boomerang' ? p.spin : Math.atan2(p.vy, p.vx) });
+      const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : Math.atan2(p.vy, p.vx);
+      drawSprite(p.sprite, p.x, p.y, { rot });
     }
+    drawShells();
     drawFx();
 
     for (const p of particles) {
@@ -1219,8 +1609,20 @@
         branches.append(row);
       }
       line.append(node(formsOf(lineId, 1)[0]), arrow(), node(formsOf(lineId, 2)[0]), arrow(), branches);
+      for (const sid of formsOf(lineId, 4).filter((id) => FORMS[id].secret)) {
+        const sn = node(sid);
+        sn.classList.add('secret');
+        sn.title = FORMS[sid].hint;
+        sn.querySelector('small').textContent = '★ 비밀';
+        line.append(sn);
+      }
       ui.evoChart.append(line);
     }
+    ui.secretHints.replaceChildren(...Object.values(FORMS).filter((f) => f.secret).map((f) => {
+      const li = document.createElement('li');
+      li.textContent = `${LINES[f.line] ? FORMS[LINES[f.line].starter].name : ''} 계열: ${f.hint}`;
+      return li;
+    }));
     const total = Object.keys(FORMS).length;
     const found = Object.keys(FORMS).filter((id) => seen.has(id) || FORMS[id].stage === 1).length;
     ui.dexCount.textContent = `진화 도감 ${found} / ${total}`;
@@ -1262,7 +1664,7 @@
     keys.add(e.code);
     if (e.repeat) return;
     if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
-    if (state === 'choice' && /^Digit[1-3]$/.test(e.code)) {
+    if (state === 'choice' && /^Digit[1-5]$/.test(e.code)) {
       const card = ui.choiceCards.children[Number(e.code.slice(5)) - 1];
       if (card) card.click();
     }

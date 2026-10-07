@@ -212,6 +212,11 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .evo-branches { display: flex; flex-direction: column; gap: 2px; }
 .evo-row { display: flex; align-items: center; gap: 6px; }
 
+#secret-box { font-size: 13px; opacity: 0.8; max-width: 520px; }
+#secret-box summary { cursor: pointer; }
+#secret-hints { list-style: none; margin-top: 6px; line-height: 1.6; text-align: left; display: inline-block; }
+.evo-node.secret small { color: #e5a400; opacity: 1; }
+
 #gameover-portrait { width: 112px; height: 112px; }
 
 /* ---------- Phones ---------- */

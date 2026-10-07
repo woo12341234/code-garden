@@ -780,6 +780,456 @@ def feather():
     s.save('feather.png')
 
 
+# ============ Cat line (냥콩이) ============
+
+PINK_NOSE = rgba(255, 130, 160)
+
+
+def _cat_ears(s, base, inner, y=7.5):
+    s.poly_sym([(5.6, y), (5.0, y - 5.4), (9.4, y - 2.6)], base)
+    s.poly_sym([(6.2, y - 0.8), (5.8, y - 3.8), (8.2, y - 2.4)], inner)
+
+
+def _cat_face(s, y, big=False):
+    s.eyes(8, y, h=4 if big else 3)
+    s.put(11, y + 3, PINK_NOSE)
+    s.put(12, y + 3, PINK_NOSE)
+    s.blush(6, y + 3)
+
+
+def nyangkong():
+    s = Sprite(24)
+    base = rgba(218, 198, 255)
+    _cat_ears(s, base, rgba(255, 190, 215), y=10)
+    s.ellipse(12, 14.5, 7.4, 6.6, base)
+    s.ellipse_sym(8.6, 21, 2.0, 1.2, mul(base, 0.85), shade=False)
+    _cat_face(s, 12)
+    s.outline()
+    s.save('nyangkong.png')
+
+
+def _cat_body(s, base, belly, big=False):
+    k = 1.12 if big else 1.0
+    s.ellipse(12, 17.6, 5.6 * k, 4.6 * k, base)
+    s.ellipse(12, 18.4, 3.3 * k, 3.0 * k, belly, hl=False)
+    s.ellipse_sym(9, 22.2, 2.0, 1.2, mul(base, 0.85), shade=False)
+
+
+def _cat_tail(s, base, tip=None):
+    s.ellipse(18.6, 18.6, 1.4, 1.4, base, hl=False)
+    s.ellipse(20, 16.8, 1.3, 1.6, base, hl=False)
+    s.ellipse(20.6, 14.4, 1.3, 1.6, tip or base, shade=False, hl=False)
+
+
+def nyangnyang():
+    s = Sprite(24)
+    base = rgba(205, 180, 250)
+    _cat_tail(s, base)
+    _cat_body(s, base, CREAM)
+    s.ellipse(12, 10.8, 6.8, 5.6, base)
+    _cat_ears(s, base, rgba(255, 190, 215), y=7.6)
+    _cat_face(s, 9)
+    s.outline()
+    s.save('nyangnyang.png')
+
+
+def dalbit():
+    s = Sprite(24)
+    base = rgba(125, 135, 215)
+    moon = rgba(255, 232, 120)
+    _cat_tail(s, base, moon)
+    _cat_body(s, base, rgba(220, 225, 255))
+    s.ellipse(12, 10.6, 7.0, 5.8, base)
+    _cat_ears(s, base, rgba(190, 170, 255), y=7.4)
+    s.ellipse(12, 6.4, 1.6, 1.6, moon, shade=False, hl=False)
+    s.ellipse(12.8, 6.0, 1.3, 1.3, base, shade=False, hl=False)
+    _cat_face(s, 9)
+    s.outline()
+    s.sparkle(3, 4, moon)
+    s.save('dalbit.png')
+
+
+def eunha():
+    s = Sprite(24)
+    base = rgba(105, 100, 195)
+    star = rgba(255, 236, 140)
+    s.poly_sym([(7.5, 13), (1.2, 9), (1.4, 15), (5.5, 17)], rgba(160, 150, 235))
+    _cat_tail(s, base, star)
+    _cat_body(s, base, rgba(215, 215, 255), big=True)
+    s.ellipse(12, 10.2, 7.6, 6.2, base)
+    _cat_ears(s, base, rgba(185, 160, 255), y=7)
+    s.poly([(9.6, 5), (10.6, 1.4), (12, 3.6), (13.4, 1.4), (14.4, 5)], star)
+    for x, y in [(3, 11), (5, 14), (20, 12)]:
+        s.put(x, y, star)
+    _cat_face(s, 8, big=True)
+    s.outline()
+    s.sparkle(2, 4, star)
+    s.sparkle(21, 20, star)
+    s.save('eunha.png')
+
+
+def satang():
+    s = Sprite(24)
+    base = rgba(255, 175, 212)
+    _cat_tail(s, base, rgba(255, 255, 255))
+    _cat_body(s, base, CREAM)
+    s.ellipse(12, 10.6, 7.0, 5.8, base)
+    _cat_ears(s, base, rgba(255, 220, 235), y=7.4)
+    s.ellipse_sym(9.6, 4.6, 1.6, 1.1, rgba(140, 220, 255), shade=False, hl=False)
+    s.ellipse(12, 4.6, 0.9, 0.9, rgba(255, 255, 255), shade=False, hl=False)
+    _cat_face(s, 9)
+    s.outline()
+    s.save('satang.png')
+
+
+def chukje():
+    s = Sprite(24)
+    base = rgba(255, 160, 190)
+    _cat_tail(s, base, rgba(255, 230, 120))
+    _cat_body(s, base, CREAM, big=True)
+    s.ellipse(12, 10.4, 7.6, 6.2, base)
+    _cat_ears(s, base, rgba(255, 220, 235), y=7.2)
+    s.poly([(9.6, 4.8), (14.4, 4.8), (12, -0.2)], rgba(120, 210, 255))
+    for x, y in [(11, 3), (12, 2), (13, 4)]:
+        s.put(x, y, rgba(255, 245, 160))
+    _cat_face(s, 8, big=True)
+    s.outline()
+    for x, y, c in [(2, 5, rgba(255, 220, 90)), (21, 7, rgba(140, 220, 255)), (3, 18, rgba(170, 240, 150)), (21, 19, rgba(255, 255, 255))]:
+        s.put(x, y, c)
+        s.put(x + 1, y, c)
+    s.save('chukje.png')
+
+
+# ============ Seal line (퐁당이) ============
+
+def pongdang():
+    s = Sprite(24)
+    base = rgba(170, 225, 255)
+    s.ellipse(12, 15, 7.2, 6.4, base)
+    s.poly([(9, 10), (15, 10), (12, 4.5)], base)
+    s.ellipse_sym(5.2, 18.5, 1.8, 1.2, mul(base, 0.85), shade=False)
+    s.eyes(8, 13)
+    s.blush(6, 16)
+    s.smile(16, wide=False)
+    s.outline()
+    s.save('pongdang.png')
+
+
+def _seal_body(s, base, belly, big=False):
+    k = 1.12 if big else 1.0
+    s.ellipse(12, 17.4, 6.4 * k, 4.8 * k, base)
+    s.ellipse(12, 18.2, 3.8 * k, 3.2 * k, belly, hl=False)
+    s.ellipse_sym(5.0 if not big else 4.2, 19.5, 2.4, 1.3, mul(base, 0.85), shade=False)
+    s.poly([(16.5, 20), (21.5, 18.5), (21, 22), (17, 22)], mul(base, 0.85))
+
+
+def _seal_face(s, y, big=False):
+    s.eyes(8, y, h=4 if big else 3)
+    s.ellipse(12, y + 3.6, 2.6, 1.5, rgba(255, 255, 255), shade=False, hl=False)
+    s.put(11, y + 3, NOSE)
+    s.put(12, y + 3, NOSE)
+    s.blush(5, y + 3)
+
+
+def cheombeong():
+    s = Sprite(24)
+    base = rgba(228, 236, 246)
+    _seal_body(s, base, rgba(250, 250, 255))
+    s.ellipse(12, 11, 6.8, 5.6, base)
+    _seal_face(s, 9)
+    s.outline()
+    s.save('cheombeong.png')
+
+
+def pado():
+    s = Sprite(24)
+    base = rgba(120, 185, 240)
+    foam = rgba(240, 250, 255)
+    _seal_body(s, base, rgba(225, 240, 255))
+    s.ellipse(12, 10.8, 7.0, 5.8, base)
+    s.poly([(9, 5.6), (11, 2.4), (14.6, 2.0), (16, 4), (14, 3.8), (13.4, 5.6)], foam)
+    _seal_face(s, 9)
+    s.outline()
+    s.save('pado.png')
+
+
+def haeil():
+    s = Sprite(24)
+    base = rgba(80, 150, 230)
+    foam = rgba(235, 248, 255)
+    _seal_body(s, base, rgba(215, 235, 255), big=True)
+    s.ellipse(12, 10.4, 7.6, 6.2, base)
+    s.poly([(7, 5.4), (8.6, 1.4), (11, 3.4), (12.4, 0.2), (15, 3), (17.4, 1.4), (17, 5.4)], foam)
+    _seal_face(s, 8, big=True)
+    s.outline()
+    s.sparkle(2, 6, foam)
+    s.sparkle(21, 18, foam)
+    s.save('haeil.png')
+
+
+def sanho():
+    s = Sprite(24)
+    base = rgba(255, 170, 155)
+    coral = rgba(255, 110, 120)
+    _seal_body(s, base, rgba(255, 235, 225))
+    s.ellipse(12, 10.8, 7.0, 5.8, base)
+    for x0 in (8.5, 15.5):
+        s.poly([(x0 - 0.8, 5.6), (x0 + 0.8, 5.6), (x0 + 0.6, 2.6), (x0 + 1.8, 1.6), (x0 + 0.4, 1.8), (x0, 0.6), (x0 - 0.6, 2.2)], coral)
+    _seal_face(s, 9)
+    s.outline()
+    s.save('sanho.png')
+
+
+def jinju():
+    s = Sprite(24)
+    base = rgba(255, 215, 225)
+    pearl = rgba(255, 255, 250)
+    shell = rgba(255, 175, 190)
+    _seal_body(s, base, rgba(255, 245, 248), big=True)
+    s.ellipse(12, 10.4, 7.6, 6.2, base)
+    s.poly([(7.6, 5.4), (9, 2), (12, 0.8), (15, 2), (16.4, 5.4)], shell)
+    s.ellipse(12, 3.4, 1.6, 1.6, pearl, shade=False, hl=False)
+    _seal_face(s, 8, big=True)
+    s.outline()
+    s.sparkle(2, 5, pearl)
+    s.sparkle(21, 19, pearl)
+    s.save('jinju.png')
+
+
+# ============ Secret evolutions ============
+
+def mujigae():
+    s = Sprite(24)
+    base = rgba(250, 248, 255)
+    rainbow = [rgba(255, 140, 150), rgba(255, 200, 110), rgba(255, 240, 130), rgba(150, 230, 150), rgba(140, 200, 255), rgba(190, 160, 255)]
+    s.poly_sym([(8, 12), (0.4, 4.2), (0.4, 10), (2, 14), (5, 16.5)], base)
+    for i, c in enumerate(rainbow):
+        for x in (1, 2):
+            s.put(x, 5 + i, c)
+            s.put(s.mirror_x(x), 5 + i, c)
+    s.ellipse(19.2, 19.2, 2.9, 2.0, base, hl=False)
+    s.ellipse(21.6, 16.6, 1.6, 2.2, rainbow[4], shade=False, hl=False)
+    _dragon_body(s, base, rgba(255, 245, 250), big=True)
+    s.ellipse(12, 9.8, 7.8, 6.3, base)
+    for i, c in enumerate(rainbow[:5]):
+        s.put(8 + i * 2, 3 if i % 2 else 2, c)
+        s.put(9 + i * 2, 3, c)
+    s.eyes(8, 8, h=4)
+    s.blush(6, 12)
+    s.smile(12)
+    s.outline()
+    s.sparkle(2, 19, rainbow[2])
+    s.sparkle(21, 3, rainbow[0])
+    s.save('mujigae.png')
+
+
+def byeolttong():
+    s = Sprite(24)
+    base = rgba(70, 75, 140)
+    star = rgba(255, 230, 110)
+    wing = rgba(110, 115, 190)
+    s.poly_sym([(8, 11.5), (0.3, 3.2), (0.3, 10), (2, 15), (5.5, 17)], wing)
+    for x, y in [(2, 6), (1, 10), (3, 13)]:
+        s.put(x, y, star)
+        s.put(s.mirror_x(x), y, star)
+    s.poly([(16.5, 19), (22, 14), (23.8, 17), (21, 20), (23.5, 22.5), (18, 22)], star)
+    _bird_body(s, base, rgba(200, 205, 255), big=True)
+    s.ellipse(12, 10, 7.4, 6.2, base)
+    pts = []
+    import math as _m
+    for i in range(10):
+        r = 3.0 if i % 2 == 0 else 1.3
+        a = -_m.pi / 2 + i * _m.pi / 5
+        pts.append((12 + r * _m.cos(a), 3.2 + r * _m.sin(a)))
+    s.poly(pts, star)
+    s.eyes(8, 8, h=4)
+    _beak(s, 12)
+    s.blush(6, 12)
+    s.outline()
+    s.sparkle(2, 19, star)
+    s.sparkle(21, 3, star)
+    s.save('byeolttong.png')
+
+
+def hwanggeum():
+    s = Sprite(24)
+    base = rgba(255, 200, 70)
+    belly = rgba(255, 240, 190)
+    _beast_body(s, base, belly, big=True)
+    s.ellipse(12, 10.4, 7.8, 6.2, base)
+    s.ellipse_sym(5.4, 5.6, 2.3, 2.3, base, hl=False)
+    s.poly([(8.4, 5.2), (8.4, 1.4), (10, 3), (12, 0.4), (14, 3), (15.6, 1.4), (15.6, 5.2)], rgba(255, 240, 150))
+    s.put(12, 3, rgba(255, 110, 140))
+    s.ellipse(12, 12.6, 3.0, 1.9, belly, shade=False, hl=False)
+    s.eyes(8, 8, h=4)
+    s.put(11, 12, NOSE)
+    s.put(12, 12, NOSE)
+    s.blush(6, 12)
+    s.outline()
+    s.sparkle(2, 18, rgba(255, 250, 200))
+    s.sparkle(21, 4, rgba(255, 250, 200))
+    s.save('hwanggeum.png')
+
+
+def kkum():
+    s = Sprite(24)
+    cloud = rgba(250, 250, 255)
+    cat = rgba(225, 205, 255)
+    s.ellipse(12, 18, 9.5, 3.6, cloud)
+    s.ellipse_sym(6, 16.5, 3.2, 3, cloud, hl=False)
+    s.ellipse(12, 11.5, 6.4, 5.4, cat)
+    _cat_ears(s, cat, rgba(255, 190, 215), y=8)
+    for x in (8, 9, 14, 15):
+        s.put(x, 11, EYE)
+    s.put(11, 13, PINK_NOSE)
+    s.put(12, 13, PINK_NOSE)
+    s.blush(6, 13)
+    s.ellipse(12, 2.8, 1.6, 1.6, rgba(255, 236, 140), shade=False, hl=False)
+    s.ellipse(12.9, 2.3, 1.3, 1.3, rgba(0, 0, 0, 0), shade=False, hl=False)
+    s.outline()
+    for x, y in [(19, 4), (20, 3), (21, 4), (19, 6)]:
+        s.put(x, y, rgba(150, 140, 220))
+    s.save('kkum.png')
+
+
+def badayojeong():
+    s = Sprite(24)
+    base = rgba(140, 220, 230)
+    wing = rgba(255, 210, 240, 220)
+    s.poly_sym([(8, 12), (1, 6), (0.6, 12), (4, 15.5)], wing)
+    _seal_body(s, base, rgba(235, 255, 255), big=True)
+    s.ellipse(12, 10.4, 7.6, 6.2, base)
+    s.poly([(9.6, 5), (10.6, 1.4), (12, 3.6), (13.4, 1.4), (14.4, 5)], rgba(255, 190, 220))
+    _seal_face(s, 8, big=True)
+    s.outline()
+    s.sparkle(2, 18, rgba(255, 230, 245))
+    s.sparkle(21, 3, rgba(255, 230, 245))
+    s.save('badayojeong.png')
+
+
+# ============ Extra enemies ============
+
+def snowman():
+    s = Sprite(24)
+    snow = rgba(248, 250, 255)
+    s.ellipse(12, 17.6, 6.4, 5.2, snow)
+    s.ellipse(12, 9.8, 4.8, 4.4, snow)
+    s.poly([(7, 13), (17, 13), (17, 14.6), (7, 14.6)], rgba(255, 110, 120))
+    s.poly([(14, 14), (16, 14), (16, 17), (14, 17)], rgba(255, 110, 120))
+    s.poly([(4.5, 14), (2.5, 11.5), (3.2, 11), (5.5, 13.4)], rgba(150, 105, 80))
+    s.poly([(19.5, 14), (21.5, 11.5), (20.8, 11), (18.5, 13.4)], rgba(150, 105, 80))
+    s.eyes(10, 9, h=2, w=1, shine=False)
+    s.put(12, 11, rgba(255, 150, 60))
+    s.put(13, 11, rgba(255, 150, 60))
+    s.blush(9, 11, w=1)
+    s.outline()
+    s.save('snowman.png')
+
+
+def jelly():
+    s = Sprite(24)
+    base = rgba(255, 160, 200, 235)
+    s.ellipse(12, 16.5, 7.8, 5.8, base, ymax=22)
+    s.ellipse(12, 12.2, 4.2, 3.6, base, hl=False)
+    for x, y in [(8, 13), (8, 14), (9, 12)]:
+        s.put(x, y, WHITE)
+    s.eyes(9, 16, h=2, w=1, shine=False)
+    s.blush(7, 18, w=1)
+    s.smile(18, wide=False)
+    s.outline()
+    s.save('jelly.png')
+
+
+def cloudking():
+    s = Sprite(32)
+    cloud = rgba(170, 165, 205)
+    dark = rgba(130, 125, 170)
+    gold = rgba(255, 212, 80)
+    s.poly([(14, 22), (19, 22), (16.5, 25.5), (19, 25.5), (14, 31), (15.5, 26.5), (13, 26.5)], rgba(255, 235, 110))
+    s.ellipse(16, 17, 12.5, 6.5, cloud)
+    s.ellipse_sym(8.5, 13.5, 5, 4.6, cloud, hl=False)
+    s.ellipse(16, 11.5, 6.5, 5.5, cloud)
+    s.ellipse(16, 20.5, 10, 2.6, dark, shade=False, hl=False)
+    s.poly([(11.5, 7.2), (11.5, 3.5), (13.5, 5.5), (16, 2.5), (18.5, 5.5), (20.5, 3.5), (20.5, 7.2)], gold)
+    s.eyes(12, 13)
+    for x, y in [(11, 11), (12, 11), (13, 12)]:
+        s.put(x, y, EYE)
+        s.put(s.mirror_x(x), y, EYE)
+    for x in range(14, 18):
+        s.put(x, 17, MOUTH)
+    s.blush(9, 16)
+    s.outline()
+    s.save('cloudking.png')
+
+
+# ============ Pickups & new weapon art ============
+
+def chest():
+    s = Sprite(14)
+    wood = rgba(205, 140, 85)
+    gold = rgba(255, 215, 90)
+    s.poly([(1, 5), (13, 5), (13, 12.5), (1, 12.5)], wood)
+    s.ellipse(7, 5.4, 6, 3.2, mul(wood, 1.1), shade=False, hl=False, ymax=6)
+    s.poly([(1, 6.6), (13, 6.6), (13, 7.6), (1, 7.6)], gold)
+    s.poly([(6, 6), (8, 6), (8, 9.4), (6, 9.4)], gold)
+    s.put(7, 8, rgba(120, 80, 40))
+    s.outline()
+    s.save('chest.png')
+
+
+def magnet():
+    s = Sprite(12)
+    red = rgba(255, 95, 110)
+    tip = rgba(235, 240, 250)
+    s.poly([(1.5, 1.5), (4, 1.5), (4, 7), (8, 7), (8, 1.5), (10.5, 1.5), (10.5, 8), (9, 10.5), (3, 10.5), (1.5, 8)], red)
+    for x0 in (1.5, 8):
+        s.poly([(x0, 1.5), (x0 + 2.5, 1.5), (x0 + 2.5, 3.4), (x0, 3.4)], tip)
+    s.outline()
+    s.save('magnet.png')
+
+
+def bomb():
+    s = Sprite(12)
+    s.ellipse(6, 7, 4.6, 4.4, rgba(90, 85, 110))
+    s.poly([(5, 2.6), (7, 2.6), (7, 3.6), (5, 3.6)], rgba(170, 165, 180))
+    s.put(7, 1, rgba(255, 200, 90))
+    s.put(8, 0, rgba(255, 120, 80))
+    s.put(4, 5, WHITE)
+    s.outline()
+    s.save('bomb.png')
+
+
+def candy():
+    s = Sprite(12)
+    pink = rgba(255, 150, 190)
+    s.poly([(0.5, 4), (3.5, 6), (0.5, 8)], rgba(255, 210, 230))
+    s.poly([(11.5, 4), (8.5, 6), (11.5, 8)], rgba(255, 210, 230))
+    s.ellipse(6, 6, 3.2, 2.8, pink, hl=False)
+    s.put(5, 5, WHITE)
+    s.put(7, 7, rgba(255, 245, 200))
+    s.outline()
+    s.save('candy.png')
+
+
+def fairy():
+    s = Sprite(12)
+    s.ellipse_sym(3.4, 4.2, 2.0, 1.6, rgba(255, 230, 250, 220), shade=False, hl=False)
+    s.ellipse(6, 7, 2.8, 2.8, rgba(170, 230, 255), hl=False)
+    s.put(5, 6, EYE)
+    s.put(7, 6, EYE)
+    s.put(5, 5, WHITE)
+    s.outline()
+    s.save('fairy.png')
+
+
+def shell():
+    s = Sprite(10)
+    s.ellipse(5, 5, 3.4, 3.4, rgba(255, 140, 120), hl=False)
+    s.ellipse(5, 5, 1.6, 1.6, rgba(255, 235, 150), shade=False, hl=False)
+    s.outline()
+    s.save('shell.png')
+
+
 if __name__ == '__main__':
     mongsil()
     kkomul()
@@ -800,4 +1250,9 @@ if __name__ == '__main__':
     for fn in (piyak, jjaek, jjirit, beongae, sallang, hoeori,
                mungchi, meongmung, seori, nunbora, bawi, sanmaek,
                bee, turtle, ghost, kingshroom, feather):
+        fn()
+    for fn in (nyangkong, nyangnyang, dalbit, eunha, satang, chukje,
+               pongdang, cheombeong, pado, haeil, sanho, jinju,
+               mujigae, byeolttong, hwanggeum, kkum, badayojeong,
+               snowman, jelly, cloudking, chest, magnet, bomb, candy, fairy, shell):
         fn()
