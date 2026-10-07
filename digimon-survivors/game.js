@@ -469,9 +469,9 @@
   const ENEMY_TYPES = {
     slime: { name: '말랑이', sprite: 'slime', hp: 10, speed: 85, damage: 6, radius: 13, xp: 3, weight: 3, barY: 18 },
     mushroom: { name: '버섯돌이', sprite: 'mushroom', hp: 26, speed: 62, damage: 10, radius: 15, xp: 7, weight: 2, minTime: 35, barY: 24 },
-    bee: { name: '꼬마벌', sprite: 'bee', hp: 8, speed: 125, damage: 5, radius: 11, xp: 3, weight: 2, minTime: 75, barY: 16, move: 'zigzag' },
-    turtle: { name: '돌거북', sprite: 'turtle', hp: 70, speed: 38, damage: 14, radius: 18, xp: 12, weight: 1, minTime: 150, barY: 22 },
-    ghost: { name: '둥실유령', sprite: 'ghost', hp: 22, speed: 92, damage: 9, radius: 14, xp: 8, weight: 1.5, minTime: 210, barY: 20, move: 'float', alpha: 0.8 },
+    bee: { name: '꼬마벌', sprite: 'bee', hp: 8, speed: 120, damage: 4, radius: 11, xp: 3, weight: 1.5, minTime: 75, barY: 16, move: 'zigzag' },
+    turtle: { name: '돌거북', sprite: 'turtle', hp: 70, speed: 38, damage: 12, radius: 18, xp: 12, weight: 1, minTime: 150, barY: 22 },
+    ghost: { name: '둥실유령', sprite: 'ghost', hp: 22, speed: 88, damage: 7, radius: 14, xp: 8, weight: 1, minTime: 210, barY: 20, move: 'float', alpha: 0.8 },
     bat: { name: '박쥐대장', sprite: 'bat', hp: 260, speed: 48, damage: 18, radius: 22, xp: 50, boss: true, barY: 32 },
     kingshroom: { name: '버섯대왕', sprite: 'kingshroom', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
   };
