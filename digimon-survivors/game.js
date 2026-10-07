@@ -292,7 +292,7 @@
       desc: '주기적으로 둥글게 퍼지는 충격파로 적을 밀쳐내요',
       up: '데미지 +6, 범위 +15',
       max: 6,
-      create: () => ({ damage: 16, radius: 100, cooldown: 1.8, timer: 0.6 }),
+      create: () => ({ damage: 16, radius: 110, cooldown: 1.4, timer: 0.6 }),
       upgrade(w) { w.damage += 6; w.radius += 15; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
