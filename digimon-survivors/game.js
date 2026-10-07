@@ -374,7 +374,7 @@
       desc: '적 무리 위로 폭죽을 쏘아 펑 터뜨려요',
       up: '데미지 +6, 폭발 범위 +8, 2단계마다 폭죽 +1',
       max: 6,
-      create: () => ({ damage: 16, count: 1, cooldown: 1.5, timer: 0.4, radius: 55 }),
+      create: () => ({ damage: 14, count: 1, cooldown: 1.8, timer: 0.4, radius: 55 }),
       upgrade(w) { w.damage += 6; w.radius += 8; if (w.level % 2 === 0) w.count++; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -390,10 +390,10 @@
       name: () => '방울 요정',
       icon: () => '🧚',
       desc: '요정들이 적을 쫓아가서 콕 때려요',
-      up: '데미지 +3, 요정 +1',
+      up: '데미지 +3, 2단계마다 요정 +1',
       max: 6,
-      create: () => ({ damage: 9, count: 2, cooldown: 1.1, timer: 0.3, speed: 300 }),
-      upgrade(w) { w.damage += 3; w.count++; },
+      create: () => ({ damage: 7, count: 2, cooldown: 1.2, timer: 0.3, speed: 300 }),
+      upgrade(w) { w.damage += 3; if (w.level % 2 === 0) w.count++; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
         if (!nearestEnemy(500)) return;
@@ -609,23 +609,23 @@
     },
     eunha: {
       line: 'cat', stage: 4, branch: 'moon', name: '은하냥', sprite: 'eunha',
-      desc: '별빛 빔 데미지 ×1.6, 빔 +1, 빔이 더 굵어져요',
+      desc: '별빛 빔 데미지 ×1.35, 빔 +1, 빔이 더 굵어져요',
       apply(p) {
         const w = grantWeapon(p, 'beam', 0) || grantWeapon(p, 'beam');
         p.maxHp += 30;
-        w.damage *= 1.6;
+        w.damage *= 1.35;
         w.count++;
         w.width += 6;
       },
     },
     chukje: {
       line: 'cat', stage: 4, branch: 'candy', name: '축제냥', sprite: 'chukje',
-      desc: '폭죽 +2개, 폭죽 데미지 ×1.4',
+      desc: '폭죽 +1개, 폭죽 데미지 ×1.3',
       apply(p) {
         const w = p.weapons.firework;
         p.maxHp += 30;
-        w.count += 2;
-        w.damage *= 1.4;
+        w.count += 1;
+        w.damage *= 1.3;
       },
     },
     kkum: {
@@ -654,12 +654,12 @@
     },
     haeil: {
       line: 'seal', stage: 4, branch: 'wave', name: '해일물범', sprite: 'haeil',
-      desc: '요정 +3, 요정 데미지 ×1.4',
+      desc: '요정 +2, 요정 데미지 ×1.25',
       apply(p) {
         const w = p.weapons.fairy;
         p.maxHp += 30;
-        w.count += 3;
-        w.damage *= 1.4;
+        w.count += 2;
+        w.damage *= 1.25;
       },
     },
     jinju: {
