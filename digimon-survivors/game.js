@@ -66,6 +66,11 @@
     wongwi: { size: 48, color: '#f0f0ec', emoji: '👻' },
     meok: { size: 48, color: '#322c38', emoji: '🖤' },
     gangsi: { size: 48, color: '#a0c4b0', emoji: '🧟' },
+    eodukssini: { size: 48, color: '#282434', emoji: '🌑' },
+    bulgasari: { size: 48, color: '#78706e', emoji: '🦏' },
+    aemi: { size: 48, color: '#b096d2', emoji: '🗡️' },
+    gonryun: { size: 48, color: '#6ea0d2', emoji: '🏔️' },
+    jegal: { size: 48, color: '#46786e', emoji: '🪶' },
     daedokkaebi: { size: 64, color: '#4870be', emoji: '👹' },
     imugi: { size: 64, color: '#468c64', emoji: '🐍' },
     heukyo: { size: 64, color: '#3e3a4c', emoji: '⚔️' },
@@ -492,6 +497,7 @@
   const SECTS = {
     hwasan: '화산파', mudang: '무당파', sorim: '소림사', gaebang: '개방',
     dang: '사천당가', namgung: '남궁세가', bukhae: '북해빙궁', magyo: '마교',
+    aemi: '아미파', gonryun: '곤륜파', jegal: '제갈세가',
   };
 
   function ringPoints(w) {
@@ -817,6 +823,105 @@
     },
   });
 
+  Object.assign(WEAPONS, {
+    emeija: {
+      sect: 'aemi', name: () => '아미자', icon: () => '🥢',
+      desc: '양손의 아미자를 던졌다가 다시 받아요', up: '데미지 +4, 2단계마다 아미자 +1', max: 6,
+      create: () => ({ damage: 10, count: 2, cooldown: 0.9, timer: 0.3, range: 170, speed: 540 }),
+      upgrade(w) { w.damage += 4; if (w.level % 2 === 0) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(360);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(t.y - player.y, t.x - player.x);
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * 0.35;
+          projectiles.push({
+            kind: 'boomerang', x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            damage: w.damage, pierce: Infinity, radius: 10, sprite: 'needle', life: 3, traveled: 0, range: w.range, returning: false, hit: new Set(),
+          });
+        }
+      },
+    },
+    geumjeong: {
+      sect: 'aemi', name: () => '금정불광', icon: () => '🪷',
+      desc: '금빛 불광으로 자신을 치유하고 주변 요괴를 밀어내요', up: '회복 +2, 데미지 +5', max: 6,
+      create: () => ({ damage: 15, radius: 110, heal: 5, cooldown: 4, timer: 2 }),
+      upgrade(w) { w.heal += 2; w.damage += 5; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.cooldown * player.haste;
+        heal(w.heal);
+        ringBlast(player.x, player.y, w.radius * player.area, w.damage, 22, 'gold');
+      },
+    },
+    seolgeom: {
+      sect: 'gonryun', name: () => '곤륜설검', icon: () => '🏔️',
+      desc: '눈보라 같은 검기로 꿰뚫고 얼려요', up: '데미지 +6, 2단계마다 검기 +1', max: 6,
+      create: () => ({ damage: 18, count: 1, length: 380, width: 13, cooldown: 1.7, timer: 0.5 }),
+      upgrade(w) { w.damage += 6; if (w.level % 2 === 0) w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(w.length);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(t.y - player.y, t.x - player.x);
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          beamStrike(base + (i - (n - 1) / 2) * 0.3, w.length, w.width, w.damage, 'ice', (e) => { e.chill = 1.5; });
+        }
+      },
+    },
+    leap: {
+      sect: 'gonryun', name: () => '능공허도', icon: () => '☁️',
+      desc: '허공을 밟고 뛰어올라 잠시 빨라지고, 내려설 때 바람을 일으켜요', up: '데미지 +5, 빨라지는 시간 +0.3초', max: 6,
+      create: () => ({ damage: 14, radius: 90, boost: 1.5, cooldown: 3, timer: 1 }),
+      upgrade(w) { w.damage += 5; w.boost += 0.3; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.cooldown * player.haste;
+        player.boost = w.boost;
+        ringBlast(player.x, player.y, w.radius * player.area, w.damage, 18, 'ice');
+      },
+    },
+    formation: {
+      sect: 'jegal', name: () => '팔진도', icon: () => '🔯',
+      desc: '요괴 무리 위에 진법을 펼쳐 발을 묶고 피해를 줘요', up: '데미지 +3, 진 크기 +10', max: 6,
+      create: () => ({ damage: 6, radius: 80, life: 5, cooldown: 3, timer: 0.8 }),
+      upgrade(w) { w.damage += 3; w.radius += 10; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(360);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        zones.push({ x: t.x, y: t.y, r: w.radius * player.area, damage: w.damage, life: w.life * player.durMul, max: w.life * player.durMul, tick: 0, seed: Math.random() * 10, tint: 'formation', hold: 0.75 });
+      },
+    },
+    fan: {
+      sect: 'jegal', name: () => '학우선', icon: () => '🪶',
+      desc: '깃털 부채를 부쳐 요괴를 휩쓰는 바람을 날려요', up: '데미지 +4, 바람 +1', max: 6,
+      create: () => ({ damage: 9, count: 3, cooldown: 1.6, timer: 0.5, radius: 22 }),
+      upgrade(w) { w.damage += 4; w.count++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(400);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(t.y - player.y, t.x - player.x);
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * 0.28;
+          projectiles.push({
+            kind: 'tornado', x: player.x, y: player.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
+            damage: w.damage, pierce: Infinity, radius: w.radius, life: 1.6, rehit: 0.4, hit: new Set(),
+          });
+        }
+      },
+    },
+  });
+
   function grantWeapon(p, id, times = 1) {
     for (let i = 0; i < times; i++) {
       const w = p.weapons[id];
@@ -910,6 +1015,21 @@
       trait: '모든 피해 +20%, 보스에게 피해 +50%',
       setup(p) { p.dmgMul += 0.2; p.bossMul = 1.5; },
     },
+    aemi: {
+      sect: 'aemi', name: '청아', role: '아미파 여협', weapon: 'emeija', hp: 105, speed: 200,
+      trait: '초당 HP 1 회복, 받는 피해 -10%',
+      setup(p) { p.regen += 1; p.armor *= 0.9; },
+    },
+    gonryun: {
+      sect: 'gonryun', name: '설운', role: '곤륜파 검수', weapon: 'seolgeom', hp: 100, speed: 210,
+      trait: '빠름, 치명타 확률 +5%',
+      setup(p) { p.crit += 0.05; },
+    },
+    jegal: {
+      sect: 'jegal', name: '제갈연', role: '제갈세가 군사', weapon: 'formation', hp: 95, speed: 190,
+      trait: '얻는 경험치 +20%, 대기시간 -10%',
+      setup(p) { p.xpMul += 0.2; p.haste *= 0.9; },
+    },
     maengju: {
       allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'jewang', extra: 'plum', hp: 180, speed: 205, unlock: 'sectUlt3',
       trait: '모든 문파의 무공을 배울 수 있음, 모든 피해 +30%, 대기시간 -10%',
@@ -969,6 +1089,14 @@
     cheonmasingong: { partner: 'hyeolma', name: '천마군림', icon: '👹', desc: '범위 +100, 데미지 ×2.2',
       apply(w) { w.radius += 100; w.damage *= 2.2; } },
   });
+  Object.assign(COMBOS, {
+    emeija: { partner: 'geumjeong', name: '아미금정', icon: '🪷', desc: '아미자 +4, 사거리 +80, 데미지 ×2',
+      apply(w) { w.count += 4; w.range += 80; w.damage *= 2; } },
+    seolgeom: { partner: 'leap', name: '설산비천', icon: '🌨️', desc: '검기 +2, 더 굵게, 데미지 ×2',
+      apply(w) { w.count += 2; w.width += 10; w.damage *= 2; } },
+    formation: { partner: 'fan', name: '와룡천진', icon: '🐲', desc: '진이 두 배로 커지고 오래가며 데미지 ×2.2',
+      apply(w) { w.radius *= 2; w.life += 3; w.damage *= 2.2; } },
+  });
   const comboRecipe = (id) => {
     const c = COMBOS[id];
     return c.partner
@@ -988,6 +1116,8 @@
     jangseung: { name: '돌장승', sprite: 'jangseung', hp: 70, speed: 38, damage: 12, radius: 16, xp: 12, weight: 1, minTime: 150, barY: 26 },
     wongwi: { name: '원귀', sprite: 'wongwi', hp: 22, speed: 88, damage: 7, radius: 14, xp: 8, weight: 1, minTime: 210, barY: 22, move: 'float', alpha: 0.85 },
     gangsi: { name: '강시', sprite: 'gangsi', hp: 40, speed: 70, damage: 11, radius: 15, xp: 9, weight: 1.2, minTime: 270, barY: 24, move: 'hop' },
+    eodukssini: { name: '어둑시니', sprite: 'eodukssini', hp: 30, speed: 80, damage: 10, radius: 15, xp: 9, weight: 1, minTime: 330, barY: 24, grows: true, alpha: 0.9 },
+    bulgasari: { name: '불가사리', sprite: 'bulgasari', hp: 160, speed: 34, damage: 16, radius: 18, xp: 25, weight: 0.4, minTime: 360, barY: 24 },
     daedokkaebi: { name: '대도깨비', sprite: 'daedokkaebi', hp: 260, speed: 48, damage: 18, radius: 24, xp: 50, boss: true, barY: 34 },
     imugi: { name: '이무기', sprite: 'imugi', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
     heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true },
@@ -1057,6 +1187,9 @@
     { id: 'chest3', icon: '🎁', name: '보물 사냥꾼', desc: '한 판에 보물함 3개 열기', check: (p) => p.chests >= 3 },
     { id: 'sectUlt1', icon: '🏮', name: '문파의 비전', desc: '문파 오의를 처음으로 깨우치기', check: () => [...seen].some((id) => COMBOS[id]?.partner) },
     { id: 'sectUlt3', icon: '🐉', name: '무림의 패자', desc: '서로 다른 문파 오의 3가지 발견 (누적)', check: () => [...seen].filter((id) => COMBOS[id]?.partner).length >= 3 },
+    { id: 'realm3', icon: '🌀', name: '절정고수', desc: '한 판에 절정의 경지에 오르기', check: (p) => p.realm >= 3 },
+    { id: 'realm5', icon: '☀️', name: '화경의 문턱', desc: '한 판에 화경의 경지에 오르기', check: (p) => p.realm >= 5 },
+    { id: 'realm7', icon: '🌈', name: '생사경', desc: '한 판에 생사경에 오르기', check: (p) => p.realm >= 7 },
     { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -1120,7 +1253,7 @@
       radius: SPRITE_DEFS[heroId].size * 0.3,
       speed: hero.speed, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
       crit: 0, critMul: 2, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0, killHeal: 0, combos: 0,
-      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1,
+      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {},
@@ -1169,6 +1302,56 @@
     ui.banner.className = kind;
     void ui.banner.offsetWidth; // restart the CSS animation
     ui.banner.classList.add('show');
+  }
+
+  // ---------- Realm (경지) & sect rank (직위) ----------
+  // Cultivation = total technique levels + 4 per combo + one per two passive picks.
+  const REALMS = [
+    { name: '삼류', need: 0 }, { name: '이류', need: 4 }, { name: '일류', need: 9 }, { name: '절정', need: 15 },
+    { name: '초절정', need: 22 }, { name: '화경', need: 30 }, { name: '현경', need: 39 }, { name: '생사경', need: 49 },
+  ];
+  const RANKS = {
+    none: ['낭인', '무명고수', '강호인', '협객', '대협', '일대종사', '무림명숙', '천하제일인'],
+    hwasan: ['삼대제자', '이대제자', '일대제자', '매화검수', '장로', '태상장로', '장문인', '화산검선'],
+    mudang: ['속가제자', '삼대제자', '이대제자', '일대제자', '장로', '태상장로', '장문인', '무당진인'],
+    sorim: ['행자', '사미승', '비구', '나한', '달마원 수좌', '장로', '방장', '생불'],
+    gaebang: ['일결제자', '삼결제자', '오결제자', '칠결제자', '구결장로', '집법장로', '방주', '천하제일걸'],
+    dang: ['외가 수련생', '당가 무사', '당가 고수', '비전 계승자', '장로', '태상장로', '가주', '독왕'],
+    namgung: ['방계 무사', '직계 무사', '창궁검대원', '창궁검대주', '장로', '소가주', '가주', '검제'],
+    bukhae: ['시녀', '빙궁무사', '빙백대원', '빙백대주', '장로', '궁주 후계자', '궁주', '빙후'],
+    magyo: ['마졸', '교도', '마인', '혈마대원', '장로', '호법', '부교주', '천마'],
+    aemi: ['속가제자', '삼대제자', '이대제자', '일대제자', '장로', '태상장로', '장문인', '아미신니'],
+    gonryun: ['삼대제자', '이대제자', '일대제자', '설산검수', '장로', '태상장로', '장문인', '곤륜검선'],
+    jegal: ['방계 서생', '직계 서생', '책사', '군사', '장로', '소가주', '가주', '와룡'],
+    maeng: ['맹원', '조장', '대주', '단주', '군사', '장로', '부맹주', '무림맹주'],
+  };
+  const REALM_AURA = [null, null, null, '120, 170, 255', '180, 120, 255', '255, 200, 80', '255, 255, 255', 'rainbow'];
+
+  function cultivation() {
+    const lv = Object.values(player.weapons).reduce((n, w) => n + w.level, 0);
+    const picks = Object.values(player.picks).reduce((n, v) => n + v, 0);
+    return lv + player.combos * 4 + Math.floor(picks / 2);
+  }
+  const rankOf = (realm) => {
+    const h = HEROES[player.hero];
+    return RANKS[h.allSects ? 'maeng' : h.sect || 'none'][realm];
+  };
+
+  function checkRealm() {
+    const c = cultivation();
+    if (player.realm + 1 >= REALMS.length || c < REALMS[player.realm + 1].need) return;
+    player.realm++;
+    player.dmgMul += 0.06;
+    player.maxHp += 10;
+    player.hp = player.maxHp;
+    player.invuln = Math.max(player.invuln, 1);
+    player.glow = 1.4;
+    flash = Math.max(flash, 0.35);
+    modalDelay = Math.max(modalDelay, 1.4);
+    const aura = REALM_AURA[player.realm];
+    burst(player.x, player.y, 36, aura && aura !== 'rainbow' ? [`rgb(${aura})`, '#ffffff'] : ['#ffd76b', '#ffffff', '#e0503f'], 260, 0.9, 5, true);
+    showBanner(`경지 상승! ${REALMS[player.realm].name}`, '', `${rankOf(player.realm)}(으)로 승격 · 모든 피해 +6%, 최대 HP +10`);
+    checkAchievements();
   }
 
   // ---------- Combos ----------
@@ -1443,13 +1626,15 @@
     player.moving = dx !== 0 || dy !== 0;
     if (player.moving) {
       const len = Math.hypot(dx, dy);
-      player.x += (dx / len) * player.speed * dt;
-      player.y += (dy / len) * player.speed * dt;
+      const spd = player.speed * (player.boost > 0 ? 1.4 : 1);
+      player.x += (dx / len) * spd * dt;
+      player.y += (dy / len) * spd * dt;
       if (dx !== 0) player.facing = Math.sign(dx);
     }
     if (player.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.regen * dt);
     if (player.invuln > 0) player.invuln -= dt;
     if (player.glow > 0) player.glow -= dt;
+    if (player.boost > 0) player.boost -= dt;
   }
 
   function updateEnemies(dt) {
@@ -1464,8 +1649,9 @@
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
       if (e.type.move === 'hop') speed *= Math.max(0, Math.sin(elapsed * 6 + e.phase)) * 2.2;
       if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
-      if (zones.some((z) => dist(z.x, z.y, e.x, e.y) < z.r + e.type.radius)) speed *= 0.7;
+      for (const z of zones) if (dist(z.x, z.y, e.x, e.y) < z.r + e.type.radius) speed *= 1 - (z.hold || 0.3);
       if (e.chill > 0) { e.chill -= dt; speed *= 0.5; }
+      if (e.type.grows) e.grow = clamp(1.8 - d / 300, 1, 1.8);
       if (player.chillAura && d < player.chillAura) speed *= 0.6;
       if (e.type.summon && (e.summonCd = (e.summonCd ?? 3) - dt) <= 0) {
         e.summonCd = 5;
@@ -1713,7 +1899,7 @@
     updateShellsAndZones(dt);
     updatePickups(dt);
     updateEffects(dt);
-    if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); }
+    if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); }
     if (modalQueue.length && modalDelay <= 0) openNextModal();
     updateHud();
   }
@@ -1726,7 +1912,8 @@
     ui.formName.textContent = HEROES[player.hero].name;
     ui.kills.textContent = `요괴 ${kills}마리 퇴치`;
     ui.timer.textContent = fmtTime(elapsed);
-    ui.evoHint.textContent = player.combos ? `합성 무공 ${player.combos}개` : '';
+    const next = REALMS[player.realm + 1];
+    ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
     ui.weaponRow.textContent = Object.entries(player.weapons)
       .map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join('  ');
   }
@@ -1762,6 +1949,25 @@
   function drawZones() {
     for (const z of zones) {
       const a = clamp(z.life / 0.6, 0, 1);
+      if (z.tint === 'formation') {
+        ctx.save();
+        ctx.translate(z.x, z.y);
+        ctx.rotate(anim * 0.6);
+        ctx.strokeStyle = `rgba(200, 150, 50, ${0.75 * a})`;
+        ctx.fillStyle = `rgba(240, 200, 90, ${0.12 * a})`;
+        ctx.lineWidth = 2;
+        for (const k of [1, 0.62]) {
+          ctx.beginPath();
+          for (let i = 0; i <= 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            ctx[i ? 'lineTo' : 'moveTo'](Math.cos(ang) * z.r * k, Math.sin(ang) * z.r * k);
+          }
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+        continue;
+      }
       for (let i = 0; i < 3; i++) {
         const ox = Math.cos(z.seed + i * 2.1 + anim) * z.r * 0.3, oy = Math.sin(z.seed + i * 2.1 + anim) * z.r * 0.2;
         ctx.fillStyle = z.tint === 'green' ? `rgba(90, 160, 70, ${0.18 * a})` : `rgba(130, 80, 160, ${0.16 * a})`;
@@ -1829,8 +2035,8 @@
         ctx.rotate(f.a);
         ctx.globalAlpha = a;
         const g = ctx.createLinearGradient(0, -f.w, 0, f.w);
-        const edge = { gold: '240, 195, 80', blood: '170, 20, 30' }[f.tint] || '160, 210, 230';
-        const mid = { gold: '255, 236, 160', blood: '230, 60, 60' }[f.tint] || '190, 230, 245';
+        const edge = { gold: '240, 195, 80', blood: '170, 20, 30', ice: '150, 200, 250' }[f.tint] || '160, 210, 230';
+        const mid = { gold: '255, 236, 160', blood: '230, 60, 60', ice: '220, 240, 255' }[f.tint] || '190, 230, 245';
         g.addColorStop(0, `rgba(${edge}, 0)`);
         g.addColorStop(0.35, `rgba(${mid}, 0.85)`);
         g.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
@@ -1878,14 +2084,32 @@
       ctx.arc(player.x, player.y, r * 3.2, 0, Math.PI * 2);
       ctx.fill();
     }
+    const aura = REALM_AURA[player.realm];
+    if (aura) {
+      const rgb = aura === 'rainbow' ? `${Math.round(200 + 55 * Math.sin(anim * 3))}, ${Math.round(200 + 55 * Math.sin(anim * 3 + 2))}, ${Math.round(200 + 55 * Math.sin(anim * 3 + 4))}` : aura;
+      const R = r * (2 + player.realm * 0.25);
+      const g = ctx.createRadialGradient(player.x, player.y, r * 0.4, player.x, player.y, R);
+      g.addColorStop(0, `rgba(${rgb}, 0.35)`);
+      g.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(${rgb}, 0.9)`;
+      for (let i = 0; i < player.realm; i++) {
+        const a = anim * 1.5 + (i / player.realm) * Math.PI * 2;
+        ctx.fillRect(player.x + Math.cos(a) * R * 0.7 - 2, player.y + Math.sin(a) * R * 0.45 - 2 - (anim * 40 + i * 13) % 20, 3, 3);
+      }
+    }
     drawShadow(player.x, player.y + r * 0.9, r * 1.05);
+    const grow = 1 + player.realm * 0.035;
     const speed = player.moving ? 14 : 4;
     const amp = player.moving ? 0.07 : 0.035;
     const b = Math.sin(anim * speed);
     const hop = player.moving ? Math.abs(Math.sin(anim * speed / 2)) * 3 : 0;
     const blink = player.invuln > 0 && player.glow <= 0 && Math.floor(anim * 20) % 2 === 0;
     drawSprite(player.hero, player.x, player.y - hop, {
-      flip: false, sx: 1 - amp * b, sy: 1 + amp * b, groundR: r, alpha: blink ? 0.45 : 1,
+      flip: false, sx: grow * (1 - amp * b), sy: grow * (1 + amp * b), groundR: r, alpha: blink ? 0.45 : 1,
     });
   }
 
@@ -1895,7 +2119,7 @@
     drawShadow(e.x, e.y + r * 0.85, r);
     const b = Math.sin(anim * 9 + e.phase);
     const lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
-    const sc = t.scale || 1;
+    const sc = (t.scale || 1) * (e.grow || 1);
     drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + 0.05 * b), sy: sc * (1 - 0.05 * b), groundR: r, flash: e.flash > 0, alpha: t.alpha });
     if (t.boss || e.hp < e.maxHp) {
       const w = t.boss ? 56 : 26;
@@ -2058,7 +2282,7 @@
     state = 'gameover';
     const h = HEROES[player.hero];
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `${h.name} · Lv.${player.level} · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개`;
+    ui.gameoverStats.textContent = `${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개`;
     checkAchievements();
     ui.hud.classList.add('hidden');
     ui.gameover.classList.remove('hidden');

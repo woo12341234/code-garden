@@ -871,6 +871,82 @@ def yinyang():
     s.save('yinyang.png')
 
 
+# ============ More sects & yokai ============
+
+def aemi():
+    """아미파 여협: lilac robe, twin daggers."""
+    s = Sprite(24)
+    s.ellipse(12, 12.4, 6.2, 7.0, HAIR, hl=False)
+    _human(s, rgba(176, 150, 210), rgba(250, 240, 250))
+    for x in (17, 18):
+        s.put(x, 14, STEEL)
+        s.put(x + 1, 13, STEEL)
+    _head(s)
+    s.ellipse(12, 5.8, 5.9, 2.8, HAIR, hl=False, ymax=8)
+    s.ellipse(12, 2.6, 2.0, 1.4, HAIR, hl=False)
+    s.put(13, 2, rgba(250, 240, 250))
+    s.eyes(9, 9, h=2, w=1, shine=False)
+    s.outline()
+    s.save('aemi.png')
+
+
+def gonryun():
+    """곤륜파 검수: snow-white and sky-blue, fur collar."""
+    s = Sprite(24)
+    s.poly([(15.6, 18), (16.6, 18.6), (21.6, 12.4), (20.8, 11.8)], rgba(200, 230, 250))
+    _human(s, rgba(110, 160, 210), rgba(240, 244, 250))
+    s.ellipse(12, 13.6, 5.4, 1.6, rgba(245, 245, 245), hl=False)
+    _head(s)
+    s.ellipse(12, 6.2, 5.9, 3.2, HAIR, hl=False, ymax=8)
+    s.ellipse(12, 2.4, 1.7, 1.5, HAIR, hl=False)
+    s.poly([(11, 1.8), (13, 1.8), (13, 2.8), (11, 2.8)], rgba(110, 160, 210))
+    _cool_eyes(s, 9)
+    s.outline()
+    s.save('gonryun.png')
+
+
+def jegal():
+    """제갈세가 군사: scholar robe, crane-feather fan, tall hat."""
+    s = Sprite(24)
+    s.poly([(17.4, 12.6), (21.8, 9.6), (22.4, 14.4), (18.4, 15.2)], rgba(245, 245, 240))
+    s.poly([(17.6, 15), (18.6, 15), (18.6, 18.4), (17.6, 18.4)], rgba(150, 105, 60))
+    _human(s, rgba(70, 120, 110), rgba(230, 220, 190))
+    _head(s, 9.4)
+    s.poly([(10, 5.4), (14, 5.4), (13.4, 0.8), (10.6, 0.8)], HAIR)
+    s.poly([(9, 5.0), (15, 5.0), (15, 5.8), (9, 5.8)], HAIR)
+    s.eyes(9, 9, h=1, w=2, shine=False)
+    s.outline()
+    s.save('jegal.png')
+
+
+def eodukssini():
+    """어둑시니: shadow that looms, glowing eyes."""
+    s = Sprite(24)
+    shade = rgba(40, 36, 52, 225)
+    s.ellipse(12, 12, 7.2, 8.4, shade)
+    s.poly([(4.8, 14), (19.2, 14), (20, 22), (17, 20.6), (14.6, 22.6), (12, 20.8), (9.4, 22.6), (7, 20.6), (4, 22)], shade)
+    s.eyes(9, 10, h=1, w=2, shine=False, color=rgba(255, 220, 90))
+    s.outline()
+    s.save('eodukssini.png')
+
+
+def bulgasari():
+    """불가사리: iron-eating beast, rust and steel plates."""
+    s = Sprite(24)
+    body = rgba(120, 112, 110)
+    s.ellipse_sym(8, 21.6, 2.4, 1.6, mul(body, 0.8), shade=False)
+    s.ellipse(12, 15.6, 8.2, 6.6, body)
+    for x, y in [(7, 12), (11, 10), (15, 12), (9, 16), (14, 17)]:
+        s.poly([(x, y), (x + 2.4, y), (x + 2.4, y + 1.6), (x, y + 1.6)], rgba(180, 110, 70))
+    s.ellipse(12, 8.6, 4.8, 3.8, body)
+    s.poly_sym([(9, 6), (7.6, 2.4), (10.6, 5.2)], STEEL)
+    s.eyes(10, 8, h=1, w=1, shine=False, color=rgba(255, 120, 60))
+    for x in range(10, 15):
+        s.put(x, 11, WHITE)
+    s.outline()
+    s.save('bulgasari.png')
+
+
 if __name__ == '__main__':
     for fn in (cheongpung, unhak, yeoubi, cheolsan, dallae, yawol,
                wisp, dokkaebi, crow, jangseung, wongwi, meok, gangsi,
@@ -879,7 +955,8 @@ if __name__ == '__main__':
                peach, ginseng, gourd, thunderball, treasure):
         fn()
     for fn in (songhwa, muyeong, geumbi, seola, cheonma, sansin, icicle,
-               baekmae, palgeol, dangyu, namgung, maengju, petal, needle, bottle, palm, bigsword, yinyang):
+               baekmae, palgeol, dangyu, namgung, maengju, petal, needle, bottle, palm, bigsword, yinyang,
+               aemi, gonryun, jegal, eodukssini, bulgasari):
         fn()
     coin('coin.png', rgba(205, 140, 70), 10)
     coin('coin_gold.png', rgba(235, 190, 70), 12)
