@@ -546,7 +546,24 @@
     jegal: { shape: 'leaf', colors: ['#80e0c0', '#ffffff', '#3a8070'], glow: '110, 220, 180', sigil: 'bagua' },
     maeng: { shape: 'spark', colors: ['#ffe08a', '#ffffff', '#ffb040'], glow: '255, 225, 140', sigil: 'halo' },
   };
+  // Combos / sect ultimates switch to an entirely different, awakened look in their own colour.
+  const COMBO_FX = {
+    shot: ['255, 215, 90', 'spark'], orbit: ['110, 190, 255', 'ember'], boomerang: ['255, 230, 140', 'spark'], lightning: ['190, 150, 255', 'spark'],
+    aura: ['255, 205, 90', 'ember'], quake: ['210, 150, 90', 'mist'], beam: ['120, 230, 255', 'spark'], firework: ['255, 90, 50', 'ember'],
+    fairy: ['255, 250, 240', 'petal'], thorn: ['150, 230, 90', 'mist'], geomsul: ['255, 225, 120', 'spark'], gwonbeop: ['255, 180, 60', 'ember'],
+    slash: ['90, 220, 140', 'leaf'], icicle: ['170, 225, 255', 'flake'], tornado: ['150, 230, 200', 'leaf'], mine: ['210, 70, 210', 'ember'],
+    plum: ['255, 100, 160', 'petal'], taiji: ['120, 160, 255', 'taiji'], yeorae: ['255, 215, 90', 'ember'], tagu: ['130, 210, 90', 'leaf'],
+    needles: ['170, 100, 240', 'mist'], skysword: ['255, 225, 120', 'spark'], binbaek: ['190, 235, 255', 'flake'], cheonmasingong: ['230, 20, 50', 'ember'],
+    emeija: ['210, 170, 255', 'petal'], seolgeom: ['200, 235, 255', 'flake'], formation: ['90, 230, 190', 'leaf'],
+  };
+  const evoCache = {};
+  function evoTheme(id) {
+    if (evoCache[id]) return evoCache[id];
+    const [rgb, shape] = COMBO_FX[id] || ['255, 215, 90', 'spark'];
+    return (evoCache[id] = { rgb, glow: rgb, shape, colors: [`rgb(${rgb})`, '#ffffff', `rgb(${rgb})`, '#2a2224'], sigil: 'ult' });
+  }
   function sectStyle(id) {
+    if (player?.weapons[id]?.evolved) return evoTheme(id);
     const W = WEAPONS[id];
     if (W?.sect) return SECT_FX[W.sect];
     const h = player && HEROES[player.hero];
@@ -554,6 +571,7 @@
     return SECT_FX[h.allSects ? 'maeng' : h.sect] || null;
   }
   const PARTICLE_CAP = 700;
+  const INK_FX = { shape: 'ink', colors: ['#2a2224', '#2a2224', '#5a2a2a'] };
   function flair(st, x, y, n, speed = 120, life = 0.7, size = 4) {
     for (let i = 0; i < n && particles.length < PARTICLE_CAP; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -571,6 +589,7 @@
   }
   function hitFlair(st, x, y, big) {
     flair(st, x, y, big ? 6 : 3, big ? 160 : 100, 0.55, big ? 5 : 4);
+    if (st.sigil === 'ult') flair(INK_FX, x, y, big ? 5 : 3, 180, 0.45, 3);
     if (fx.length < 220) fx.push({ kind: 'bloom', x, y, glow: st.glow, r: big ? 26 : 16, life: 0.22, max: 0.22 });
   }
 
@@ -649,6 +668,13 @@
         ctx.arc(0, 0, s * (2.6 - k * 1.2), 0, Math.PI * 2);
         ctx.fill();
         break;
+      case 'ink':
+        ctx.globalAlpha = k * 0.85;
+        ctx.beginPath();
+        ctx.arc(0, 0, s, 0, Math.PI * 2);
+        ctx.arc(s * 1.3, 0, s * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        break;
       case 'spark':
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 2;
@@ -666,7 +692,7 @@
   function drawSigil(f) {
     const a = clamp(f.life / f.max, 0, 1);
     const t = 1 - a;
-    const R = player.radius * (1.6 + t * 1.6);
+    const R = player.radius * (f.style === 'ult' ? 2.4 + t * 2.4 : 1.6 + t * 1.6);
     ctx.save();
     ctx.translate(f.x, f.y);
     ctx.scale(1, 0.45);
@@ -680,7 +706,28 @@
     ctx.stroke();
     ctx.rotate(anim * 2);
     ctx.lineWidth = 2;
-    if (f.style === 'taiji') {
+    if (f.style === 'ult') {
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(42, 34, 36, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 8; i++) {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = `rgba(${f.glow}, 0.95)`;
+        ctx.beginPath();
+        ctx.moveTo(R * 0.82, -5);
+        ctx.lineTo(R * 1.25, 0);
+        ctx.lineTo(R * 0.82, 5);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(42, 34, 36, 0.85)';
+        ctx.fillRect(R * 0.4, -2, R * 0.16, 4);
+      }
+    } else if (f.style === 'taiji') {
       ctx.beginPath();
       ctx.arc(0, 0, R * 0.7, 0, Math.PI * 2);
       ctx.moveTo(0, -R * 0.7);
@@ -1533,7 +1580,7 @@
 
   // ---------- Progress & achievements (saved per browser) ----------
   const PROGRESS_KEY = 'yokai-survivors-progress';
-  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0 };
+  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {} };
   try { Object.assign(progress, JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
   const seen = new Set(progress.combos);
   function saveProgress() {
@@ -1602,6 +1649,8 @@
     { id: 'gold1000', icon: '💰', name: '부자 협객', desc: '누적 은자 1,000냥 모으기', check: () => progress.totalGold >= 1000 },
     { id: 'shop1', icon: '🥋', name: '수련의 시작', desc: '수련장에서 처음으로 수련하기', check: () => Object.keys(progress.shop).length > 0 },
     { id: 'cursed', icon: '💀', name: '마기를 품고', desc: '마기 3단계 이상으로 저승사자 퇴치', check: (p) => p.curse >= 0.29 && p.wonRun },
+    { id: 'clearHard', icon: '🔥', name: '고수의 길', desc: '고수 난이도로 저승사자 퇴치', check: () => progress.clears.hard || progress.clears.hell },
+    { id: 'clearHell', icon: '💀', name: '마경 정복', desc: '마경 난이도로 저승사자 퇴치', check: () => progress.clears.hell },
     { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -1906,6 +1955,11 @@
       } : {
         img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true,
       })));
+    } else if (m.type === 'difficulty') {
+      showChoice('난이도', '요괴의 세기를 골라주세요 (어려울수록 은자를 더 줘요)', DIFFICULTIES.map((d) => ({
+        icon: d.icon, title: d.name + (progress.clears[d.id] ? ' ✓' : ''), desc: d.desc + (d.id === progress.difficulty ? ' · 지난번 선택' : ''), sect: d.id === progress.difficulty,
+        pick: () => { diff = d; progress.difficulty = d.id; saveProgress(); },
+      })));
     } else if (m.type === 'stage') {
       const next = STAGES[stageIdx + 1];
       showChoice(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '무공은 그대로 이어져요. 더 깊이 들어갈까요?', [
@@ -1998,6 +2052,15 @@
   }
 
   // ---------- Spawning ----------
+  // ---------- Difficulty (난이도) ----------
+  const DIFFICULTIES = [
+    { id: 'easy', icon: '🍃', name: '입문', desc: '요괴 체력·공격력 ×0.6, 조금 덜 나와요. 은자 ×0.7', hp: 0.6, dmg: 0.6, spawn: 0.8, speed: 0.92, gold: 0.7 },
+    { id: 'normal', icon: '⚔️', name: '강호', desc: '기본 난이도', hp: 1, dmg: 1, spawn: 1, speed: 1, gold: 1 },
+    { id: 'hard', icon: '🔥', name: '고수', desc: '요괴 체력 ×1.5, 공격력 ×1.4, 더 많이 몰려와요. 은자 ×1.5', hp: 1.5, dmg: 1.4, spawn: 1.25, speed: 1.08, gold: 1.5 },
+    { id: 'hell', icon: '💀', name: '마경', desc: '요괴 체력 ×2.4, 공격력 ×2, 훨씬 많고 빨라요. 은자 ×2.5', hp: 2.4, dmg: 2, spawn: 1.6, speed: 1.15, gold: 2.5 },
+  ];
+  let diff = DIFFICULTIES[1];
+
   const curStage = () => (stageIdx < STAGES.length ? STAGES[stageIdx] : ENDLESS);
   function pickEnemyType() {
     const st = curStage();
@@ -2019,11 +2082,11 @@
   function spawnEnemy(type, angle, distance, at) {
     const t = elapsed;
     const c = player.curse;
-    const hp = type.prop ? 1 : type.hp * (1 + t / 120 + (t / 300) ** 2) * (1 + c);
+    const hp = type.prop ? 1 : type.hp * (1 + t / 120 + (t / 300) ** 2) * (1 + c) * diff.hp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
-      speed: type.speed * (1 + Math.min(t / 360, 0.5)) * (1 + c / 2),
-      damage: Math.round(type.damage * (1 + t / 240)),
+      speed: type.speed * (1 + Math.min(t / 360, 0.5)) * (1 + c / 2) * diff.speed,
+      damage: Math.round(type.damage * (1 + t / 240) * diff.dmg),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
@@ -2099,7 +2162,7 @@
     spawnTimer -= dt;
     if (spawnTimer <= 0 && enemies.length < MAX_ENEMIES) {
       spawnTimer = clamp(1.0 - elapsed / 160, 0.25, 1.0);
-      const n = Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse));
+      const n = Math.max(1, Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse) * diff.spawn));
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
     if (st.endless && elapsed >= BOSS_START) {
@@ -2180,7 +2243,7 @@
   }
 
   function addGold(v) {
-    const g = v * player.greed;
+    const g = v * player.greed * diff.gold;
     player.gold += g;
     addFloatText(player.x, player.y - player.radius - 20, `은자 +${Math.round(g)}`, '#cfd6e0');
   }
@@ -2224,6 +2287,7 @@
     }
     if (e.type.final && e.stageBoss) {
       progress.wins++;
+      progress.clears[diff.id] = true;
       player.wonRun = true;
       saveProgress();
       pickups.push({ kind: 'jumeoni', value: 150, x: e.x, y: e.y - 16 });
@@ -2397,9 +2461,9 @@
       const p = projectiles[i];
       dmgSrc = p.src || 'item';
       p.life -= dt;
-      if (p.src && Math.random() < 0.3) {
+      if (p.src && Math.random() < (p.evo ? 0.7 : 0.3)) {
         const st = sectStyle(p.src);
-        if (st) flair(st, p.x, p.y, 1, 30, 0.45, 3);
+        if (st) flair(st, p.x, p.y, 1, 30, p.evo ? 0.6 : 0.45, p.evo ? 4 : 3);
       }
       let dead = p.life <= 0;
       if (p.kind === 'boomerang') {
@@ -2590,10 +2654,19 @@
       dmgSrc = id;
       WEAPONS[id].update(w, dt);
       [projectiles, shells, zones, mines].forEach((arr, k) => { for (let i = before[k]; i < arr.length; i++) arr[i].src ??= id; });
+      if (w.evolved) {
+        const ev = evoTheme(id);
+        for (const arr of [projectiles, shells, zones, mines]) for (const it of arr) if (it.src === id && !it.evo) { it.evo = ev; if (it.rgb) it.rgb = ev.rgb; }
+        for (let i = fxBefore; i < fx.length; i++) fx[i].evo ??= ev;
+      }
       if (fx.slice(fxBefore).some((f) => f.kind !== 'spark' && f.kind !== 'die' && f.kind !== 'bloom') || before.some((n, k) => [projectiles, shells, zones, mines][k].length > n)) {
         triggerAttack(projectiles.length > before[0] ? projectiles[projectiles.length - 1] : null);
         const st = sectStyle(id);
-        if (st && (w.flairCd = (w.flairCd || 0)) <= 0) { castFlair(st); w.flairCd = 0.35; }
+        if (st && (w.flairCd = (w.flairCd || 0)) <= 0) {
+          castFlair(st);
+          if (w.evolved) flair(st, player.x, player.y - 10, 10, 220, 0.9, 6);
+          w.flairCd = 0.35;
+        }
       }
       if (w.flairCd > 0) w.flairCd -= dt;
     }
@@ -2619,7 +2692,7 @@
     ui.gold.textContent = `은자 ${Math.floor(player.gold)}냥`;
     const st = curStage();
     ui.timer.textContent = fmtTime(st.endless ? elapsed : stageTime);
-    ui.stageInfo.textContent = st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`;
+    ui.stageInfo.textContent = `[${diff.name}] ` + (st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`);
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
     const row = Object.entries(player.weapons).map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join(' ');
@@ -2721,6 +2794,98 @@
     }
   }
 
+  // Awakened versions of the basic effect shapes (rings, beams, slashes, bolts...).
+  function drawEvoFx(f, a) {
+    const rgb = f.evo.rgb;
+    ctx.save();
+    if (f.kind === 'ring') {
+      if (f.color === 'none' && !f.r) { ctx.restore(); return true; }
+      const r = f.r * (1 - a * 0.5);
+      ctx.fillStyle = `rgba(${rgb}, ${0.14 * a})`;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${rgb}, ${a})`;
+      ctx.lineWidth = 9 * a + 3;
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, r * 0.9, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(42, 34, 36, ${0.7 * a})`;
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + (1 - a) * 2;
+        ctx.beginPath();
+        ctx.moveTo(f.x + Math.cos(ang) * r * 0.78, f.y + Math.sin(ang) * r * 0.78);
+        ctx.lineTo(f.x + Math.cos(ang) * r * 1.12, f.y + Math.sin(ang) * r * 1.12);
+        ctx.stroke();
+      }
+    } else if (f.kind === 'beam') {
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.a);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = `rgba(${rgb}, 0.3)`;
+      ctx.fillRect(0, -f.w * 2.4, f.len, f.w * 4.8);
+      ctx.fillStyle = `rgba(${rgb}, 0.9)`;
+      ctx.fillRect(0, -f.w * 1.2, f.len, f.w * 2.4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, -f.w * 0.45, f.len, f.w * 0.9);
+      ctx.strokeStyle = `rgba(${rgb}, 1)`;
+      ctx.lineWidth = 2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(0, side * f.w * 1.6);
+        for (let x = 20; x <= f.len; x += 20) ctx.lineTo(x, side * f.w * (1.4 + Math.sin(x * 0.37 + f.a * 9 + anim * 30) * 0.9));
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(${rgb}, 0.8)`;
+      ctx.beginPath();
+      ctx.arc(f.len, 0, f.w * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (f.kind === 'slash') {
+      const lo = f.dir > 0 ? -1.4 : Math.PI - 1.4;
+      crescent(f.x, f.y, f.range * 1.05, lo, lo + 2.8, 1, rgb, a, 0.55);
+      crescent(f.x, f.y, f.range * 0.7, lo + 0.3, lo + 2.5, 1, rgb, a * 0.6, 0.35);
+    } else if (f.kind === 'spin') {
+      const st = (1 - a) * Math.PI * 4;
+      crescent(f.x, f.y, f.r, st, st + Math.PI * 1.9, 1, rgb, a, 0.4);
+    } else if (f.kind === 'arc') {
+      const t = 1 - a;
+      const sweep = f.half * 2 * (1 - (1 - Math.min(1, t * 1.6)) ** 3);
+      crescent(f.x, f.y - 4, f.r * 1.08, f.a - f.half, f.a - f.half + sweep, 1, rgb, a, 0.6);
+      ctx.strokeStyle = `rgba(${rgb}, ${a * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y - 4, f.r * 1.2, f.a - f.half, f.a - f.half + sweep);
+      ctx.stroke();
+    } else if (f.kind === 'bolt') {
+      for (const [w, col] of [[12, `rgba(${rgb}, ${0.35 * a})`], [5, `rgba(${rgb}, ${a})`], [2, `rgba(255, 255, 255, ${a})`]]) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        let x = f.x, y = f.y - 200;
+        ctx.moveTo(x, y);
+        for (let i = 1; i <= 8; i++) {
+          x = f.x + (i < 8 ? Math.sin(f.seed + i * 2.3) * 18 : 0);
+          y = f.y - 200 + (200 * i) / 8;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(${rgb}, ${0.5 * a})`;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 30 * (1.4 - a * 0.4), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.restore();
+      return false;
+    }
+    ctx.restore();
+    return true;
+  }
+
   function drawFx() {
     for (const f of fx) {
       const a = clamp(f.life / f.max, 0, 1);
@@ -2730,6 +2895,7 @@
         continue;
       }
       if (f.kind === 'sigil') { drawSigil(f); continue; }
+      if (f.evo && drawEvoFx(f, a)) continue;
       if (f.kind === 'bloom') {
         const rr = f.r * (1.4 - a * 0.4);
         ctx.fillStyle = `rgba(${f.glow}, ${0.35 * a})`;
@@ -3083,7 +3249,16 @@
     }
     if (!playerDrawn) drawPlayer();
 
-    for (const pt of orbitPoints()) drawSprite('foxfire', pt.x, pt.y);
+    const orbEvo = player.weapons.orbit?.evolved;
+    for (const pt of orbitPoints()) {
+      if (orbEvo) {
+        ctx.fillStyle = 'rgba(110, 190, 255, 0.35)';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawSprite('foxfire', pt.x, pt.y, orbEvo ? { sx: 1.3, sy: 1.3 } : {});
+    }
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawAbove) WEAPONS[id].drawAbove(w);
     for (const p of projectiles) {
       if (p.kind === 'tornado') { drawTornado(p); continue; }
@@ -3096,6 +3271,18 @@
         continue;
       }
       const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : p.kind === 'petal' ? p.spin + p.life * 8 : Math.atan2(p.vy, p.vx);
+      if (p.evo) {
+        ctx.fillStyle = `rgba(${p.evo.rgb}, 0.35)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (p.radius || 10) * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (p.radius || 10) * 1.1, 0, Math.PI * 2);
+        ctx.fill();
+        drawSprite(p.sprite, p.x, p.y, { rot, sx: 1.35, sy: 1.35 });
+        continue;
+      }
       drawSprite(p.sprite, p.x, p.y, { rot });
     }
     drawShells();
@@ -3261,7 +3448,7 @@
       return el;
     }));
     ui.pauseDmg.replaceChildren(...damageReport());
-    ui.pauseStats.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)} · 피해 ×${player.dmgMul.toFixed(2)} · 치명타 ${Math.round(player.crit * 100)}% · 대기시간 ×${player.haste.toFixed(2)} · 받는 피해 ×${player.armor.toFixed(2)} · 은자 ${Math.floor(player.gold)}냥${player.revives ? ` · 환생 ${player.revives}` : ''}`;
+    ui.pauseStats.textContent = `[${diff.name}] ${REALMS[player.realm].name} · ${rankOf(player.realm)} · 피해 ×${player.dmgMul.toFixed(2)} · 치명타 ${Math.round(player.crit * 100)}% · 대기시간 ×${player.haste.toFixed(2)} · 받는 피해 ×${player.armor.toFixed(2)} · 은자 ${Math.floor(player.gold)}냥${player.revives ? ` · 환생 ${player.revives}` : ''}`;
     ui.quitBtn.textContent = '로비로 나가기';
     ui.quitBtn.dataset.confirm = '';
   }
@@ -3282,7 +3469,7 @@
     ui.hud.classList.remove('hidden');
     updateHud();
     state = 'playing';
-    modalQueue.push({ type: 'hero' });
+    modalQueue.push({ type: 'difficulty' }, { type: 'hero' });
     openNextModal();
   }
 
@@ -3295,7 +3482,7 @@
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
     ui.continueBtn.classList.toggle('hidden', !win);
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
