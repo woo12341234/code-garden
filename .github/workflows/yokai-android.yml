@@ -7,6 +7,9 @@ on:
       - '.github/workflows/yokai-android.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   web:
     runs-on: ubuntu-latest
@@ -77,3 +80,29 @@ jobs:
         with:
           name: yokai-survivors-ios-unsigned-ipa
           path: digimon-survivors/mobile/yokai-survivors-unsigned.ipa
+
+  # Collect the builds into one pre-release ("yokai-latest") so they can be downloaded from a phone.
+  release:
+    needs: [web, android, ios]
+    if: ${{ always() && needs.android.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: Gather files
+        run: |
+          mkdir -p out
+          cp dl/yokai-survivors-apk/app-debug.apk out/yokai-survivors.apk
+          if [ -f dl/yokai-survivors-ios-unsigned-ipa/yokai-survivors-unsigned.ipa ]; then cp dl/yokai-survivors-ios-unsigned-ipa/yokai-survivors-unsigned.ipa out/; fi
+          (cd dl/yokai-survivors-web && zip -qr ../../out/yokai-survivors-web.zip .)
+          ls -la out
+      - name: Publish pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete yokai-latest --yes --cleanup-tag || true
+          gh release create yokai-latest out/* --prerelease --target "${{ github.sha }}" \
+            --title "요괴 퇴치록 최신 빌드" \
+            --notes "자동 빌드 ($(date -u +%Y-%m-%d)). yokai-survivors.apk: 안드로이드에 바로 설치(출처를 알 수 없는 앱 허용 필요). yokai-survivors-unsigned.ipa: 아이폰용, Sideloadly·AltStore로 본인 Apple ID 서명 후 설치. yokai-survivors-web.zip: 웹 버전(itch.io 등 업로드용)."
