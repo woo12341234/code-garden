@@ -455,7 +455,7 @@
       desc: '바라보는 쪽을 넓게 베어요 (3단계부터 양쪽)',
       up: '데미지 +5, 범위 +10',
       max: 6,
-      create: () => ({ damage: 14, count: 1, cooldown: 1.0, timer: 0.3, range: 110, height: 44 }),
+      create: () => ({ damage: 14, count: 1, cooldown: 1.0, timer: 0.3, range: 135, height: 84 }),
       upgrade(w) { w.damage += 5; w.range += 10; if (w.level === 3) w.count = 2; if (w.level === 6) w.height += 16; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -529,6 +529,210 @@
     },
   });
 
+  // ---------- Sect visual themes ----------
+  // Every technique gets particles in its sect's style when it fires, while its projectiles fly and
+  // where it lands. General techniques borrow the hero's sect.
+  const SECT_FX = {
+    hwasan: { shape: 'petal', colors: ['#ff9fc0', '#ffd1e0', '#e0507a', '#ffffff'], glow: '255, 130, 175', sigil: 'plum' },
+    mudang: { shape: 'taiji', colors: ['#ffffff', '#a8ccff', '#2a2224'], glow: '150, 190, 255', sigil: 'taiji' },
+    sorim: { shape: 'ember', colors: ['#ffd76b', '#fff2b0', '#e0a030'], glow: '255, 205, 90', sigil: 'halo' },
+    gaebang: { shape: 'leaf', colors: ['#8fd070', '#c8e8a0', '#5a8a3a'], glow: '150, 215, 100', sigil: 'dust' },
+    dang: { shape: 'mist', colors: ['#a070e0', '#9fe060', '#4a7a50'], glow: '150, 230, 90', sigil: 'dust' },
+    namgung: { shape: 'spark', colors: ['#ffe08a', '#ffffff', '#6080e0'], glow: '255, 220, 120', sigil: 'halo' },
+    bukhae: { shape: 'flake', colors: ['#ffffff', '#bfe6ff', '#7ab8f0'], glow: '170, 220, 255', sigil: 'frost' },
+    magyo: { shape: 'ember', colors: ['#ff3040', '#a01020', '#2a1018', '#ff8060'], glow: '230, 30, 50', sigil: 'blood' },
+    aemi: { shape: 'petal', colors: ['#e0c8ff', '#ffffff', '#b090e0', '#ffd76b'], glow: '200, 160, 250', sigil: 'lotus' },
+    gonryun: { shape: 'flake', colors: ['#ffffff', '#cfe8ff', '#90c0f0'], glow: '160, 210, 255', sigil: 'frost' },
+    jegal: { shape: 'leaf', colors: ['#80e0c0', '#ffffff', '#3a8070'], glow: '110, 220, 180', sigil: 'bagua' },
+    maeng: { shape: 'spark', colors: ['#ffe08a', '#ffffff', '#ffb040'], glow: '255, 225, 140', sigil: 'halo' },
+  };
+  function sectStyle(id) {
+    const W = WEAPONS[id];
+    if (W?.sect) return SECT_FX[W.sect];
+    const h = player && HEROES[player.hero];
+    if (!h) return null;
+    return SECT_FX[h.allSects ? 'maeng' : h.sect] || null;
+  }
+  const PARTICLE_CAP = 700;
+  function flair(st, x, y, n, speed = 120, life = 0.7, size = 4) {
+    for (let i = 0; i < n && particles.length < PARTICLE_CAP; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = speed * (0.3 + Math.random() * 0.7);
+      particles.push({
+        x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, life: life * (0.6 + Math.random() * 0.6), max: life,
+        size: size * (0.7 + Math.random() * 0.6), shape: st.shape, color: st.colors[i % st.colors.length],
+        rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 8, fall: st.shape === 'petal' || st.shape === 'flake' || st.shape === 'leaf' ? 40 : st.shape === 'ember' ? -50 : 0,
+      });
+    }
+  }
+  function castFlair(st) {
+    flair(st, player.x, player.y - 8, 8, 150, 0.8, 5);
+    if (fx.length < 200) fx.push({ kind: 'sigil', x: player.x, y: player.y + player.radius * 0.8, style: st.sigil, glow: st.glow, life: 0.6, max: 0.6 });
+  }
+  function hitFlair(st, x, y, big) {
+    flair(st, x, y, big ? 6 : 3, big ? 160 : 100, 0.55, big ? 5 : 4);
+    if (fx.length < 220) fx.push({ kind: 'bloom', x, y, glow: st.glow, r: big ? 26 : 16, life: 0.22, max: 0.22 });
+  }
+
+  function drawParticle(p) {
+    const k = clamp(p.life / p.max, 0, 1);
+    const s = Math.max(1, p.size * (0.5 + 0.5 * k));
+    ctx.globalAlpha = k;
+    ctx.fillStyle = p.color;
+    if (!p.shape) {
+      if (p.star) {
+        ctx.fillRect(p.x - s * 1.5, p.y - s / 2, s * 3, s);
+        ctx.fillRect(p.x - s / 2, p.y - s * 1.5, s, s * 3);
+      } else ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+      return;
+    }
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    switch (p.shape) {
+      case 'petal':
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 1.3, s * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillRect(-s * 0.6, -0.5, s * 0.6, 1);
+        break;
+      case 'leaf':
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 1.5, s * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(40, 60, 30, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-s * 1.4, 0);
+        ctx.lineTo(s * 1.4, 0);
+        ctx.stroke();
+        break;
+      case 'flake':
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const a = (i * Math.PI) / 3;
+          ctx.moveTo(-Math.cos(a) * s * 1.4, -Math.sin(a) * s * 1.4);
+          ctx.lineTo(Math.cos(a) * s * 1.4, Math.sin(a) * s * 1.4);
+        }
+        ctx.stroke();
+        break;
+      case 'taiji':
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#2a2224';
+        ctx.beginPath();
+        ctx.arc(0, 0, s, -Math.PI / 2, Math.PI / 2);
+        ctx.arc(0, s / 2, s / 2, Math.PI / 2, -Math.PI / 2, true);
+        ctx.arc(0, -s / 2, s / 2, Math.PI / 2, -Math.PI / 2);
+        ctx.fill();
+        break;
+      case 'ember':
+        ctx.globalAlpha = k * 0.35;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 1.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = k;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-1, -1, 2, 2);
+        break;
+      case 'mist':
+        ctx.globalAlpha = k * 0.45;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * (2.6 - k * 1.2), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'spark':
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-s * 1.6, 0);
+        ctx.lineTo(-s * 0.4, s * 0.7);
+        ctx.lineTo(s * 0.4, -s * 0.7);
+        ctx.lineTo(s * 1.6, 0);
+        ctx.stroke();
+        break;
+    }
+    ctx.restore();
+  }
+
+  function drawSigil(f) {
+    const a = clamp(f.life / f.max, 0, 1);
+    const t = 1 - a;
+    const R = player.radius * (1.6 + t * 1.6);
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.scale(1, 0.45);
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = `rgba(${f.glow}, 0.95)`;
+    ctx.fillStyle = `rgba(${f.glow}, 0.18)`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.rotate(anim * 2);
+    ctx.lineWidth = 2;
+    if (f.style === 'taiji') {
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.7, 0, Math.PI * 2);
+      ctx.moveTo(0, -R * 0.7);
+      ctx.arc(0, -R * 0.35, R * 0.35, -Math.PI / 2, Math.PI / 2);
+      ctx.arc(0, R * 0.35, R * 0.35, -Math.PI / 2, Math.PI / 2, true);
+      ctx.stroke();
+    } else if (f.style === 'bagua') {
+      for (let i = 0; i < 8; i++) {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = `rgba(${f.glow}, 0.9)`;
+        ctx.fillRect(R * 0.62, -4, 4, 8);
+        if (i % 2) ctx.fillRect(R * 0.74, -4, 4, 8);
+      }
+    } else if (f.style === 'plum' || f.style === 'lotus') {
+      for (let i = 0; i < 5; i++) {
+        ctx.rotate((Math.PI * 2) / 5);
+        ctx.beginPath();
+        ctx.ellipse(R * 0.45, 0, R * 0.3, R * 0.16, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (f.style === 'frost') {
+      for (let i = 0; i < 6; i++) {
+        ctx.rotate(Math.PI / 3);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(R * 0.85, 0);
+        ctx.moveTo(R * 0.5, 0);
+        ctx.lineTo(R * 0.65, R * 0.15);
+        ctx.moveTo(R * 0.5, 0);
+        ctx.lineTo(R * 0.65, -R * 0.15);
+        ctx.stroke();
+      }
+    } else if (f.style === 'blood') {
+      for (let i = 0; i < 3; i++) {
+        ctx.rotate((Math.PI * 2) / 3);
+        ctx.beginPath();
+        ctx.arc(R * 0.3, 0, R * 0.5, -1, 1);
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 12; i++) {
+        ctx.rotate(Math.PI / 6);
+        ctx.fillStyle = `rgba(${f.glow}, 0.9)`;
+        ctx.fillRect(R * 0.78, -1.5, R * 0.18, 3);
+      }
+    }
+    ctx.restore();
+  }
+
   // ---------- Martial basics whose form grows with the realm (경지) ----------
   // A classic wuxia progression: a blade first only cuts what it touches, then its qi extends
   // (검기), stretches into a thread (검사), hardens into a flying aura (검강) and finally the sword
@@ -561,10 +765,10 @@
       const e = enemies[j];
       const dx = e.x - player.x, dy = e.y - player.y;
       const d = Math.hypot(dx, dy);
-      if (d > radius + e.type.radius) continue;
+      if (d > radius + e.type.radius * 1.3) continue;
       let da = Math.atan2(dy, dx) - a;
       da = Math.atan2(Math.sin(da), Math.cos(da));
-      if (Math.abs(da) > half && d > e.type.radius + player.radius) continue;
+      if (Math.abs(da) > half + e.type.radius / Math.max(d, 1) && d > e.type.radius + player.radius * 1.8) continue;
       damageEnemy(e, j, damage, dx, dy, push);
     }
   }
@@ -583,7 +787,7 @@
       desc: '눈앞을 베는 근접 검술. 경지가 오를수록 검기 → 검사 → 검강 → 이기어검으로 뻗어 나가요',
       up: '데미지 +6, 대기시간 -6%',
       max: 6,
-      create: () => ({ damage: 17, cooldown: 0.8, timer: 0.2, range: 82 }),
+      create: () => ({ damage: 17, cooldown: 0.8, timer: 0.2, range: 112 }),
       upgrade(w) { w.damage += 6; w.cooldown *= 0.94; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -593,7 +797,7 @@
         w.timer = w.cooldown * player.haste;
         const a = Math.atan2(target.y - player.y, target.x - player.x);
         const r = w.range * player.area * (stage >= 1 ? 1.4 : 1);
-        arcStrike(a, r, stage >= 1 ? 1.3 : 1.0, w.damage * (stage >= 1 ? 1.15 : 1), 10);
+        arcStrike(a, r, stage >= 1 ? 1.5 : 1.25, w.damage * (stage >= 1 ? 1.15 : 1), 10);
         const n = 1 + player.extra;
         for (let i = 0; i < n; i++) {
           const b = a + (i - (n - 1) / 2) * 0.3;
@@ -617,7 +821,7 @@
       desc: '눈앞을 치는 근접 권법. 경지가 오를수록 권풍 → 권강 → 백보신권으로 멀리 닿아요',
       up: '데미지 +7, 밀쳐내기 +4',
       max: 6,
-      create: () => ({ damage: 20, cooldown: 0.62, timer: 0.2, range: 66, push: 18 }),
+      create: () => ({ damage: 20, cooldown: 0.62, timer: 0.2, range: 92, push: 18 }),
       upgrade(w) { w.damage += 7; w.push += 4; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -628,7 +832,7 @@
         w.timer = w.cooldown * player.haste;
         const a = Math.atan2(target.y - player.y, target.x - player.x);
         const r = w.range * player.area;
-        arcStrike(a, r, 0.75, w.damage, w.push);
+        arcStrike(a, r, 1.05, w.damage, w.push);
         if (stage >= 1) {
           const fx0 = player.x + Math.cos(a) * r * 1.3, fy0 = player.y + Math.sin(a) * r * 1.3;
           ringBlast(fx0, fy0, 46 * player.area, w.damage * 0.8, w.push + 10, 'gold');
@@ -823,7 +1027,7 @@
     tagu: {
       sect: 'gaebang', name: () => '타구봉법', icon: () => '🥢',
       desc: '봉을 한 바퀴 휘둘러 둘러싼 요괴를 쳐내요', up: '데미지 +5, 범위 +8', max: 6,
-      create: () => ({ damage: 13, radius: 85, cooldown: 1.2, timer: 0.4 }),
+      create: () => ({ damage: 13, radius: 105, cooldown: 1.2, timer: 0.4 }),
       upgrade(w) { w.damage += 5; w.radius += 8; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
@@ -1962,6 +2166,10 @@
     e.hp -= amount;
     e.flash = 0.1;
     e.hurt = 0.14;
+    if (WEAPONS[dmgSrc] && (e.flairCd = (e.flairCd || 0) - 1) <= 0) {
+      const st = sectStyle(dmgSrc);
+      if (st) { hitFlair(st, e.x, e.y - 4, crit || e.type.boss); e.flairCd = 3; }
+    }
     if (!quiet && fx.length < 160) fx.push({ kind: 'spark', x: e.x - (kx / (Math.hypot(kx, ky) || 1)) * e.type.radius * 0.6, y: e.y - (ky / (Math.hypot(kx, ky) || 1)) * e.type.radius * 0.6 - 4, life: 0.16, max: 0.16, rot: Math.random() * Math.PI, crit });
     const k = Math.hypot(kx, ky) || 1;
     const p = e.type.prop ? 0 : e.type.boss || e.elite ? push / 6 : push;
@@ -2189,6 +2397,10 @@
       const p = projectiles[i];
       dmgSrc = p.src || 'item';
       p.life -= dt;
+      if (p.src && Math.random() < 0.3) {
+        const st = sectStyle(p.src);
+        if (st) flair(st, p.x, p.y, 1, 30, 0.45, 3);
+      }
       let dead = p.life <= 0;
       if (p.kind === 'boomerang') {
         p.spin = (p.spin || 0) + dt * 14;
@@ -2348,6 +2560,8 @@
       const drag = Math.max(0, 1 - 4 * dt);
       p.vx *= drag;
       p.vy *= drag;
+      if (p.fall) { p.vy += p.fall * dt * 3; p.vx += Math.sin(p.life * 6 + p.rot) * 30 * dt; }
+      if (p.spin) p.rot += p.spin * dt;
       p.life -= dt;
       if (p.life <= 0) particles.splice(i, 1);
     }
@@ -2376,7 +2590,12 @@
       dmgSrc = id;
       WEAPONS[id].update(w, dt);
       [projectiles, shells, zones, mines].forEach((arr, k) => { for (let i = before[k]; i < arr.length; i++) arr[i].src ??= id; });
-      if (fx.slice(fxBefore).some((f) => f.kind !== 'spark' && f.kind !== 'die') || before.some((n, k) => [projectiles, shells, zones, mines][k].length > n)) triggerAttack(projectiles.length > before[0] ? projectiles[projectiles.length - 1] : null);
+      if (fx.slice(fxBefore).some((f) => f.kind !== 'spark' && f.kind !== 'die' && f.kind !== 'bloom') || before.some((n, k) => [projectiles, shells, zones, mines][k].length > n)) {
+        triggerAttack(projectiles.length > before[0] ? projectiles[projectiles.length - 1] : null);
+        const st = sectStyle(id);
+        if (st && (w.flairCd = (w.flairCd || 0)) <= 0) { castFlair(st); w.flairCd = 0.35; }
+      }
+      if (w.flairCd > 0) w.flairCd -= dt;
     }
     dmgSrc = 'item';
     updateProjectiles(dt);
@@ -2508,6 +2727,19 @@
       if (f.kind === 'die') {
         const k = 1 - a;
         drawSprite(f.sprite, f.x, f.y - k * 10, { sx: f.sc * (1 + 0.5 * k), sy: f.sc * (1 - 0.7 * k), groundR: f.r, flash: k < 0.4, alpha: f.alpha * a });
+        continue;
+      }
+      if (f.kind === 'sigil') { drawSigil(f); continue; }
+      if (f.kind === 'bloom') {
+        const rr = f.r * (1.4 - a * 0.4);
+        ctx.fillStyle = `rgba(${f.glow}, ${0.35 * a})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, rr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * a})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, rr * 0.4, 0, Math.PI * 2);
+        ctx.fill();
         continue;
       }
       if (f.kind === 'arc') {
@@ -2869,17 +3101,7 @@
     drawShells();
     drawFx();
 
-    for (const p of particles) {
-      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
-      ctx.fillStyle = p.color;
-      const s = Math.max(1, p.size * (0.5 + 0.5 * p.life / p.max));
-      if (p.star) {
-        ctx.fillRect(p.x - s * 1.5, p.y - s / 2, s * 3, s);
-        ctx.fillRect(p.x - s / 2, p.y - s * 1.5, s, s * 3);
-      } else {
-        ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
-      }
-    }
+    for (const p of particles) drawParticle(p);
     ctx.globalAlpha = 1;
 
     ctx.font = 'bold 17px "Gowun Batang", serif';
