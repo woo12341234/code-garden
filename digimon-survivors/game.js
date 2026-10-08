@@ -7,7 +7,7 @@
   let viewW = 0, viewH = 0, dpr = 1;
 
   function resize() {
-    dpr = window.devicePixelRatio || 1;
+    dpr = Math.min(window.devicePixelRatio || 1, 2); // cap for phones with 3x screens
     viewW = window.innerWidth;
     viewH = window.innerHeight;
     canvas.width = Math.round(viewW * dpr);
@@ -3880,8 +3880,11 @@
     buildAchievements();
   }
 
+  const isTouch = window.matchMedia('(hover: none)').matches || 'ontouchstart' in window;
   function startGame() {
     if (state !== 'title' && state !== 'gameover' && state !== 'victory') return;
+    // Phones: go full screen when a run starts (ignored where unsupported, e.g. already installed as an app).
+    if (isTouch && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     resetGame();
     for (const el of [ui.start, ui.gameover, ui.choice, ui.pause, ui.achv, ui.shop, ui.questScreen]) el.classList.add('hidden');
     ui.hud.classList.remove('hidden');
@@ -3984,6 +3987,16 @@
   $('quest-btn').addEventListener('click', () => { buildQuests(); ui.questScreen.classList.remove('hidden'); });
   $('quest-close').addEventListener('click', () => ui.questScreen.classList.add('hidden'));
   ui.dashBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); dash(); });
+  $('pause-btn').addEventListener('pointerdown', (e) => { e.stopPropagation(); togglePause(); });
+  // Leaving the app (home button, a call, switching tabs) pauses the run.
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'playing') togglePause(); });
+  if (isTouch) {
+    document.body.classList.add('touch');
+    $('resume-btn').textContent = '계속';
+    $('controls-hint').textContent = '화면을 드래그해 이동 · 공격은 자동 · 오른쪽 아래 버튼: 경공 대시 · 필살기 · 왼쪽 아래 버튼: 일시정지';
+  }
+  // Installable web app (PWA): cache files for offline play when served over http(s).
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.__BUNDLED__) navigator.serviceWorker.register('sw.js').catch(() => {});
   ui.ultBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); ultimate(); });
   $('shop-close').addEventListener('click', () => ui.shop.classList.add('hidden'));
   $('refund-btn').addEventListener('click', refundShop);

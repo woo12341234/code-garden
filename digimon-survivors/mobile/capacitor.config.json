@@ -1,0 +1,8 @@
+{
+  "appId": "com.codegarden.yokaisurvivors",
+  "appName": "요괴 퇴치록",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#e9dfc6"
+  }
+}

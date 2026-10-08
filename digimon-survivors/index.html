@@ -2,7 +2,15 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#b8322a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="요괴 퇴치록">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/app/icon-192.png">
+<link rel="apple-touch-icon" href="assets/app/icon-180.png">
 <title>요괴 퇴치록</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,6 +38,7 @@
       <div id="kills"></div>
       <div id="gold"></div>
     </div>
+    <button id="pause-btn" aria-label="일시정지">Ⅱ</button>
     <div id="skill-bar">
       <button id="dash-btn" class="skill"><span>경공</span><small>Space</small></button>
       <button id="ult-btn" class="skill ult"><span>필살</span><small>Q</small></button>
@@ -58,7 +67,7 @@
     <p class="subtitle">협객을 골라 밤마다 몰려오는 요괴를 물리치세요</p>
     <p id="title-stats" class="hint"></p>
     <p class="teaser">무공을 극한까지 단련하면, 비급에 없던 무언가가 깨어난다고 하는데…</p>
-    <p class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
+    <p id="controls-hint" class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
     <div class="btn-row">
       <button id="start-btn" class="btn">출정</button>
       <button id="shop-btn" class="btn ghost">수련장</button>

@@ -1,0 +1,50 @@
+name: 요괴 퇴치록 - Android APK & web build
+
+on:
+  push:
+    paths:
+      - 'digimon-survivors/**'
+      - '.github/workflows/yokai-android.yml'
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package the web build (itch.io / Netlify / any static host)
+        working-directory: digimon-survivors
+        run: |
+          mkdir -p ../web-dist
+          cp index.html style.css game.js manifest.webmanifest sw.js ../web-dist/
+          cp -r assets ../web-dist/assets
+          rm -rf ../web-dist/assets/app/android ../web-dist/assets/README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yokai-survivors-web
+          path: web-dist
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: digimon-survivors/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Capacitor
+        run: npm install
+      - name: Create the Android project
+        run: npm run android:add
+      - name: Build debug APK
+        run: npm run android:apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yokai-survivors-apk
+          path: digimon-survivors/mobile/android/app/build/outputs/apk/debug/app-debug.apk

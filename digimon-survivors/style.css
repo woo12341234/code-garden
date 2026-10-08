@@ -401,3 +401,44 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 @keyframes hidden-glow { from { filter: drop-shadow(0 0 2px rgba(201, 154, 58, 0.6)); } to { filter: drop-shadow(0 0 7px rgba(255, 200, 80, 1)); } }
 .card.special.locked { background: linear-gradient(160deg, #efe4c4, #e2d09c); }
 #hero-list img.special { border: 2px solid var(--gold); box-shadow: 0 0 6px rgba(201, 154, 58, 0.8); }
+
+/* ---------- Mobile ---------- */
+html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+body { touch-action: none; }
+.overlay { touch-action: pan-y; padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+#status-panel { top: max(14px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); }
+#top-right { top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); }
+#skill-bar { right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); }
+#pause-btn {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: rgba(243, 234, 214, 0.85);
+  font-size: 18px; font-weight: 700;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 2px 2px 0 rgba(42, 34, 36, 0.3);
+}
+body.touch .card .key, body.touch .skill small { display: none; }
+body.touch .tool { padding: 8px 12px; }
+@media (max-width: 560px) {
+  #top-right { padding: 4px 8px; }
+  #stage-info { font-size: 11px; max-width: 150px; }
+  #kills, #gold { font-size: 11px; }
+  #weapon-row .pi { width: 16px; height: 16px; }
+  #pause-box { padding: 8px 12px; }
+  .btn { font-size: 28px; padding: 4px 26px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .overlay h2 { font-size: 36px; }
+  .card { padding: 8px 6px; }
+  .card .icon { height: 36px; }
+  #status-panel { transform: scale(0.85); transform-origin: top left; }
+  #top-right { transform: scale(0.85); transform-origin: top right; }
+}
+/* narrow portrait phones: the timer panel drops below the status panel so they never overlap */
+@media (max-width: 480px) and (orientation: portrait) {
+  #top-right { top: calc(max(10px, env(safe-area-inset-top)) + 128px); }
+}
