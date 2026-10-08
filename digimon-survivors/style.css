@@ -331,3 +331,12 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   .card .title { font-size: 15px; }
   .card .desc { font-size: 12px; }
 }
+
+/* ---------- Pixel icons (replace emoji) ---------- */
+.pi { width: 1.35em; height: 1.35em; vertical-align: -0.3em; margin: 0 1px; image-rendering: pixelated; }
+.card img.pi.big, .card .icon img.pi.big { width: 44px; height: 44px; margin: 0; }
+.card.shop-card .icon img.pi.big { width: 36px; height: 36px; }
+#weapon-row .pi { width: 20px; height: 20px; vertical-align: -5px; }
+.achv-icon .pi { width: 28px; height: 28px; vertical-align: middle; }
+#toast b .pi { width: 20px; height: 20px; vertical-align: -4px; }
+.tool .pi { width: 18px; height: 18px; vertical-align: -4px; }

@@ -112,6 +112,35 @@
     }));
   }
 
+  // Pixel-art badges (assets/icons) that stand in for emoji anywhere in the UI.
+  const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker"};
+  const EMOJI_RE = /\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
+  function iconImg(emoji, cls = 'pi') {
+    const name = ICON_FILES[emoji] || ICON_FILES[emoji.replace(/\uFE0F/g, '')] || ICON_FILES[emoji + '\uFE0F'];
+    if (!name) {
+      const span = document.createElement('span');
+      span.textContent = emoji;
+      return span;
+    }
+    const img = document.createElement('img');
+    img.src = spritePath(`icons/${name}`);
+    img.alt = emoji;
+    img.className = cls;
+    return img;
+  }
+  // Sets el's content to text, swapping each known emoji for its pixel icon.
+  function richText(el, text) {
+    const parts = [];
+    let last = 0;
+    for (const m of text.matchAll(EMOJI_RE)) {
+      if (m.index > last) parts.push(text.slice(last, m.index));
+      parts.push(iconImg(m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    el.replaceChildren(...parts);
+  }
+
   function pixelImg(key) {
     const img = document.createElement('img');
     img.src = spritePath(key);
@@ -1258,7 +1287,7 @@
     const t = toastQueue.shift();
     if (!t) { toastBusy = false; ui.toast.classList.remove('show'); return; }
     toastBusy = true;
-    ui.toastTitle.textContent = t[0];
+    richText(ui.toastTitle, t[0]);
     ui.toastSub.textContent = t[1];
     ui.toast.classList.add('show');
     setTimeout(() => { ui.toast.classList.remove('show'); setTimeout(nextToast, 350); }, 2600);
@@ -1514,7 +1543,7 @@
       const b = document.createElement('button');
       b.className = 'tool' + (field === 'banishes' && banishMode ? ' armed' : '');
       b.dataset.key = key;
-      b.textContent = `${icon} ${label} ${player[field]} [${key}]`;
+      richText(b, `${icon} ${label} ${player[field]} [${key}]`);
       b.disabled = player[field] <= 0;
       b.addEventListener('click', () => {
         if (state !== 'choice' || player[field] <= 0) return;
@@ -1553,14 +1582,14 @@
       } else {
         const icon = document.createElement('div');
         icon.className = 'icon';
-        icon.textContent = opt.icon;
+        icon.append(iconImg(opt.icon, 'pi big'));
         card.append(icon);
       }
       for (const [cls, text] of [['title', opt.title], ['stars', opt.stars], ['desc', opt.desc], ['key', `[${i + 1}]`]]) {
         if (!text) continue;
         const el = document.createElement('div');
         el.className = cls;
-        el.textContent = text;
+        richText(el, text);
         card.append(el);
       }
       card.addEventListener('click', () => {
@@ -2135,8 +2164,11 @@
     ui.timer.textContent = fmtTime(elapsed);
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
-    ui.weaponRow.textContent = Object.entries(player.weapons)
-      .map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join('  ');
+    const row = Object.entries(player.weapons).map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join(' ');
+    if (row !== ui.weaponRow.dataset.row) {
+      ui.weaponRow.dataset.row = row;
+      richText(ui.weaponRow, row);
+    }
   }
 
   // ---------- Render ----------
@@ -2460,7 +2492,7 @@
       el.className = done ? 'achv done' : 'achv';
       const icon = document.createElement('span');
       icon.className = 'achv-icon';
-      icon.textContent = done ? a.icon : '🔒';
+      icon.append(iconImg(done ? a.icon : '🔒'));
       const text = document.createElement('div');
       const name = document.createElement('b');
       name.textContent = a.name;
@@ -2475,10 +2507,10 @@
       const row = document.createElement('div');
       row.className = known ? 'book-row' : 'book-row unseen';
       const recipe = document.createElement('span');
-      recipe.textContent = known ? comboRecipe(id) : (c.partner ? `[${SECTS[WEAPONS[id].sect]} 오의] ??? + ???` : '??? + ???');
+      richText(recipe, known ? comboRecipe(id) : (c.partner ? `[${SECTS[WEAPONS[id].sect]} 오의] ??? + ???` : '??? + ???'));
       const result = document.createElement('span');
       result.className = 'result';
-      result.textContent = known ? `${c.icon} ${c.name}` : '???';
+      richText(result, known ? `${c.icon} ${c.name}` : '???');
       row.append(recipe, result);
       return row;
     }));
@@ -2511,7 +2543,8 @@
       for (const [cls, text] of [['icon', u.icon], ['title', u.name], ['stars', '★'.repeat(lv) + '☆'.repeat(u.max - lv)], ['desc', u.desc], ['key', maxed ? '완성' : `은자 ${shopCost(u)}냥`]]) {
         const d = document.createElement('div');
         d.className = cls;
-        d.textContent = text;
+        if (cls === 'icon') d.append(iconImg(text, 'pi big'));
+        else d.textContent = text;
         el.append(d);
       }
       el.addEventListener('click', () => {
@@ -2546,7 +2579,7 @@
       const row = document.createElement('div');
       row.className = 'book-row';
       const a = document.createElement('span');
-      a.textContent = name;
+      richText(a, name);
       const b = document.createElement('span');
       b.className = 'result';
       b.textContent = `${Math.round(v).toLocaleString()} (${Math.round((v / total) * 100)}%) · 초당 ${Math.round(v / Math.max(1, elapsed))}`;
@@ -2559,12 +2592,12 @@
     ui.pauseBuild.replaceChildren(...Object.entries(player.weapons).map(([id, w]) => {
       const el = document.createElement('span');
       el.className = 'chip';
-      el.textContent = `${weaponIcon(id)} ${weaponName(id)} ${w.evolved ? '★' : `Lv.${w.level}`}`;
+      richText(el, `${weaponIcon(id)} ${weaponName(id)} ${w.evolved ? '★' : `Lv.${w.level}`}`);
       return el;
     }), ...PASSIVES.filter((u) => player.picks[u.id]).map((u) => {
       const el = document.createElement('span');
       el.className = 'chip passive';
-      el.textContent = `${u.icon} ${u.title} ${player.picks[u.id]}`;
+      richText(el, `${u.icon} ${u.title} ${player.picks[u.id]}`);
       return el;
     }));
     ui.pauseDmg.replaceChildren(...damageReport());
@@ -2621,6 +2654,7 @@
   function togglePause() {
     if (state === 'playing') {
       state = 'paused';
+      ui.banner.classList.remove('show');
       buildPause();
       ui.pause.classList.remove('hidden');
     } else if (state === 'paused') {
