@@ -1171,22 +1171,22 @@
 
   // ---------- Passive upgrades ----------
   const PASSIVES = [
-    { id: 'hp', max: 5, icon: '💗', title: '단전호흡', desc: '최대 HP +20, HP 20 회복', apply(p) { p.maxHp += 20; p.hp = Math.min(p.maxHp, p.hp + 20); } },
-    { id: 'haste', max: 4, icon: '⏳', title: '쾌속', desc: '모든 무공 대기시간 -10%', apply(p) { p.haste *= 0.9; } },
-    { id: 'speed', max: 3, icon: '🍃', title: '경공', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
-    { id: 'magnet', max: 3, icon: '🧲', title: '흡성대법', desc: '엽전 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
-    { id: 'regen', max: 4, icon: '🍵', title: '운기조식', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
-    { id: 'crit', max: 4, icon: '🎯', title: '급소 찌르기', desc: '치명타 확률 +10%', apply(p) { p.crit += 0.1; } },
-    { id: 'xp', max: 3, icon: '📜', title: '깨달음', desc: '얻는 경험치 +15%', apply(p) { p.xpMul += 0.15; } },
-    { id: 'armor', max: 4, icon: '🛡️', title: '금강불괴', desc: '받는 피해 -8%', apply(p) { p.armor *= 0.92; } },
-    { id: 'area', max: 4, icon: '☯️', title: '내공', desc: '결계·장풍·폭염부·독안개 범위 +12%', apply(p) { p.area *= 1.12; } },
-    { id: 'extra', max: 2, icon: '👥', title: '분신술', desc: '비검·원월륜·검기·폭염부·종이학 발사 수 +1', apply(p) { p.extra++; } },
-    { id: 'luck', max: 3, icon: '🧧', title: '복주머니', desc: '복숭아·인삼·호리병·벽력탄이 더 자주 나와요', apply(p) { p.luck += 0.4; } },
+    { id: 'hp', max: 6, icon: '💗', title: '단전호흡', desc: '최대 HP +20, HP 20 회복', apply(p) { p.maxHp += 20; p.hp = Math.min(p.maxHp, p.hp + 20); } },
+    { id: 'haste', max: 6, icon: '⏳', title: '쾌속', desc: '모든 무공 대기시간 -10%', apply(p) { p.haste *= 0.9; } },
+    { id: 'speed', max: 6, icon: '🍃', title: '경공', desc: '이동 속도 +10%', apply(p) { p.speed *= 1.1; } },
+    { id: 'magnet', max: 6, icon: '🧲', title: '흡성대법', desc: '엽전 줍는 범위 +30%', apply(p) { p.pickupRadius *= 1.3; } },
+    { id: 'regen', max: 6, icon: '🍵', title: '운기조식', desc: '초당 HP 1 회복', apply(p) { p.regen += 1; } },
+    { id: 'crit', max: 6, icon: '🎯', title: '급소 찌르기', desc: '치명타 확률 +10%', apply(p) { p.crit += 0.1; } },
+    { id: 'xp', max: 6, icon: '📜', title: '깨달음', desc: '얻는 경험치 +15%', apply(p) { p.xpMul += 0.15; } },
+    { id: 'armor', max: 6, icon: '🛡️', title: '금강불괴', desc: '받는 피해 -8%', apply(p) { p.armor *= 0.92; } },
+    { id: 'area', max: 6, icon: '☯️', title: '내공', desc: '결계·장풍·폭염부·독안개 범위 +12%', apply(p) { p.area *= 1.12; } },
+    { id: 'extra', max: 6, icon: '👥', title: '분신술', desc: '비검·원월륜·검기·폭염부·종이학 발사 수 +1', apply(p) { p.extra++; } },
+    { id: 'luck', max: 6, icon: '🧧', title: '복주머니', desc: '복숭아·인삼·호리병·벽력탄이 더 자주 나와요', apply(p) { p.luck += 0.4; } },
   ];
   PASSIVES.push(
-    { id: 'dmg', max: 5, icon: '🩸', title: '혈기', desc: '모든 피해 +10%', apply(p) { p.dmgMul += 0.1; } },
-    { id: 'duration', max: 3, icon: '🕯️', title: '집중', desc: '독안개·회오리·지뢰부 지속시간 +20%', apply(p) { p.durMul += 0.2; } },
-    { id: 'pierce', max: 3, icon: '🏹', title: '관통술', desc: '비검·종이학이 요괴를 하나 더 꿰뚫어요', apply(p) { p.pierce++; } },
+    { id: 'dmg', max: 6, icon: '🩸', title: '혈기', desc: '모든 피해 +10%', apply(p) { p.dmgMul += 0.1; } },
+    { id: 'duration', max: 6, icon: '🕯️', title: '집중', desc: '독안개·회오리·지뢰부 지속시간 +20%', apply(p) { p.durMul += 0.2; } },
+    { id: 'pierce', max: 6, icon: '🏹', title: '관통술', desc: '비검·종이학이 요괴를 하나 더 꿰뚫어요', apply(p) { p.pierce++; } },
   );
   const PASSIVE_BY_ID = Object.fromEntries(PASSIVES.map((u) => [u.id, u]));
   // Offered to fill the row once everything else is maxed out.
@@ -1317,13 +1317,15 @@
   const modalQueue = [];
   const keys = new Set();
 
+  const BASE_SPEED_MUL = 1.15; // every hero moves 15% faster than their listed speed
+
   function resetGame(heroId = 'cheongpung') {
     const hero = HEROES[heroId];
     player = {
       x: 0, y: 0,
       hero: heroId,
       radius: 14.4,
-      speed: hero.speed, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
+      speed: hero.speed * BASE_SPEED_MUL, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
       crit: 0, critMul: 2, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0, killHeal: 0, combos: 0,
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
