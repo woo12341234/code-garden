@@ -1,4 +1,4 @@
-name: 요괴 퇴치록 - Android APK & web build
+name: 요괴 퇴치록 - Android APK, iOS IPA & web build
 
 on:
   push:
@@ -48,3 +48,32 @@ jobs:
         with:
           name: yokai-survivors-apk
           path: digimon-survivors/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: digimon-survivors/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Capacitor
+        run: npm install
+      - name: Create the iOS project
+        run: npm run ios:add
+      - name: Build unsigned app
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Package unsigned IPA (sign it yourself with Sideloadly / AltStore before installing)
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr yokai-survivors-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yokai-survivors-ios-unsigned-ipa
+          path: digimon-survivors/mobile/yokai-survivors-unsigned.ipa
