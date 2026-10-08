@@ -30,15 +30,33 @@
     </div>
   </div>
 
+  <div id="toast" class="panel"><b id="toast-title"></b><small id="toast-sub"></small></div>
+
+  <div id="achv-screen" class="overlay hidden">
+    <div id="achv-box" class="panel">
+      <div class="achv-head"><h2>업적</h2><button id="achv-close" class="close" aria-label="닫기">✕</button></div>
+      <h3>업적 <span id="achv-count"></span></h3>
+      <div id="achv-list"></div>
+      <h3>무공 비급 <span id="book-count"></span></h3>
+      <p class="hint">합성법은 직접 찾아야 기록돼요.</p>
+      <div id="book-list"></div>
+      <h3>협객</h3>
+      <div id="hero-list"></div>
+    </div>
+  </div>
+
   <div id="banner"><div id="banner-main"></div><div id="banner-sub"></div></div>
 
   <div id="start-screen" class="overlay">
     <h1>요괴 퇴치록</h1>
     <p class="subtitle">협객을 골라 밤마다 몰려오는 요괴를 물리치세요</p>
-    <p id="dex-count" class="hint"></p>
-    <div id="evo-chart" class="panel"></div>
+    <p id="title-stats" class="hint"></p>
+    <p class="teaser">무공을 극한까지 단련하면, 비급에 없던 무언가가 깨어난다고 하는데…</p>
     <p class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · P 일시정지</p>
-    <button id="start-btn" class="btn">출정</button>
+    <div class="btn-row">
+      <button id="start-btn" class="btn">출정</button>
+      <button id="achv-btn" class="btn ghost">업적</button>
+    </div>
   </div>
 
   <div id="choice-screen" class="overlay hidden">
@@ -56,7 +74,10 @@
     <h2>쓰러졌다...</h2>
     <img id="gameover-portrait" class="pixel" alt="">
     <p id="gameover-stats" class="subtitle"></p>
-    <button id="restart-btn" class="btn">다시 출정</button>
+    <div class="btn-row">
+      <button id="restart-btn" class="btn">다시 출정</button>
+      <button id="achv-btn-2" class="btn ghost">업적</button>
+    </div>
   </div>
 </div>
 <script src="game.js"></script>

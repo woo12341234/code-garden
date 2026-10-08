@@ -615,12 +615,114 @@ def treasure():
     s.save('treasure.png')
 
 
+# ============ More heroes ============
+
+def songhwa():
+    """약사: green robe, herb basket."""
+    s = Sprite(24)
+    s.ellipse(18.6, 17.8, 2.4, 2.0, rgba(170, 125, 80))
+    s.ellipse(18.6, 16.4, 1.8, 0.8, rgba(110, 170, 90), shade=False, hl=False)
+    _human(s, rgba(96, 140, 86), rgba(232, 214, 150))
+    _head(s)
+    s.ellipse(12, 6.0, 5.9, 3.0, HAIR, hl=False, ymax=8)
+    s.ellipse(12, 3.0, 2.2, 1.6, HAIR, hl=False)
+    s.put(14, 3, rgba(230, 120, 140))
+    s.eyes(9, 9, h=2, w=1, shine=False)
+    s.outline()
+    s.save('songhwa.png')
+
+
+def muyeong():
+    """검귀: pale swordsman in grey with two swords."""
+    s = Sprite(24)
+    for sx in (1, -1):
+        x0 = 12 + sx * 6
+        s.poly([(x0, 13), (x0 + sx * 1.2, 13), (x0 + sx * 6, 3), (x0 + sx * 5, 2.6)], STEEL)
+    _human(s, rgba(110, 112, 124), rgba(50, 48, 60))
+    _head(s, 9, rgba(236, 226, 214))
+    s.ellipse(12, 7.6, 6.2, 4.6, rgba(230, 230, 235), hl=False, ymax=9)
+    s.poly([(6, 8), (8, 8), (7.6, 14), (6.2, 13)], rgba(230, 230, 235))
+    s.poly([(16, 8), (18, 8), (17.8, 13), (16.4, 14)], rgba(230, 230, 235))
+    s.eyes(9, 9, h=2, w=1, shine=False, color=rgba(120, 160, 220))
+    s.outline()
+    s.save('muyeong.png')
+
+
+def geumbi():
+    """부적술사: yellow robe covered in talismans."""
+    s = Sprite(24)
+    _human(s, rgba(222, 186, 80), RED)
+    for x, y in [(8, 18), (15, 18), (11, 20)]:
+        s.poly([(x, y), (x + 1.4, y), (x + 1.4, y + 2.4), (x, y + 2.4)], rgba(250, 236, 180))
+        s.put(x, y + 1, RED)
+    _head(s)
+    s.ellipse(12, 6.0, 5.9, 3.0, HAIR, hl=False, ymax=8)
+    s.poly([(7, 6.4), (17, 6.4), (17, 7.6), (7, 7.6)], RED)
+    s.eyes(9, 9, h=2, w=1, shine=False)
+    s.outline()
+    s.save('geumbi.png')
+
+
+def seola():
+    """설녀: white hanbok, pale blue hair, snow."""
+    s = Sprite(24)
+    s.ellipse(12, 12.6, 6.4, 7.4, rgba(200, 225, 245), hl=False)
+    _human(s, rgba(236, 244, 250), rgba(120, 170, 220))
+    _head(s, 9, rgba(250, 240, 236))
+    s.ellipse(12, 5.8, 5.9, 2.8, rgba(200, 225, 245), hl=False, ymax=8)
+    s.eyes(9, 9, h=2, w=1, shine=False, color=rgba(90, 140, 200))
+    s.outline()
+    for x, y in [(3, 4), (20, 7), (2, 15)]:
+        s.put(x, y, WHITE)
+    s.save('seola.png')
+
+
+def cheonma():
+    """천마 (unlockable): black and crimson demon lord, horned crown."""
+    s = Sprite(24)
+    s.poly([(5, 13.4), (19, 13.4), (22, 23), (2, 23)], rgba(40, 30, 36))
+    _human(s, rgba(120, 24, 36), rgba(30, 24, 28), wide=0.6)
+    _head(s, 9, rgba(236, 214, 200))
+    s.ellipse(12, 6.4, 6.0, 3.2, HAIR, hl=False, ymax=8)
+    s.poly_sym([(7.6, 5.4), (5.4, 0.6), (9.4, 4.4)], rgba(200, 40, 40))
+    s.eyes(9, 9, h=2, w=1, shine=False, color=rgba(230, 40, 40))
+    s.outline()
+    s.save('cheonma.png')
+
+
+def sansin():
+    """산신령 (unlockable): white-bearded elder with a staff."""
+    s = Sprite(24)
+    s.poly([(18.6, 22.6), (19.8, 22.6), (19.8, 4), (18.6, 4)], rgba(150, 105, 60))
+    s.ellipse(19.2, 3.4, 1.6, 1.6, rgba(120, 190, 90), shade=False, hl=False)
+    _human(s, rgba(240, 238, 228), rgba(110, 160, 90))
+    _head(s, 9)
+    s.ellipse(12, 6.0, 5.9, 3.0, rgba(245, 245, 245), hl=False, ymax=8)
+    s.poly([(8.6, 11), (15.4, 11), (13.6, 17.6), (12, 18.6), (10.4, 17.6)], rgba(245, 245, 245))
+    for x in (9, 10):
+        s.put(x, 9, EYE)
+        s.put(s.mirror_x(x), 9, EYE)
+    s.outline()
+    s.save('sansin.png')
+
+
+def icicle():
+    s = Sprite(10)
+    s.poly([(3.4, 0.6), (6.6, 0.6), (5, 9.6)], rgba(190, 230, 255))
+    s.put(4, 2, WHITE)
+    s.put(4, 3, WHITE)
+    s.outline()
+    s.save('icicle.png')
+
+
 if __name__ == '__main__':
     for fn in (cheongpung, unhak, yeoubi, cheolsan, dallae, yawol,
                wisp, dokkaebi, crow, jangseung, wongwi, meok, gangsi,
                daedokkaebi, imugi, heukyo,
                sword, foxfire, chakram, crane, talisman,
                peach, ginseng, gourd, thunderball, treasure):
+        fn()
+    for fn in (songhwa, muyeong, geumbi, seola, cheonma, sansin, icicle):
         fn()
     coin('coin.png', rgba(205, 140, 70), 10)
     coin('coin_gold.png', rgba(235, 190, 70), 12)

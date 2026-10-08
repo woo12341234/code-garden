@@ -204,16 +204,57 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .card .desc { font-size: 13px; line-height: 1.5; opacity: 0.85; }
 .card .key { font-size: 11px; opacity: 0.45; margin-top: 2px; }
 
-/* ---------- Combo book (title screen) ---------- */
-#evo-chart {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 28px;
-  padding: 14px 20px;
-  max-width: 100%;
-  width: 760px;
-  text-align: left;
+/* ---------- Title extras ---------- */
+.teaser { font-size: 14px; color: var(--red); font-style: italic; }
+.btn-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.btn.ghost { background: var(--paper); color: var(--ink); border-color: var(--ink); }
+
+/* ---------- Hero cards ---------- */
+.card.hero { width: 180px; }
+.card.hero img { width: 72px; height: 72px; }
+.card.locked { cursor: not-allowed; opacity: 0.75; }
+.card.locked img { filter: brightness(0); opacity: 0.35; }
+.card.locked:hover { transform: none; border-color: var(--ink); }
+
+/* ---------- Toast ---------- */
+#toast {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px;
+  min-width: 240px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -120%);
+  transition: opacity 0.3s, transform 0.3s;
+  border-color: var(--gold);
 }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+#toast b { color: var(--red); font-size: 16px; }
+#toast small { font-size: 13px; }
+
+/* ---------- Achievements window ---------- */
+#achv-screen { z-index: 25; justify-content: flex-start; }
+#achv-box { width: 820px; max-width: 100%; padding: 16px 22px 22px; text-align: left; }
+.achv-head { display: flex; justify-content: space-between; align-items: center; }
+.achv-head h2 { font-size: 46px; }
+.close { font-size: 22px; background: none; border: none; padding: 4px 10px; }
+#achv-box h3 { margin: 14px 0 6px; font-size: 17px; border-bottom: 2px solid var(--ink); padding-bottom: 2px; }
+#achv-box h3 span { color: var(--red); font-size: 14px; margin-left: 6px; }
+#achv-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
+.achv { display: flex; gap: 10px; align-items: center; padding: 5px 0; opacity: 0.55; }
+.achv.done { opacity: 1; }
+.achv-icon { font-size: 22px; width: 30px; text-align: center; }
+.achv b { display: block; font-size: 14px; }
+.achv.done b { color: var(--red); }
+.achv small { font-size: 12px; }
+#book-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 28px; }
 .book-row {
   display: flex;
   justify-content: space-between;
@@ -223,7 +264,10 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   font-size: 14px;
 }
 .book-row .result { font-weight: 700; color: var(--red); white-space: nowrap; }
-.book-row.unseen .result { color: rgba(42, 34, 36, 0.35); }
+.book-row.unseen { opacity: 0.45; }
+#hero-list { display: flex; flex-wrap: wrap; gap: 6px; }
+#hero-list img { width: 48px; height: 48px; background: #e6d9bb; border: 1px solid rgba(42, 34, 36, 0.3); }
+#hero-list img.locked { filter: brightness(0); opacity: 0.3; }
 
 #gameover-portrait { width: 112px; height: 112px; }
 
@@ -240,8 +284,9 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   #timer { font-size: 18px; }
   #banner { font-size: 38px; }
   #banner-sub { font-size: 13px; white-space: normal; width: 90vw; }
-  #evo-chart { grid-template-columns: 1fr; padding: 10px 12px; }
-  .book-row { font-size: 13px; }
+  #achv-list, #book-list { grid-template-columns: 1fr; }
+  .achv-head h2 { font-size: 36px; }
+  .card.hero { width: 150px; }
   .card { width: 104px; padding: 10px 6px; }
   .card.big { width: 150px; }
   .card img { width: 72px; height: 72px; }
