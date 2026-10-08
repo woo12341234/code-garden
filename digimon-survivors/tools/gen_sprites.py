@@ -947,6 +947,73 @@ def bulgasari():
     s.save('bulgasari.png')
 
 
+# ============ Roguelite extras ============
+
+def seokdeung():
+    """석등: stone lantern that breaks into loot."""
+    s = Sprite(16, 20)
+    stone = rgba(176, 170, 156)
+    s.poly([(3, 17), (13, 17), (13, 19.6), (3, 19.6)], mul(stone, 0.85))
+    s.poly([(6, 11), (10, 11), (10, 17), (6, 17)], stone)
+    s.poly([(3.4, 9), (12.6, 9), (12.6, 11.4), (3.4, 11.4)], mul(stone, 0.9))
+    s.poly([(4.4, 4.4), (11.6, 4.4), (11.6, 9), (4.4, 9)], stone)
+    s.poly([(6.2, 5.6), (9.8, 5.6), (9.8, 8.2), (6.2, 8.2)], rgba(255, 200, 90))
+    s.put(7, 6, WHITE)
+    s.poly([(1.6, 4.8), (14.4, 4.8), (8, 0.6)], mul(stone, 0.75))
+    s.outline()
+    s.save('seokdeung.png')
+
+
+def eunja():
+    """은자: silver ingot (gold currency kept between runs)."""
+    s = Sprite(12)
+    silver = rgba(206, 212, 222)
+    s.poly([(0.6, 5), (11.4, 5), (9.6, 10), (2.4, 10)], silver)
+    s.ellipse(6, 5.4, 3, 2.4, mix(silver, WHITE, 0.3), hl=False)
+    s.put(3, 7, WHITE)
+    s.outline()
+    s.save('eunja.png')
+
+
+def jumeoni():
+    """복주머니 full of silver."""
+    s = Sprite(14)
+    silk = rgba(200, 50, 60)
+    s.ellipse(7, 9, 5.4, 4.4, silk)
+    s.poly([(4.4, 3), (9.6, 3), (8.4, 5.6), (5.6, 5.6)], silk)
+    s.poly([(4.4, 5), (9.6, 5), (9.6, 6.2), (4.4, 6.2)], GOLD)
+    s.poly([(5.6, 8), (8.4, 8), (8.4, 10.6), (5.6, 10.6)], GOLD)
+    s.outline()
+    s.save('jumeoni.png')
+
+
+def bangul():
+    """방울: shaman bell that freezes every yokai on screen."""
+    s = Sprite(12)
+    s.ellipse(6, 7.4, 3.8, 3.6, GOLD)
+    s.poly([(5, 1), (7, 1), (7, 4), (5, 4)], rgba(160, 110, 50))
+    s.poly([(2.4, 8.4), (9.6, 8.4), (9.6, 9.2), (2.4, 9.2)], mul(GOLD, 0.7))
+    s.put(6, 10, INK)
+    s.outline()
+    s.save('bangul.png')
+
+
+def jeoseung():
+    """저승사자 (final boss): black gat, black robe, pale face."""
+    s = Sprite(32)
+    robe = rgba(36, 32, 40)
+    s.poly([(8.6, 14), (23.4, 14), (27, 30.6), (5, 30.6)], robe)
+    s.poly([(15, 14), (17, 14), (17.6, 30), (14.4, 30)], mul(robe, 1.6))
+    s.ellipse_sym(6.6, 20, 2.8, 5.2, robe)
+    s.ellipse(16, 11.6, 5.4, 5.6, rgba(226, 228, 230))
+    s.poly([(10.6, 6.6), (21.4, 6.6), (20.6, 1), (11.4, 1)], robe)
+    s.ellipse(16, 7.2, 11.4, 1.8, robe, shade=False, hl=False)
+    s.eyes(13, 11, h=1, w=2, shine=False, color=INK)
+    s.poly([(13.4, 14.6), (18.6, 14.6), (18.6, 15.2), (13.4, 15.2)], rgba(120, 30, 40))
+    s.outline()
+    s.save('jeoseung.png')
+
+
 if __name__ == '__main__':
     for fn in (cheongpung, unhak, yeoubi, cheolsan, dallae, yawol,
                wisp, dokkaebi, crow, jangseung, wongwi, meok, gangsi,
@@ -956,7 +1023,8 @@ if __name__ == '__main__':
         fn()
     for fn in (songhwa, muyeong, geumbi, seola, cheonma, sansin, icicle,
                baekmae, palgeol, dangyu, namgung, maengju, petal, needle, bottle, palm, bigsword, yinyang,
-               aemi, gonryun, jegal, eodukssini, bulgasari):
+               aemi, gonryun, jegal, eodukssini, bulgasari,
+               seokdeung, eunja, jumeoni, bangul, jeoseung):
         fn()
     coin('coin.png', rgba(205, 140, 70), 10)
     coin('coin_gold.png', rgba(235, 190, 70), 12)

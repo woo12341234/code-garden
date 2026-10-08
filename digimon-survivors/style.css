@@ -272,6 +272,41 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 #hero-list img.locked { filter: brightness(0); opacity: 0.3; }
 
 #gameover-portrait { width: 112px; height: 112px; }
+#gold { font-size: 13px; color: #6a6f7a; font-weight: 700; }
+
+/* ---------- Level-up tools (reroll / skip / banish) ---------- */
+.tool-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.tool {
+  font-size: 14px;
+  padding: 5px 12px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+}
+.tool:disabled { opacity: 0.35; cursor: default; }
+.tool.armed { background: var(--red); color: var(--paper); border-color: var(--red-dark); }
+
+/* ---------- Pause / results ---------- */
+#pause-box { width: 640px; max-width: 100%; padding: 12px 20px 16px; text-align: left; }
+#pause-box h3 { margin: 10px 0 6px; font-size: 16px; border-bottom: 2px solid var(--ink); }
+#pause-build { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; padding: 2px 8px; border: 1px solid var(--ink); border-radius: 12px; background: #fbf4e2; }
+.chip.passive { border-style: dashed; }
+.dmg-list { display: grid; gap: 0 20px; }
+#gameover-dmg { width: 560px; max-width: 100%; padding: 8px 16px; text-align: left; }
+#gameover-dmg:empty { display: none; }
+
+/* ---------- 수련장 ---------- */
+#shop-screen { z-index: 25; justify-content: flex-start; }
+#shop-box { width: 860px; max-width: 100%; padding: 16px 22px 18px; }
+#shop-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+.card.shop-card { width: 150px; padding: 10px 8px 8px; }
+.card.shop-card .icon { font-size: 28px; height: 36px; }
+.card.shop-card .title { font-size: 16px; }
+.card.shop-card .key { font-size: 13px; opacity: 0.9; color: var(--red-dark); font-weight: 700; }
+.card.shop-card:disabled { cursor: default; opacity: 0.5; transform: none; }
+.card.shop-card.maxed { opacity: 0.8; border-color: var(--gold); }
+.linklike { background: none; border: none; text-decoration: underline; font-size: 13px; }
 
 /* ---------- Phones ---------- */
 @media (max-width: 560px) {
@@ -289,6 +324,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   #achv-list, #book-list { grid-template-columns: 1fr; }
   .achv-head h2 { font-size: 36px; }
   .card.hero { width: 150px; }
+  .card.shop-card { width: 46%; }
   .card { width: 104px; padding: 10px 6px; }
   .card.big { width: 150px; }
   .card img { width: 72px; height: 72px; }

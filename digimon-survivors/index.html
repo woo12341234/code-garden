@@ -27,6 +27,7 @@
     <div id="top-right" class="panel">
       <div id="timer">00:00</div>
       <div id="kills"></div>
+      <div id="gold"></div>
     </div>
   </div>
 
@@ -55,7 +56,17 @@
     <p class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · P 일시정지</p>
     <div class="btn-row">
       <button id="start-btn" class="btn">출정</button>
+      <button id="shop-btn" class="btn ghost">수련장</button>
       <button id="achv-btn" class="btn ghost">업적</button>
+    </div>
+  </div>
+
+  <div id="shop-screen" class="overlay hidden">
+    <div id="shop-box" class="panel">
+      <div class="achv-head"><h2>수련장</h2><button id="shop-close" class="close" aria-label="닫기">✕</button></div>
+      <p class="subtitle">요괴를 물리치고 모은 은자로 영구히 강해져요 · <b id="shop-gold"></b></p>
+      <div id="shop-list"></div>
+      <p class="hint"><button id="refund-btn" class="linklike">수련 초기화 (은자 전부 돌려받기)</button></p>
     </div>
   </div>
 
@@ -63,19 +74,33 @@
     <h2 id="choice-title"></h2>
     <p id="choice-subtitle" class="subtitle"></p>
     <div id="choice-cards"></div>
+    <div id="choice-tools" class="tool-row"></div>
   </div>
 
   <div id="pause-screen" class="overlay hidden">
     <h2>잠시 숨 고르는 중</h2>
-    <p class="subtitle">P 키를 누르면 다시 싸워요</p>
+    <div id="pause-box" class="panel">
+      <p id="pause-stats" class="hint"></p>
+      <h3>무공 · 심법</h3>
+      <div id="pause-build"></div>
+      <h3>무공별 피해</h3>
+      <div id="pause-dmg" class="dmg-list"></div>
+    </div>
+    <div class="btn-row">
+      <button id="resume-btn" class="btn">계속 (Esc)</button>
+      <button id="quit-btn" class="btn ghost">로비로 나가기</button>
+    </div>
   </div>
 
   <div id="gameover-screen" class="overlay hidden">
-    <h2>쓰러졌다...</h2>
+    <h2 id="gameover-title">쓰러졌다...</h2>
     <img id="gameover-portrait" class="pixel" alt="">
     <p id="gameover-stats" class="subtitle"></p>
+    <div id="gameover-dmg" class="dmg-list panel"></div>
     <div class="btn-row">
+      <button id="continue-btn" class="btn hidden">계속 싸우기</button>
       <button id="restart-btn" class="btn">다시 출정</button>
+      <button id="lobby-btn" class="btn ghost">로비</button>
       <button id="achv-btn-2" class="btn ghost">업적</button>
     </div>
   </div>
