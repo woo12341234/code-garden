@@ -2204,7 +2204,7 @@
     ui.banner.classList.remove('show');
     if (m.type === 'hero') {
       showChoice('누구로 요괴를 물리칠까요?', '협객마다 시작 무공과 특성이 달라요', Object.entries(HEROES).sort((x, y) => !heroUnlocked(x[0]) - !heroUnlocked(y[0])).map(([id, H]) => (heroUnlocked(id) ? {
-        img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait} · 숙련 Lv.${masteryLevel(id)}`, hero: true,
+        img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait} · 숙련 Lv.${masteryLevel(id)}`, hero: true, special: !!H.unlock,
         pick: () => {
           resetGame(id);
           enterStage(0);
@@ -2213,7 +2213,7 @@
           updateHud();
         },
       } : {
-        img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true,
+        img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true, special: true,
       })));
     } else if (m.type === 'arcana') {
       showChoice('비전서', '이번 판의 규칙을 바꿀 비전서 한 권을 골라요', arcanaOffers());
@@ -2280,7 +2280,7 @@
     ui.choiceCards.replaceChildren();
     options.forEach((opt, i) => {
       const card = document.createElement('button');
-      card.className = `card${opt.big ? ' big' : ''}${opt.hero ? ' hero' : ''}${opt.combo ? ' combo' : ''}${opt.sect ? ' sect' : ''}${opt.locked ? ' locked' : ''}`;
+      card.className = `card${opt.big ? ' big' : ''}${opt.hero ? ' hero' : ''}${opt.combo ? ' combo' : ''}${opt.sect ? ' sect' : ''}${opt.locked ? ' locked' : ''}${opt.special ? ' special' : ''}`;
       if (opt.img) {
         card.append(pixelImg(opt.img));
       } else {
@@ -3774,7 +3774,7 @@
     ui.heroList.replaceChildren(...Object.keys(HEROES).map((id) => {
       const img = pixelImg(id);
       img.title = heroUnlocked(id) ? `${HEROES[id].name} · ${HEROES[id].role}` : '???';
-      if (!heroUnlocked(id)) img.className = 'locked';
+      img.className = [HEROES[id].unlock ? 'special' : '', heroUnlocked(id) ? '' : 'locked'].join(' ').trim();
       return img;
     }));
     const done = progress.achievements.length;

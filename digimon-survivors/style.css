@@ -374,3 +374,30 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 /* small inline icons inside cards (e.g. the lock in "🔒 ???") must not take the big portrait size */
 .card img.pi { width: 1.35em; height: 1.35em; }
 .card.locked img.pi { filter: none; opacity: 0.8; }
+
+/* ---------- Hidden (unlockable) heroes ---------- */
+.card.special {
+  position: relative;
+  border-color: var(--gold);
+  background: linear-gradient(160deg, #fbf1d2 0%, #f3e2b4 55%, #ecd59a 100%);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(201, 154, 58, 0.55), 3px 3px 0 rgba(42, 34, 36, 0.3);
+}
+.card.special::before {
+  content: '秘 히든';
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--paper);
+  background: var(--red);
+  border: 2px solid var(--gold);
+  border-radius: 3px;
+  transform: rotate(6deg);
+}
+.card.special .title { color: var(--red-dark); }
+.card.special:not(.locked) img { filter: drop-shadow(0 0 4px rgba(201, 154, 58, 0.9)); animation: hidden-glow 1.8s ease-in-out infinite alternate; }
+@keyframes hidden-glow { from { filter: drop-shadow(0 0 2px rgba(201, 154, 58, 0.6)); } to { filter: drop-shadow(0 0 7px rgba(255, 200, 80, 1)); } }
+.card.special.locked { background: linear-gradient(160deg, #efe4c4, #e2d09c); }
+#hero-list img.special { border: 2px solid var(--gold); box-shadow: 0 0 6px rgba(201, 154, 58, 0.8); }
