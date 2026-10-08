@@ -875,6 +875,183 @@ def _(g):
     g.star(13.6, 2, 2.4, 0.8, 4, FLAME)
 
 
+# ---------- dedicated technique glyphs ----------
+WGLYPH = {}
+
+
+def wglyph(name):
+    def deco(fn):
+        WGLYPH[name] = fn
+        return fn
+    return deco
+
+
+@wglyph('orbit')
+def _(g):
+    for i in range(3):
+        a = math.radians(-90 + i * 120)
+        x, y = 8 + math.cos(a) * 4.6, 8.6 + math.sin(a) * 4.6
+        g.ellipse(x, y + 1, 2, 2, SKY, shade=False, hl=False)
+        g.poly([(x - 1.8, y + 1), (x + 1.8, y + 1), (x + 0.4, y - 3)], SKY)
+        g.put(x, y + 1, WHITE)
+    g.ring(8, 8.6, 5.6, 0.6, rgba(150, 200, 255))
+
+
+@wglyph('lightning')
+def _(g):
+    g.rect(2.6, 1, 9.4, 15, PAPER)
+    g.line(6, 3, 6, 12, RED, 1)
+    g.line(4, 6, 8, 6, RED, 0.8)
+    g.poly([(12.6, 1), (9.6, 8), (12, 8), (10.4, 15), (15, 6.4), (12.6, 6.4), (14.6, 1)], FLAME)
+
+
+@wglyph('aura')
+def _(g):
+    pts = [(8 + math.cos(math.radians(30 + i * 60)) * 7, 8 + math.sin(math.radians(30 + i * 60)) * 7) for i in range(6)]
+    g.poly(pts, rgba(120, 90, 40))
+    inner = [(8 + math.cos(math.radians(30 + i * 60)) * 5, 8 + math.sin(math.radians(30 + i * 60)) * 5) for i in range(6)]
+    g.poly(inner, rgba(255, 220, 120))
+    for i in range(6):
+        g.line(*pts[i], *pts[(i + 1) % 6], GOLD, 1.2)
+    g.ellipse(8, 8, 2, 2, WHITE, shade=False, hl=False)
+
+
+@wglyph('quake')
+def _(g):
+    g.ring(9, 8, 7.4, 1.2, rgba(220, 230, 240), 300, 60)
+    g.ring(9, 8, 5, 1, rgba(220, 230, 240), 310, 50)
+    g.ellipse(5, 9, 3.6, 3.6, rgba(240, 200, 160))
+    for i, y in enumerate((4.4, 6.2, 8, 9.8)):
+        g.rect(7, y, 10.4 - i * 0.4, y + 1.4, rgba(240, 200, 160))
+    g.rect(1, 7.4, 3, 11, rgba(200, 60, 50))
+
+
+@wglyph('firework')
+def _(g):
+    g.rect(4, 4, 10.6, 15, PAPER)
+    g.line(7.3, 6, 7.3, 13, RED, 1)
+    flame(g, 11, 8.4, 8)
+    g.put(3, 2, FLAME)
+    g.put(13, 12, FIRE)
+
+
+@wglyph('thorn')
+def _(g):
+    cloud(g, 8, rgba(140, 210, 90))
+    g.ellipse(6, 6, 2.4, 2, rgba(170, 120, 220), shade=False, hl=False)
+    g.ellipse(8, 11, 1.6, 1.6, BONE, shade=False, hl=False)
+    g.put(7, 11, INK)
+    g.put(9, 11, INK)
+
+
+@wglyph('slash')
+def _(g):
+    g.line(2, 2, 14, 14, WHITE, 2)
+    g.line(14, 2, 2, 14, WHITE, 2)
+    g.line(3, 3, 13, 13, rgba(200, 60, 60), 0.6)
+    g.line(13, 3, 3, 13, rgba(200, 60, 60), 0.6)
+
+
+@wglyph('icicle')
+def _(g):
+    for x, y0, L in [(4, 1, 9), (8.4, 2, 12), (12.6, 1, 8)]:
+        g.poly([(x - 1.6, y0), (x + 1.6, y0), (x, y0 + L)], ICE)
+        g.line(x - 0.4, y0 + 1, x - 0.2, y0 + L - 3, WHITE, 0.6)
+
+
+@wglyph('geomsul')
+def _(g):
+    g.ring(8, 9, 7.4, 1.6, rgba(220, 240, 255), 190, 350)
+    blade(g, 4, 14, 12.6, 3.4)
+
+
+@wglyph('plum')
+def _(g):
+    blade(g, 3, 14, 13, 3)
+    for x, y in [(11.6, 11), (4, 4.6)]:
+        for i in range(5):
+            a = math.radians(-90 + i * 72)
+            g.ellipse(x + math.cos(a) * 1.6, y + math.sin(a) * 1.6, 1.3, 1.3, PINK, shade=False, hl=False)
+        g.put(x, y, FLAME)
+
+
+@wglyph('taiji')
+def _(g):
+    ICONS['taiji'][1](g)
+    g.line(3, 13, 13, 3, STEEL, 1.4)
+    g.line(3.4, 12.6, 5, 11, GOLD, 1.2)
+
+
+@wglyph('yangui')
+def _(g):
+    g.ring(8, 8, 6.6, 0.8, rgba(150, 190, 255))
+    blade(g, 2.6, 8, 13.4, 3, guard=WHITE)
+    blade(g, 13.4, 8, 2.6, 13, guard=rgba(40, 34, 44))
+
+
+@wglyph('geumgang')
+def _(g):
+    g.ellipse(8, 9, 5.6, 5.6, GOLD, ymax=10)
+    g.rect(2.4, 9, 13.6, 12.6, GOLD)
+    g.rect(1.6, 12, 14.4, 13.6, mul(GOLD, 0.7))
+    g.rect(7, 1.4, 9, 3.6, mul(GOLD, 0.7))
+    g.rect(5, 6, 11, 7, mix(GOLD, WHITE, 0.4))
+
+
+@wglyph('skysword')
+def _(g):
+    blade(g, 8, 1, 8, 15.4, guard=GOLD)
+    for x in (3, 13):
+        g.line(x, 1, x, 6, rgba(220, 230, 240), 0.6)
+
+
+@wglyph('jewang')
+def _(g):
+    blade(g, 2.6, 13.4, 13.4, 2.6, col=rgba(255, 230, 140), guard=GOLD)
+    g.poly([(1, 4), (1, 1), (3, 2.4), (4.4, 0.6), (5.8, 2.4), (7.6, 1), (7.6, 4)], GOLD)
+
+
+@wglyph('hyeolma')
+def _(g):
+    blade(g, 3, 14, 13.4, 2.6, col=rgba(200, 30, 40), guard=rgba(60, 20, 30))
+    g.put(13, 6, rgba(255, 90, 90))
+    g.put(11, 9, rgba(255, 90, 90))
+    g.ellipse(4.6, 4, 1.4, 1.8, BLOOD, shade=False, hl=False)
+
+
+@wglyph('emeija')
+def _(g):
+    for x0, y0, x1, y1 in [(2, 14, 12, 4), (14, 14, 4, 4)]:
+        g.line(x0, y0, x1, y1, STEEL, 1.2)
+        g.ellipse((x0 + x1) / 2, (y0 + y1) / 2, 1.2, 1.2, GOLD, shade=False, hl=False)
+    g.put(12, 4, WHITE)
+    g.put(4, 4, WHITE)
+
+
+@wglyph('seolgeom')
+def _(g):
+    blade(g, 3, 14, 13.4, 2.6, col=ICE, guard=rgba(150, 200, 250))
+    for x, y in [(4, 4), (12, 12), (2, 9)]:
+        g.put(x, y, WHITE)
+
+
+@wglyph('leap')
+def _(g):
+    cloud(g, 10.4, rgba(230, 236, 250))
+    g.poly([(5, 3), (8.4, 3), (8.4, 6.4), (13, 6.6), (13.4, 8.4), (4.6, 8.4)], rgba(70, 60, 90))
+    g.rect(4.6, 8, 13.4, 9, rgba(200, 180, 120))
+    for y in (3.6, 5.6, 7.4):
+        g.line(0.6, y, 3.4, y, rgba(180, 200, 230), 0.6)
+
+
+REUSE = {
+    'shot': 'sword', 'boomerang': 'chakram', 'beam': 'qi', 'fairy': 'crane', 'tornado': 'tornado', 'mine': 'talisman',
+    'gwonbeop': 'fist', 'plumrain': 'plumfall', 'yeorae': 'palm', 'tagu': 'staff', 'bottle': 'bottle', 'needles': 'needles',
+    'dokmu': 'flask', 'binbaek': 'icepalm', 'hanbing': 'snowcloud', 'cheonmasingong': 'demon', 'geumjeong': 'lotus',
+    'formation': 'formation', 'fan': 'feather',
+}
+
+
 # ---------- badge & export ----------
 
 BG_TOP = rgba(64, 48, 66)
@@ -882,8 +1059,9 @@ BG_BOT = rgba(30, 24, 34)
 TRIM = rgba(176, 134, 58)
 
 
-def badge(glyph_px):
+def badge(glyph_px, evolved=False):
     size = 20
+    top, bot, trimc = (BG_TOP, BG_BOT, TRIM) if not evolved else (rgba(140, 34, 34), rgba(60, 14, 20), rgba(255, 210, 90))
     px = [[None] * size for _ in range(size)]
     for y in range(size):
         for x in range(size):
@@ -895,9 +1073,12 @@ def badge(glyph_px):
             if edge:
                 px[y][x] = INK
             elif trim:
-                px[y][x] = mix(TRIM, WHITE, 0.25) if (x + y) % 9 == 0 else TRIM
+                px[y][x] = mix(trimc, WHITE, 0.25) if (x + y) % 9 == 0 else trimc
             else:
-                px[y][x] = mix(BG_TOP, BG_BOT, (y - 2) / (size - 5))
+                px[y][x] = mix(top, bot, (y - 2) / (size - 5))
+    if evolved:
+        for cx, cy in ((1, 1), (18, 1), (1, 18), (18, 18)):
+            px[cy][cx] = rgba(255, 250, 220)
     for y in range(16):
         for x in range(16):
             if glyph_px[y][x] is not None:
@@ -940,6 +1121,13 @@ if __name__ == '__main__':
         g.outline()
         export(name, badge(g.px))
     print(len(ICONS), 'icons')
+    for wid in list(WGLYPH) + list(REUSE):
+        for evolved in (False, True):
+            g = Glyph()
+            (WGLYPH.get(wid) or ICONS[REUSE[wid]][1])(g)
+            g.outline()
+            export(('e_' if evolved else 'w_') + wid, badge(g.px, evolved))
+    print(len(WGLYPH) + len(REUSE), 'technique icons')
     # emoji -> icon name map for game.js
     with open(os.path.join(OUT_DIR, 'map.txt'), 'w', encoding='utf-8') as f:
         for name, (emoji, _) in ICONS.items():

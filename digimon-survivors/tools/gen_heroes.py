@@ -50,10 +50,10 @@ class H(Sprite):
         self.put(x, y, c)
         self.protect.add((int(x), int(y)))
 
-    def shade(self):
+    def shade(self, y0=14):
         """Cel shading: light from the upper left, a dark band along each row's right edge."""
         out = [row[:] for row in self.px]
-        for y in range(14, self.h):
+        for y in range(y0, self.h):
             row = self.px[y]
             x = 0
             while x < self.w:
@@ -76,7 +76,22 @@ class H(Sprite):
     def center(self):
         pass  # keep feet on the same row for every hero
 
+    def rim(self, color=(196, 222, 255, 255), amount=0.5):
+        """Cool back-light along the right-hand silhouette (and hair tops) for a dramatic look."""
+        out = [row[:] for row in self.px]
+        for y in range(1, self.h - 2):
+            for x in range(self.w):
+                c = self.px[y][x]
+                if c is None or (x, y) in self.protect:
+                    continue
+                right = x + 1 >= self.w or self.px[y][x + 1] is None
+                top = self.px[y - 1][x] is None and y < 12
+                if right or top:
+                    out[y][x] = mix(c, color, amount if right else amount * 0.6)
+        self.px = out
+
     def finish(self, name):
+        self.rim()
         self.outline()
         self.save(name)
 
@@ -84,6 +99,7 @@ class H(Sprite):
 # ---------- body parts ----------
 
 def legs(s, trousers, boots=BOOT, stance=0.0):
+    stance += 0.8  # every hero stands in a wider fighting stance
     s.rect(12.2 - stance, 26.5, 15, 29.4, trousers)
     s.rect(17, 26.5, 19.8 + stance, 29.4, trousers)
     s.poly([(11.4 - stance, 29), (15.2, 29), (15.2, 31.2), (10.6 - stance, 31.2)], boots)
@@ -216,6 +232,9 @@ def sword(s, hx, hy, tx, ty, blade=STEEL, guard=GOLD, grip=rgba(90, 50, 40), wid
     s.line(gx - uy * 2.2, gy + ux * 2.2, gx + uy * 2.2, gy - ux * 2.2, guard, 1.2)
     s.line(hx - ux * 3, hy - uy * 3, gx, gy, grip, 1.4)
     s.put(hx - ux * 3.4, hy - uy * 3.4, guard)
+    # glint at the tip
+    s.put(tx, ty, WHITE)
+    s.put(tx - ux * 1.2 + uy, ty - uy * 1.2 - ux, WHITE)
 
 
 def staff(s, x0, y0, x1, y1, color, w=1.4):

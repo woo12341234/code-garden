@@ -105,6 +105,9 @@
 
 `icons/` 폴더의 테두리 달린 픽셀 아이콘은 `../tools/gen_icons.py`로 만들어요(메뉴·카드·HUD·업적의 이모지를 대신함).
 `icons/map.txt`에 이모지 ↔ 파일 이름 대응표가 있어요.
+무공마다 전용 아이콘 `icons/w_<무공id>.png`이 있고, 합성·오의로 완성되면 금테 붉은 배지 `icons/e_<무공id>.png`로 바뀌어요.
+
+요괴 그림은 `../tools/gen_yokai.py`(무섭고 날카로운 화풍)로 다시 그려요. `gen_sprites.py` → `gen_heroes.py` → `gen_yokai.py` 순서로 실행하세요.
 
 ## 근접 기본기와 경지
 

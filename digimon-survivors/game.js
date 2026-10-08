@@ -121,9 +121,10 @@
 
   // Pixel-art badges (assets/icons) that stand in for emoji anywhere in the UI.
   const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "👊": "fist", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker"};
-  const EMOJI_RE = /\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
+  const EMOJI_RE = /\[\[[a-z_]+\]\]|\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
   function iconImg(emoji, cls = 'pi') {
-    const name = ICON_FILES[emoji] || ICON_FILES[emoji.replace(/\uFE0F/g, '')] || ICON_FILES[emoji + '\uFE0F'];
+    const token = /^\[\[([a-z_]+)\]\]$/.exec(emoji);
+    const name = token ? token[1] : ICON_FILES[emoji] || ICON_FILES[emoji.replace(/\uFE0F/g, '')] || ICON_FILES[emoji + '\uFE0F'];
     if (!name) {
       const span = document.createElement('span');
       span.textContent = emoji;
@@ -1566,6 +1567,9 @@
       : `${WEAPONS[id].icon()} ${WEAPONS[id].name()} + ${PASSIVE_BY_ID[c.passive].icon} ${PASSIVE_BY_ID[c.passive].title}`;
   };
   const weaponName = (id) => (player.weapons[id]?.evolved ? COMBOS[id].name : WEAPONS[id].name());
+  // Every technique shows its own pixel badge ([[w_id]]); awakened ones switch to the gold badge ([[e_id]]).
+  for (const id of Object.keys(WEAPONS)) WEAPONS[id].icon = () => `[[w_${id}]]`;
+  for (const id of Object.keys(COMBOS)) COMBOS[id].icon = `[[e_${id}]]`;
   const weaponIcon = (id) => (player.weapons[id]?.evolved ? COMBOS[id].icon : WEAPONS[id].icon());
 
   // ---------- Enemies ----------
@@ -2160,7 +2164,7 @@
     const combos = Object.keys(COMBOS).filter(comboReady).map((id) => ({
       combo: true, icon: COMBOS[id].icon,
       title: `${COMBOS[id].partner ? '문파 오의' : '합성'}: ${COMBOS[id].name}`,
-      desc: `${comboRecipe(id).replace(/\p{Extended_Pictographic}\uFE0F?\s?/gu, '')} → ${COMBOS[id].desc}`,
+      desc: `${comboRecipe(id).replace(/\[\[[a-z_]+\]\]\s?|\p{Extended_Pictographic}\uFE0F?\s?/gu, '')} → ${COMBOS[id].desc}`,
       pick: () => applyCombo(id),
     }));
     const cards = [];
