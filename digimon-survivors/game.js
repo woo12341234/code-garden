@@ -20,7 +20,7 @@
   const $ = (id) => document.getElementById(id);
   const ui = {
     hud: $('hud'), hpBar: $('hp-bar'), hpText: $('hp-text'), xpBar: $('xp-bar'),
-    timer: $('timer'), level: $('level'), kills: $('kills'), formName: $('form-name'),
+    timer: $('timer'), stageInfo: $('stage-info'), level: $('level'), kills: $('kills'), formName: $('form-name'),
     portrait: $('portrait'), evoHint: $('evo-hint'), weaponRow: $('weapon-row'),
     banner: $('banner'), bannerMain: $('banner-main'), bannerSub: $('banner-sub'),
     start: $('start-screen'), titleStats: $('title-stats'), toast: $('toast'), toastTitle: $('toast-title'), toastSub: $('toast-sub'),
@@ -1291,7 +1291,17 @@
   const EVENT_INTERVAL = 60;
   const BOSS_START = 60;
   const WAVE_START = 150;
-  const FINAL_TIME = 900; // 15:00 — the Reaper comes; beating him clears the run
+  // ---------- Chapters (장) ----------
+  // Each chapter runs STAGE_LEN seconds, then its boss appears; beating it clears the chapter and the
+  // hero chooses to press on (keeping the build) or return home with the loot. Chapter 4 ends the run.
+  const STAGE_LEN = 210;
+  const STAGES = [
+    { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow'], mid: null, boss: 'daedokkaebi', tint: null },
+    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
+    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
+    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
+  ];
+  const ENDLESS = { name: '무한 수련', sub: '끝없는 요괴의 밤', pool: null, mid: null, boss: null, tint: 'rgba(120, 20, 30, 0.16)', endless: true };
   const MARCH_TIMES = [420, 720]; // 백귀야행: a parade of ghosts crossing the screen (then every 5 min)
 
   // ---------- Passive upgrades ----------
@@ -1319,7 +1329,7 @@
 
   // ---------- Progress & achievements (saved per browser) ----------
   const PROGRESS_KEY = 'yokai-survivors-progress';
-  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0 };
+  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0 };
   try { Object.assign(progress, JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
   const seen = new Set(progress.combos);
   function saveProgress() {
@@ -1380,7 +1390,9 @@
     { id: 'realm3', icon: '🌀', name: '절정고수', desc: '한 판에 절정의 경지에 오르기', check: (p) => p.realm >= 3 },
     { id: 'realm5', icon: '☀️', name: '화경의 문턱', desc: '한 판에 화경의 경지에 오르기', check: (p) => p.realm >= 5 },
     { id: 'realm7', icon: '🌈', name: '생사경', desc: '한 판에 생사경에 오르기', check: (p) => p.realm >= 7 },
-    { id: 'reaper', icon: '⚰️', name: '저승사자 퇴치', desc: '15:00에 나타나는 저승사자를 쓰러뜨리기', check: () => progress.wins >= 1 },
+    { id: 'stage2', icon: '🏮', name: '숲으로', desc: '1장 돌파', check: () => progress.bestStage >= 1 },
+    { id: 'stage3', icon: '🏯', name: '산사의 종소리', desc: '3장 돌파', check: () => progress.bestStage >= 3 },
+    { id: 'reaper', icon: '⚰️', name: '저승사자 퇴치', desc: '4장의 저승사자를 쓰러뜨려 모든 장 돌파', check: () => progress.wins >= 1 },
     { id: 'elite5', icon: '🌟', name: '정예 사냥', desc: '한 판에 정예 요괴 5마리 처치', check: (p) => p.elites >= 5 },
     { id: 'lantern20', icon: '🏮', name: '석등 파괴자', desc: '한 판에 석등 20개 부수기', check: (p) => p.lanterns >= 20 },
     { id: 'gold1000', icon: '💰', name: '부자 협객', desc: '누적 은자 1,000냥 모으기', check: () => progress.totalGold >= 1000 },
@@ -1437,7 +1449,7 @@
   let state = 'title'; // title | playing | choice | paused | gameover | victory
   let player, enemies, projectiles, pickups, particles, floatTexts, fx, shells, zones, mines;
   let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
-  let propTimer = 0, finalSpawned = false, marchIdx = 0, banked = 0, dmgSrc = 'item', banishMode = false;
+  let propTimer = 0, stageIdx = 0, stageTime = 0, stageBossOut = false, midOut = false, finalSpawned = false, marchIdx = 0, banked = 0, dmgSrc = 'item', banishMode = false;
   let modalDelay = 0, flash = 0, anim = 0, shake = 0;
   const modalQueue = [];
   const keys = new Set();
@@ -1483,6 +1495,10 @@
     waveTimer = 0;
     propTimer = 2;
     finalSpawned = false;
+    stageIdx = 0;
+    stageTime = 0;
+    stageBossOut = false;
+    midOut = false;
     marchIdx = 0;
     banked = 0;
     banishMode = false;
@@ -1605,6 +1621,32 @@
     }
   }
 
+  // Chapter boss down: sweep the field, reward the hero, then ask whether to press on.
+  function stageClear() {
+    progress.bestStage = Math.max(progress.bestStage, stageIdx + 1);
+    saveProgress();
+    for (const e of enemies) if (!e.type.prop) burst(e.x, e.y, 4, ['#2a2224', '#ffffff'], 120, 0.5, 4);
+    enemies = enemies.filter((e) => e.type.prop);
+    player.hp = player.maxHp;
+    flash = 0.4;
+    addGold(40 * (stageIdx + 1));
+    showBanner(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '', '요괴가 물러갔어요 · HP 전부 회복');
+    for (let k = 3; k >= 1; k--) modalQueue.push({ type: 'chest', n: 4 - k, of: 3 });
+    modalQueue.push({ type: 'stage' });
+    modalDelay = 1.6;
+    checkAchievements();
+  }
+
+  function enterStage(i) {
+    stageIdx = i;
+    stageTime = 0;
+    stageBossOut = false;
+    midOut = false;
+    waveTimer = 30;
+    const st = curStage();
+    showBanner(st.name, '', st.sub);
+  }
+
   // ---------- Choice modals (hero pick, level-up upgrades, combos) ----------
   function upgradeOffers() {
     const combos = Object.keys(COMBOS).filter(comboReady).map((id) => ({
@@ -1653,12 +1695,19 @@
         img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait}`, hero: true,
         pick: () => {
           resetGame(id);
+          enterStage(0);
           if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
           updateHud();
         },
       } : {
         img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true,
       })));
+    } else if (m.type === 'stage') {
+      const next = STAGES[stageIdx + 1];
+      showChoice(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '무공은 그대로 이어져요. 더 깊이 들어갈까요?', [
+        { icon: '🏮', title: `다음: ${next.name}`, desc: `${next.sub}. 더 강한 요괴가 나오고 은자도 더 많이 얻어요`, big: true, pick: () => enterStage(stageIdx + 1) },
+        { icon: '🧭', title: '여기서 귀환', desc: '모은 은자를 챙겨 로비로 돌아가요', big: true, pick: () => gameOver('retire') },
+      ]);
     } else if (m.type === 'chest') {
       showChoice(m.of > 1 ? `보물함! (${m.n}/${m.of})` : '보물함!', '선물 하나를 골라주세요', upgradeOffers(), true);
     } else {
@@ -1745,8 +1794,10 @@
   }
 
   // ---------- Spawning ----------
+  const curStage = () => (stageIdx < STAGES.length ? STAGES[stageIdx] : ENDLESS);
   function pickEnemyType() {
-    const pool = Object.values(ENEMY_TYPES).filter((t) => !t.boss && t.weight > 0 && elapsed >= (t.minTime || 0));
+    const st = curStage();
+    const pool = st.pool ? st.pool.map((id) => ENEMY_TYPES[id]) : Object.values(ENEMY_TYPES).filter((t) => !t.boss && t.weight > 0 && elapsed >= (t.minTime || 0));
     let r = Math.random() * pool.reduce((s, t) => s + t.weight, 0);
     for (const t of pool) {
       r -= t.weight;
@@ -1821,10 +1872,20 @@
       propTimer = 9;
       if (enemies.filter((e) => e.type.prop).length < 5) spawnLantern();
     }
-    if (!finalSpawned && elapsed >= FINAL_TIME) {
-      finalSpawned = true;
-      spawnEnemy(ENEMY_TYPES.jeoseung);
-      showBanner('저승사자가 나타났다!', 'boss', '쓰러뜨리면 퇴치 완료');
+    const st = curStage();
+    stageTime += dt;
+    if (st.mid && !midOut && stageTime >= STAGE_LEN / 2) {
+      midOut = true;
+      spawnEnemy(ENEMY_TYPES[st.mid]);
+      showBanner(`${ENEMY_TYPES[st.mid].name} 등장!`, 'boss');
+    }
+    if (st.boss && !stageBossOut && stageTime >= STAGE_LEN) {
+      stageBossOut = true;
+      spawnEnemy(ENEMY_TYPES[st.boss]);
+      const b = enemies[enemies.length - 1];
+      b.stageBoss = true;
+      if (!b.type.final) { b.hp *= 2.5; b.maxHp = b.hp; }
+      showBanner(`${b.type.final ? '저승사자가 나타났다!' : `장의 주인, ${b.type.name}!`}`, 'boss', '쓰러뜨리면 이 장을 돌파해요');
     }
     const marchAt = MARCH_TIMES[marchIdx] ?? MARCH_TIMES[MARCH_TIMES.length - 1] + 300 * (marchIdx - MARCH_TIMES.length + 1);
     if (elapsed >= marchAt) {
@@ -1837,7 +1898,7 @@
       const n = Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse));
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
-    if (elapsed >= BOSS_START) {
+    if (st.endless && elapsed >= BOSS_START) {
       bossTimer -= dt;
       if (bossTimer <= 0) {
         bossTimer = EVENT_INTERVAL;
@@ -1953,12 +2014,14 @@
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
     }
-    if (e.type.final) {
+    if (e.type.final && e.stageBoss) {
       progress.wins++;
       player.wonRun = true;
       saveProgress();
       pickups.push({ kind: 'jumeoni', value: 150, x: e.x, y: e.y - 16 });
       player.victoryAt = elapsed + 1.5;
+    } else if (e.stageBoss) {
+      player.stageClearAt = elapsed + 1.2;
     }
     if (e.type.boss) {
       player.bossKills++;
@@ -2321,7 +2384,8 @@
     updatePickups(dt);
     updateEffects(dt);
     if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); }
-    if (player.victoryAt && elapsed >= player.victoryAt && !modalQueue.length) { player.victoryAt = 0; victory(); return; }
+    if (player.victoryAt && elapsed >= player.victoryAt && !modalQueue.length) { player.victoryAt = 0; progress.bestStage = Math.max(progress.bestStage, STAGES.length); saveProgress(); victory(); return; }
+    if (player.stageClearAt && elapsed >= player.stageClearAt && !modalQueue.length) { player.stageClearAt = 0; stageClear(); }
     if (modalQueue.length && modalDelay <= 0) openNextModal();
     updateHud();
   }
@@ -2334,7 +2398,9 @@
     ui.formName.textContent = HEROES[player.hero].name;
     ui.kills.textContent = `요괴 ${kills}마리 퇴치`;
     ui.gold.textContent = `은자 ${Math.floor(player.gold)}냥`;
-    ui.timer.textContent = fmtTime(elapsed);
+    const st = curStage();
+    ui.timer.textContent = fmtTime(st.endless ? elapsed : stageTime);
+    ui.stageInfo.textContent = st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`;
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
     const row = Object.entries(player.weapons).map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join(' ');
@@ -2763,6 +2829,10 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = bgPattern || '#e9dfc6';
     ctx.fillRect(camX, camY, viewW, viewH);
+    if (state !== 'title' && curStage().tint) {
+      ctx.fillStyle = curStage().tint;
+      ctx.fillRect(camX, camY, viewW, viewH);
+    }
 
     drawAura();
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawBelow) WEAPONS[id].drawBelow(w);
@@ -2892,7 +2962,7 @@
     ui.achvCount.textContent = `${done} / ${ACHIEVEMENTS.length}`;
     ui.bookCount.textContent = `${seen.size} / ${Object.keys(COMBOS).length}`;
     const heroes = Object.keys(HEROES).filter(heroUnlocked).length;
-    ui.titleStats.textContent = `업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥`;
+    ui.titleStats.textContent = `최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥`;
   }
 
   function openAchievements() {
@@ -2994,15 +3064,16 @@
     openNextModal();
   }
 
-  function gameOver(win = false) {
+  function gameOver(kind = 'dead') {
+    const win = kind === true || kind === 'win';
     state = win ? 'victory' : 'gameover';
     const h = HEROES[player.hero];
     if (win) addGold(100);
     bankGold();
-    ui.gameoverTitle.textContent = win ? '퇴치 완료!' : '쓰러졌다...';
+    ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
     ui.continueBtn.classList.toggle('hidden', !win);
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득`;
+    ui.gameoverStats.textContent = `${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
@@ -3014,6 +3085,7 @@
   // After clearing, the run can go on endlessly (no more victory screen).
   function continueRun() {
     if (state !== 'victory') return;
+    enterStage(STAGES.length);
     ui.gameover.classList.add('hidden');
     ui.hud.classList.remove('hidden');
     state = 'playing';
