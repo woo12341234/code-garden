@@ -371,3 +371,6 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   .skill.ult { width: 64px; height: 64px; }
   #banner.ult { font-size: 48px; }
 }
+/* small inline icons inside cards (e.g. the lock in "🔒 ???") must not take the big portrait size */
+.card img.pi { width: 1.35em; height: 1.35em; }
+.card.locked img.pi { filter: none; opacity: 0.8; }
