@@ -715,6 +715,162 @@ def icicle():
     s.save('icicle.png')
 
 
+# ============ Sect heroes ============
+
+def baekmae():
+    """화산파 검수: plum-blossom robe, sword at hip."""
+    s = Sprite(24)
+    s.poly([(15.6, 18), (16.6, 18.6), (21.6, 12.4), (20.8, 11.8)], STEEL)
+    _human(s, rgba(70, 60, 70), rgba(230, 120, 150))
+    for x, y in [(8, 15), (14, 19), (10, 20), (16, 15)]:
+        s.put(x, y, rgba(250, 160, 190))
+    _head(s)
+    s.ellipse(12, 6.2, 5.9, 3.2, HAIR, hl=False, ymax=8)
+    s.ellipse(12, 2.4, 1.7, 1.5, HAIR, hl=False)
+    s.put(14, 2, rgba(250, 150, 180))
+    _cool_eyes(s, 9)
+    s.outline()
+    s.save('baekmae.png')
+
+
+def palgeol():
+    """개방 거지: patched rags, staff, wine gourd."""
+    s = Sprite(24)
+    s.poly([(18.6, 22.6), (19.8, 22.6), (19.8, 6), (18.6, 6)], rgba(110, 160, 90))
+    _human(s, rgba(150, 125, 95), rgba(90, 70, 50))
+    for x, y, c in [(8, 15, rgba(120, 90, 70)), (15, 19, rgba(170, 150, 110)), (10, 20, rgba(110, 100, 90))]:
+        s.poly([(x, y), (x + 1.8, y), (x + 1.8, y + 1.8), (x, y + 1.8)], c)
+    s.ellipse(6, 18, 1.6, 2.0, rgba(214, 150, 70))
+    _head(s, 9, rgba(230, 196, 160))
+    s.ellipse(12, 5.8, 6.2, 3.4, rgba(60, 50, 45), hl=False, ymax=8)
+    for x in (6, 8, 16, 18):
+        s.put(x, 6, rgba(60, 50, 45))
+    s.eyes(9, 9, h=1, w=1, shine=False)
+    s.put(11, 12, EYE)
+    s.put(12, 12, EYE)
+    s.outline()
+    s.save('palgeol.png')
+
+
+def dangyu():
+    """사천당가: dark green, masked, needles between fingers."""
+    s = Sprite(24)
+    _human(s, rgba(40, 80, 60), rgba(160, 200, 90))
+    for x in (17, 18, 19):
+        s.put(x, 13, STEEL)
+        s.put(x, 14, STEEL)
+    _head(s)
+    s.ellipse(12, 6.0, 5.9, 3.0, HAIR, hl=False, ymax=8)
+    s.poly([(7, 10.4), (17, 10.4), (16.4, 13.6), (7.6, 13.6)], rgba(40, 80, 60))
+    s.eyes(9, 8, h=2, w=1, shine=False, color=rgba(130, 200, 90))
+    s.outline()
+    s.save('dangyu.png')
+
+
+def namgung():
+    """남궁세가: noble in blue and gold, crown pin."""
+    s = Sprite(24)
+    s.poly([(4.2, 23), (5.6, 23), (5.6, 10), (4.2, 10)], STEEL)
+    s.poly([(3.2, 13), (6.6, 13), (6.6, 14), (3.2, 14)], GOLD)
+    _human(s, rgba(40, 70, 150), GOLD)
+    _head(s)
+    s.ellipse(12, 6.2, 5.9, 3.2, HAIR, hl=False, ymax=8)
+    s.poly([(10.4, 3.8), (13.6, 3.8), (13.2, 1.6), (10.8, 1.6)], GOLD)
+    _cool_eyes(s, 9)
+    s.outline()
+    s.save('namgung.png')
+
+
+def maengju():
+    """무림맹주 (unlockable): white-gold robes, dragon emblem, golden aura."""
+    s = Sprite(24)
+    s.poly([(4.6, 13.4), (19.4, 13.4), (21.6, 23), (2.4, 23)], rgba(240, 200, 90))
+    _human(s, rgba(245, 242, 232), GOLD, wide=0.6)
+    s.ellipse(12, 17.6, 1.8, 1.8, rgba(200, 60, 50), shade=False, hl=False)
+    _head(s)
+    s.ellipse(12, 6.2, 5.9, 3.2, rgba(225, 225, 230), hl=False, ymax=8)
+    s.poly([(9.6, 4.6), (14.4, 4.6), (14, 1.2), (12, 2.4), (10, 1.2)], GOLD)
+    s.poly([(10.4, 13.2), (13.6, 13.2), (12, 16.6)], rgba(225, 225, 230))
+    _cool_eyes(s, 9)
+    s.outline()
+    s.sparkle(2, 4, rgba(255, 230, 140))
+    s.sparkle(21, 6, rgba(255, 230, 140))
+    s.save('maengju.png')
+
+
+# ============ Sect technique art ============
+
+def petal():
+    s = Sprite(10)
+    s.ellipse(5, 5, 3.8, 2.6, rgba(250, 160, 190), hl=False)
+    s.put(3, 4, rgba(255, 220, 230))
+    s.put(5, 5, rgba(230, 90, 130))
+    s.outline()
+    s.save('petal.png')
+
+
+def needle():
+    s = Sprite(12)
+    s.poly([(11.6, 6), (1, 4.9), (1, 7.1)], STEEL)
+    s.put(1, 6, rgba(130, 200, 90))
+    s.outline()
+    s.save('needle.png')
+
+
+def bottle():
+    s = Sprite(12)
+    s.ellipse(6, 7.6, 3.6, 3.4, rgba(214, 150, 70))
+    s.poly([(5, 1), (7, 1), (7, 4.4), (5, 4.4)], rgba(214, 150, 70))
+    s.poly([(4.6, 0.4), (7.4, 0.4), (7.4, 1.4), (4.6, 1.4)], RED)
+    s.outline()
+    s.save('bottle.png')
+
+
+def palm():
+    s = Sprite(20)
+    gold = rgba(240, 195, 80)
+    s.ellipse(10, 13, 6.4, 5.6, gold)
+    for x in (5.4, 8.2, 11, 13.8):
+        s.poly([(x - 1.1, 11), (x + 1.1, 11), (x + 1.1, 3), (x - 1.1, 3)], gold)
+        s.ellipse(x, 3, 1.1, 1.1, gold, shade=False, hl=False)
+    s.ellipse(15.6, 13, 1.6, 3.4, gold, hl=False)
+    s.outline()
+    s.save('palm.png')
+
+
+def bigsword():
+    s = Sprite(24)
+    s.poly([(12, 23.6), (10, 20), (10, 6), (14, 6), (14, 20)], STEEL)
+    for y in range(7, 20):
+        s.put(11, y, WHITE)
+    s.poly([(7, 4.6), (17, 4.6), (17, 6.2), (7, 6.2)], GOLD)
+    s.poly([(11, 0.4), (13, 0.4), (13, 4.6), (11, 4.6)], rgba(110, 70, 50))
+    s.outline()
+    s.save('bigsword.png')
+
+
+def yinyang():
+    s = Sprite(14)
+    import math as _m
+    for y in range(14):
+        for x in range(14):
+            px, py = x + 0.5 - 7, y + 0.5 - 7
+            if px * px + py * py > 36:
+                continue
+            white = px > 0
+            if _m.hypot(px, py + 3) < 3:
+                white = True
+            if _m.hypot(px, py - 3) < 3:
+                white = False
+            if _m.hypot(px, py + 3) < 1:
+                white = False
+            if _m.hypot(px, py - 3) < 1:
+                white = True
+            s.px[y][x] = rgba(245, 242, 232) if white else rgba(40, 34, 38)
+    s.outline()
+    s.save('yinyang.png')
+
+
 if __name__ == '__main__':
     for fn in (cheongpung, unhak, yeoubi, cheolsan, dallae, yawol,
                wisp, dokkaebi, crow, jangseung, wongwi, meok, gangsi,
@@ -722,7 +878,8 @@ if __name__ == '__main__':
                sword, foxfire, chakram, crane, talisman,
                peach, ginseng, gourd, thunderball, treasure):
         fn()
-    for fn in (songhwa, muyeong, geumbi, seola, cheonma, sansin, icicle):
+    for fn in (songhwa, muyeong, geumbi, seola, cheonma, sansin, icicle,
+               baekmae, palgeol, dangyu, namgung, maengju, petal, needle, bottle, palm, bigsword, yinyang):
         fn()
     coin('coin.png', rgba(205, 140, 70), 10)
     coin('coin_gold.png', rgba(235, 190, 70), 12)

@@ -48,6 +48,17 @@
     cheonma: { size: 48, color: '#781824', emoji: '😈' },
     sansin: { size: 48, color: '#f0eee4', emoji: '🏔️' },
     icicle: { size: 20, color: '#bee6ff' },
+    baekmae: { size: 48, color: '#463c46', emoji: '🌸' },
+    palgeol: { size: 48, color: '#967d5f', emoji: '🥢' },
+    dangyu: { size: 48, color: '#28503c', emoji: '📍' },
+    namgung: { size: 48, color: '#284696', emoji: '👑' },
+    maengju: { size: 48, color: '#f5f2e8', emoji: '🐉' },
+    petal: { size: 20, color: '#fa9fbe' },
+    needle: { size: 24, color: '#c8cdd4' },
+    bottle: { size: 24, color: '#d69646', emoji: '🍶' },
+    palm: { size: 72, color: '#f0c350', emoji: '🖐️' },
+    bigsword: { size: 48, color: '#c8cdd4', emoji: '🗡️' },
+    yinyang: { size: 28, color: '#2a2224', emoji: '☯️' },
     wisp: { size: 48, color: '#6eb9ff', emoji: '🔥' },
     dokkaebi: { size: 48, color: '#d64e3e', emoji: '👹' },
     crow: { size: 48, color: '#3a3a50', emoji: '🐦‍⬛' },
@@ -477,6 +488,335 @@
     },
   });
 
+  // ---------- Sect techniques (only offered to heroes of that sect) ----------
+  const SECTS = {
+    hwasan: '화산파', mudang: '무당파', sorim: '소림사', gaebang: '개방',
+    dang: '사천당가', namgung: '남궁세가', bukhae: '북해빙궁', magyo: '마교',
+  };
+
+  function ringPoints(w) {
+    const pts = [];
+    for (let i = 0; i < w.count; i++) {
+      const a = w.angle + (i / w.count) * Math.PI * 2;
+      pts.push({ x: player.x + Math.cos(a) * w.dist, y: player.y + Math.sin(a) * w.dist });
+    }
+    return pts;
+  }
+
+  function tickHits(w, dt) {
+    for (const [e, t] of w.hits) {
+      if (t <= dt) w.hits.delete(e);
+      else w.hits.set(e, t - dt);
+    }
+  }
+
+  function ringBlast(x, y, radius, damage, push, color, onHit) {
+    fx.push({ kind: 'ring', x, y, r: radius, life: 0.35, max: 0.35, color });
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (dist(e.x, e.y, x, y) >= radius + e.type.radius) continue;
+      if (onHit) onHit(e);
+      damageEnemy(e, j, damage, e.x - x, e.y - y, push);
+    }
+  }
+
+  function beamStrike(a, length, width, damage, tint, onHit) {
+    const cx = Math.cos(a), cy = Math.sin(a);
+    fx.push({ kind: 'beam', x: player.x, y: player.y, a, len: length, w: width, life: 0.3, max: 0.3, tint });
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      const rx = e.x - player.x, ry = e.y - player.y;
+      const along = rx * cx + ry * cy;
+      if (along < 0 || along > length || Math.abs(rx * cy - ry * cx) >= width + e.type.radius) continue;
+      if (onHit) onHit(e);
+      damageEnemy(e, j, damage, cx, cy);
+    }
+  }
+
+  const heal = (n) => { player.hp = Math.min(player.maxHp, player.hp + n); };
+
+  Object.assign(WEAPONS, {
+    plum: {
+      sect: 'hwasan', name: () => '매화검법', icon: () => '🌸',
+      desc: '매화 꽃잎 같은 검기를 부채꼴로 흩뿌려요', up: '꽃잎 +2, 데미지 +3', max: 6,
+      create: () => ({ damage: 7, count: 5, cooldown: 1.1, timer: 0.3, speed: 420, pierce: 2 }),
+      upgrade(w) { w.count += 2; w.damage += 3; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(450);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(t.y - player.y, t.x - player.x);
+        const n = w.count + player.extra;
+        for (let i = 0; i < n; i++) {
+          const a = base + (i - (n - 1) / 2) * (1.6 / Math.max(1, n - 1));
+          projectiles.push({
+            kind: 'petal', x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            damage: w.damage, pierce: w.pierce + player.pierce, radius: 8, sprite: 'petal', life: 0.9, hit: new Set(), spin: Math.random() * 6,
+          });
+        }
+      },
+    },
+    plumrain: {
+      sect: 'hwasan', name: () => '매화낙영', icon: () => '🏵️',
+      desc: '요괴 머리 위로 매화가 비처럼 떨어져요', up: '꽃비 +2, 데미지 +3', max: 6,
+      create: () => ({ damage: 10, count: 4, cooldown: 1.4, timer: 0.6, radius: 28 }),
+      upgrade(w) { w.count += 2; w.damage += 3; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const near = enemies.filter((e) => dist(e.x, e.y, player.x, player.y) < 340);
+        if (!near.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (const e of shuffled(near).slice(0, w.count)) {
+          shells.push({ kind: 'drop', sprite: 'petal', tx: e.x, ty: e.y, t: 0, dur: 0.35, damage: w.damage, radius: w.radius * player.area, colors: ['#fa9fbe', '#ffffff', '#e05a82'] });
+        }
+      },
+    },
+    taiji: {
+      sect: 'mudang', name: () => '태극검', icon: () => '☯️',
+      desc: '음양의 검이 몸 주위를 크게 돌며 베어요', up: '데미지 +5, 반경 +10 (4단계에 검 4자루)', max: 6,
+      create: () => ({ damage: 14, count: 2, dist: 90, angle: 0, hits: new Map() }),
+      upgrade(w) { w.damage += 5; w.dist += 10; if (w.level === 4) w.count = 4; },
+      update(w, dt) {
+        w.angle += dt * 3.2;
+        tickHits(w, dt);
+        for (const pt of ringPoints(w)) {
+          for (let j = enemies.length - 1; j >= 0; j--) {
+            const e = enemies[j];
+            if (w.hits.has(e) || dist(pt.x, pt.y, e.x, e.y) >= 16 + e.type.radius) continue;
+            w.hits.set(e, 0.35);
+            damageEnemy(e, j, w.damage, e.x - player.x, e.y - player.y, 10);
+          }
+        }
+      },
+      drawAbove(w) { for (const pt of ringPoints(w)) drawSprite('yinyang', pt.x, pt.y, { rot: anim * 5 }); },
+    },
+    yangui: {
+      sect: 'mudang', name: () => '양의검진', icon: () => '🌀',
+      desc: '검진이 요괴를 안쪽으로 끌어당기며 베어요', up: '범위 +12, 데미지 +3', max: 6,
+      create: () => ({ damage: 6, radius: 120, tick: 0.5, timer: 0, pull: 70 }),
+      upgrade(w) { w.radius += 12; w.damage += 3; },
+      update(w, dt) {
+        const r = w.radius * player.area;
+        for (const e of enemies) {
+          const d = dist(e.x, e.y, player.x, player.y);
+          if (d < r && d > 40 && !e.type.boss) {
+            e.x += ((player.x - e.x) / d) * w.pull * dt;
+            e.y += ((player.y - e.y) / d) * w.pull * dt;
+          }
+        }
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.tick;
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(e.x, e.y, player.x, player.y) < r + e.type.radius) damageEnemy(e, j, w.damage, 0, 0, 0, true);
+        }
+      },
+      drawBelow(w) {
+        const r = w.radius * player.area;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([14, 10]);
+        ctx.lineDashOffset = -anim * 40;
+        ctx.strokeStyle = 'rgba(42, 34, 36, 0.55)';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineDashOffset = -anim * 40 + 12;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, r - 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      },
+    },
+    yeorae: {
+      sect: 'sorim', name: () => '여래신장', icon: () => '🖐️',
+      desc: '하늘에서 거대한 금빛 손바닥을 내리쳐요', up: '데미지 +12, 범위 +10', max: 6,
+      create: () => ({ damage: 40, count: 1, radius: 90, cooldown: 2.8, timer: 1 }),
+      upgrade(w) { w.damage += 12; w.radius += 10; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const near = enemies.filter((e) => dist(e.x, e.y, player.x, player.y) < 380);
+        if (!near.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (const e of shuffled(near).slice(0, w.count)) {
+          shells.push({ kind: 'drop', sprite: 'palm', tx: e.x, ty: e.y, t: 0, dur: 0.5, damage: w.damage, radius: w.radius * player.area, push: 20, colors: ['#f0c350', '#fff3c0', '#c99a3a'], ringColor: 'gold' });
+        }
+      },
+    },
+    geumgang: {
+      sect: 'sorim', name: () => '금강신공', icon: () => '🛕',
+      desc: '잠시 금강불괴가 되어 피해를 받지 않고, 주변을 금빛으로 쳐내요', up: '데미지 +8, 무적 시간 +0.2초', max: 6,
+      create: () => ({ damage: 20, radius: 100, cooldown: 7, timer: 3, guard: 1.2 }),
+      upgrade(w) { w.damage += 8; w.guard += 0.2; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.cooldown * player.haste;
+        player.invuln = Math.max(player.invuln, w.guard);
+        player.glow = Math.max(player.glow, w.guard);
+        ringBlast(player.x, player.y, w.radius * player.area, w.damage, 20, 'gold');
+      },
+    },
+    tagu: {
+      sect: 'gaebang', name: () => '타구봉법', icon: () => '🥢',
+      desc: '봉을 한 바퀴 휘둘러 둘러싼 요괴를 쳐내요', up: '데미지 +5, 범위 +8', max: 6,
+      create: () => ({ damage: 13, radius: 85, cooldown: 1.2, timer: 0.4 }),
+      upgrade(w) { w.damage += 5; w.radius += 8; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const r = w.radius * player.area;
+        if (!nearestEnemy(r + 20)) return;
+        w.timer = w.cooldown * player.haste;
+        fx.push({ kind: 'spin', x: player.x, y: player.y, r, life: 0.25, max: 0.25 });
+        ringBlast(player.x, player.y, r, w.damage, 20, 'none');
+      },
+    },
+    bottle: {
+      sect: 'gaebang', name: () => '취팔선 술병', icon: () => '🍶',
+      desc: '술병을 던지면 터지며 다른 요괴에게 튕겨 가요', up: '데미지 +5, 2단계마다 튕김 +1', max: 6,
+      create: () => ({ damage: 18, bounces: 2, cooldown: 1.6, timer: 0.5, radius: 50 }),
+      upgrade(w) { w.damage += 5; if (w.level % 2 === 0) w.bounces++; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(420);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        shells.push({ sprite: 'bottle', sx: player.x, sy: player.y, tx: t.x, ty: t.y, t: 0, dur: 0.45, damage: w.damage, radius: w.radius * player.area, bounces: w.bounces, colors: ['#d69646', '#fff3c0', '#e0503f'] });
+      },
+    },
+    needles: {
+      sect: 'dang', name: () => '만천화우', icon: () => '📍',
+      desc: '사방으로 암기를 비처럼 뿌려요', up: '암기 +3, 데미지 +2', max: 6,
+      create: () => ({ damage: 6, count: 10, cooldown: 1.5, timer: 0.4, speed: 470 }),
+      upgrade(w) { w.count += 3; w.damage += 2; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        if (!nearestEnemy(420)) return;
+        w.timer = w.cooldown * player.haste;
+        const n = w.count + player.extra * 2;
+        const off = Math.random() * Math.PI;
+        for (let i = 0; i < n; i++) {
+          const a = off + (i / n) * Math.PI * 2;
+          projectiles.push({
+            x: player.x, y: player.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed,
+            damage: w.damage, pierce: 1 + player.pierce, radius: 7, sprite: 'needle', life: 0.75, hit: new Set(),
+          });
+        }
+      },
+    },
+    dokmu: {
+      sect: 'dang', name: () => '당가독무', icon: () => '🧪',
+      desc: '요괴 무리 한가운데 맹독 안개를 피워요', up: '데미지 +3, 안개 크기 +8', max: 6,
+      create: () => ({ damage: 7, radius: 60, life: 4, cooldown: 1.6, timer: 0.5 }),
+      upgrade(w) { w.damage += 3; w.radius += 8; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(380);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        zones.push({ x: t.x, y: t.y, r: w.radius * player.area, damage: w.damage, life: w.life * player.durMul, max: w.life * player.durMul, tick: 0, seed: Math.random() * 10, tint: 'green' });
+      },
+    },
+    skysword: {
+      sect: 'namgung', name: () => '창궁검우', icon: () => '⚔️',
+      desc: '하늘에서 거대한 검을 떨어뜨려요', up: '검 +1, 데미지 +6', max: 6,
+      create: () => ({ damage: 28, count: 1, cooldown: 1.8, timer: 0.6, radius: 40 }),
+      upgrade(w) { w.count++; w.damage += 6; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const near = enemies.filter((e) => dist(e.x, e.y, player.x, player.y) < 360);
+        if (!near.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (const e of shuffled(near).slice(0, w.count)) {
+          shells.push({ kind: 'drop', sprite: 'bigsword', tx: e.x, ty: e.y, t: 0, dur: 0.3, damage: w.damage, radius: w.radius * player.area, push: 12, colors: ['#ffffff', '#c8cdd4', '#c99a3a'] });
+        }
+      },
+    },
+    jewang: {
+      sect: 'namgung', name: () => '제왕검형', icon: () => '👑',
+      desc: '제왕의 위엄이 담긴 굵은 금빛 검강을 쏘아요', up: '데미지 +9, 굵기 +4', max: 6,
+      create: () => ({ damage: 26, width: 24, length: 420, cooldown: 2.3, timer: 0.6 }),
+      upgrade(w) { w.damage += 9; w.width += 4; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(w.length);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        beamStrike(Math.atan2(t.y - player.y, t.x - player.x), w.length, w.width, w.damage, 'gold');
+      },
+    },
+    binbaek: {
+      sect: 'bukhae', name: () => '빙백신장', icon: () => '🥶',
+      desc: '얼음 장력을 터뜨려 주변 요괴를 꽁꽁 얼려요', up: '데미지 +5, 범위 +12', max: 6,
+      create: () => ({ damage: 12, radius: 100, cooldown: 1.7, timer: 0.6, freeze: 2 }),
+      upgrade(w) { w.damage += 5; w.radius += 12; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const r = w.radius * player.area;
+        if (!nearestEnemy(r + 30)) return;
+        w.timer = w.cooldown * player.haste;
+        ringBlast(player.x, player.y, r, w.damage, 0, 'ice', (e) => { e.chill = w.freeze; });
+      },
+    },
+    hanbing: {
+      sect: 'bukhae', name: () => '한빙기', icon: () => '🌨️',
+      desc: '몸에서 냉기를 뿜어 주변 요괴를 느리게 하고 얼려요', up: '범위 +12, 데미지 +2', max: 6,
+      create: () => ({ damage: 4, radius: 90, tick: 0.5, timer: 0 }),
+      upgrade(w) { w.radius += 12; w.damage += 2; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        w.timer = w.tick;
+        const r = w.radius * player.area;
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(e.x, e.y, player.x, player.y) >= r + e.type.radius) continue;
+          e.chill = Math.max(e.chill || 0, 0.6);
+          damageEnemy(e, j, w.damage, 0, 0, 0, true);
+        }
+      },
+      drawBelow(w) {
+        ctx.fillStyle = 'rgba(190, 230, 255, 0.18)';
+        ctx.strokeStyle = 'rgba(140, 200, 240, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, w.radius * player.area, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      },
+    },
+    cheonmasingong: {
+      sect: 'magyo', name: () => '천마신공', icon: () => '😈',
+      desc: '붉은 마기를 폭발시키고, 맞은 요괴 수만큼 HP를 흡수해요', up: '데미지 +8, 범위 +12', max: 6,
+      create: () => ({ damage: 22, radius: 130, cooldown: 1.5, timer: 0.6 }),
+      upgrade(w) { w.damage += 8; w.radius += 12; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const r = w.radius * player.area;
+        if (!nearestEnemy(r)) return;
+        w.timer = w.cooldown * player.haste;
+        let hits = 0;
+        ringBlast(player.x, player.y, r, w.damage, 14, 'blood', () => { hits++; });
+        heal(Math.min(5, hits * 0.5));
+      },
+    },
+    hyeolma: {
+      sect: 'magyo', name: () => '혈마검', icon: () => '🩸',
+      desc: '앞뒤로 핏빛 검기를 날리고, 벤 만큼 HP를 흡수해요', up: '데미지 +7 (3단계부터 네 방향)', max: 6,
+      create: () => ({ damage: 20, dirs: 2, length: 320, width: 14, cooldown: 1.8, timer: 0.6 }),
+      upgrade(w) { w.damage += 7; if (w.level === 3) w.dirs = 4; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const t = nearestEnemy(w.length);
+        if (!t) return;
+        w.timer = w.cooldown * player.haste;
+        const base = Math.atan2(t.y - player.y, t.x - player.x);
+        for (let i = 0; i < w.dirs; i++) {
+          beamStrike(base + (i / w.dirs) * Math.PI * 2, w.length, w.width, w.damage, 'blood', () => heal(0.3));
+        }
+      },
+    },
+  });
+
   function grantWeapon(p, id, times = 1) {
     for (let i = 0; i < times; i++) {
       const w = p.weapons[id];
@@ -496,7 +836,7 @@
       setup(p) { p.crit += 0.15; p.critMul = 2.5; },
     },
     unhak: {
-      name: '운학', role: '도사', weapon: 'lightning', hp: 110, speed: 185,
+      sect: 'mudang', name: '운학', role: '무당파 도사', weapon: 'lightning', hp: 110, speed: 185,
       trait: '모든 무공 대기시간 -15%',
       setup(p) { p.haste *= 0.85; },
     },
@@ -506,7 +846,7 @@
       setup(p) { p.killHeal = 0.25; },
     },
     cheolsan: {
-      name: '철산', role: '무승', weapon: 'quake', hp: 150, speed: 170,
+      sect: 'sorim', name: '철산', role: '소림 무승', weapon: 'quake', hp: 150, speed: 170,
       trait: '최대 HP 150, 받는 피해 -15% (느림)',
       setup(p) { p.armor *= 0.85; },
     },
@@ -536,19 +876,44 @@
       setup(p) { p.haste *= 0.9; p.durMul += 0.3; },
     },
     seola: {
-      name: '설아', role: '설녀', weapon: 'icicle', hp: 100, speed: 190,
+      sect: 'bukhae', name: '설아', role: '북해빙궁 설녀', weapon: 'icicle', hp: 100, speed: 190,
       trait: '가까이 온 요괴가 얼어서 느려져요',
       setup(p) { p.chillAura = 85; },
     },
     cheonma: {
-      name: '천마', role: '마교 교주', weapon: 'beam', extra: 'tornado', hp: 160, speed: 205, unlock: 'survive10',
-      trait: '검기·회오리를 들고 시작, 모든 피해 +50%, 치명타 +10%',
+      sect: 'magyo', name: '천마', role: '마교 교주', weapon: 'cheonmasingong', extra: 'hyeolma', hp: 160, speed: 205, unlock: 'survive10',
+      trait: '천마신공·혈마검을 들고 시작, 모든 피해 +50%, 치명타 +10%',
       setup(p) { p.dmgMul += 0.5; p.crit += 0.1; },
     },
     sansin: {
       name: '산신령', role: '산의 주인', weapon: 'aura', extra: 'orbit', hp: 200, speed: 195, unlock: 'combo5',
       trait: '결계·여우불을 들고 시작, 초당 HP 3 회복, 대기시간 -15%',
       setup(p) { p.regen += 3; p.haste *= 0.85; },
+    },
+    baekmae: {
+      sect: 'hwasan', name: '백매', role: '화산파 검수', weapon: 'plum', hp: 100, speed: 200,
+      trait: '치명타 확률 +10%, 꽃잎이 요괴를 하나 더 꿰뚫어요',
+      setup(p) { p.crit += 0.1; p.pierce += 1; },
+    },
+    palgeol: {
+      sect: 'gaebang', name: '팔걸', role: '개방 방도', weapon: 'tagu', hp: 120, speed: 190,
+      trait: '엽전 줍는 범위 +40%, 복숭아·인삼 회복량 2배',
+      setup(p) { p.pickupRadius *= 1.4; p.healMul = 2; },
+    },
+    dangyu: {
+      sect: 'dang', name: '당유', role: '사천당가 암기술사', weapon: 'needles', hp: 90, speed: 205,
+      trait: '중독된 듯 모든 지속 피해 +40%, 조금 빠름',
+      setup(p) { p.dotMul = 1.4; },
+    },
+    namgung: {
+      sect: 'namgung', name: '남궁휘', role: '남궁세가 소가주', weapon: 'jewang', hp: 115, speed: 190,
+      trait: '모든 피해 +20%, 보스에게 피해 +50%',
+      setup(p) { p.dmgMul += 0.2; p.bossMul = 1.5; },
+    },
+    maengju: {
+      allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'jewang', extra: 'plum', hp: 180, speed: 205, unlock: 'sectUlt3',
+      trait: '모든 문파의 무공을 배울 수 있음, 모든 피해 +30%, 대기시간 -10%',
+      setup(p) { p.dmgMul += 0.3; p.haste *= 0.9; },
     },
   };
 
@@ -586,6 +951,30 @@
     mine: { passive: 'magnet', name: '천라지망', icon: '🕸️', desc: '지뢰부가 요괴를 끌어당기고, 범위 +30, 데미지 ×1.5',
       apply(w) { w.pull = 1; w.radius += 30; w.damage *= 1.5; } },
   });
+  Object.assign(COMBOS, {
+    plum: { partner: 'plumrain', name: '매화만개', icon: '💮', desc: '꽃잎 +10, 관통 +3, 데미지 ×1.6. 하늘이 매화로 뒤덮여요',
+      apply(w) { w.count += 10; w.pierce += 3; w.damage *= 1.6; } },
+    taiji: { partner: 'yangui', name: '태극무극', icon: '☯️', desc: '태극검 6자루가 더 크게 돌아요. 데미지 ×2',
+      apply(w) { w.count = 6; w.dist += 40; w.damage *= 2; } },
+    yeorae: { partner: 'geumgang', name: '천수여래장', icon: '🙏', desc: '손바닥 3개가 한꺼번에 떨어져요. 범위 +40, 데미지 ×1.8',
+      apply(w) { w.count = 3; w.radius += 40; w.damage *= 1.8; } },
+    tagu: { partner: 'bottle', name: '광걸난무', icon: '🌪️', desc: '범위 +50, 데미지 ×2, 대기시간 -40%',
+      apply(w) { w.radius += 50; w.damage *= 2; w.cooldown *= 0.6; } },
+    needles: { partner: 'dokmu', name: '폭우이화침', icon: '🌧️', desc: '암기 +16, 데미지 ×1.5',
+      apply(w) { w.count += 16; w.damage *= 1.5; } },
+    skysword: { partner: 'jewang', name: '제왕검우', icon: '🗡️', desc: '검 +6, 범위 +20, 데미지 ×1.7',
+      apply(w) { w.count += 6; w.radius += 20; w.damage *= 1.7; } },
+    binbaek: { partner: 'hanbing', name: '북해빙결', icon: '🧊', desc: '범위 +80, 데미지 ×2, 4초 동안 얼려요',
+      apply(w) { w.radius += 80; w.damage *= 2; w.freeze = 4; } },
+    cheonmasingong: { partner: 'hyeolma', name: '천마군림', icon: '👹', desc: '범위 +100, 데미지 ×2.2',
+      apply(w) { w.radius += 100; w.damage *= 2.2; } },
+  });
+  const comboRecipe = (id) => {
+    const c = COMBOS[id];
+    return c.partner
+      ? `${WEAPONS[id].icon()} ${WEAPONS[id].name()} + ${WEAPONS[c.partner].icon()} ${WEAPONS[c.partner].name()}`
+      : `${WEAPONS[id].icon()} ${WEAPONS[id].name()} + ${PASSIVE_BY_ID[c.passive].icon} ${PASSIVE_BY_ID[c.passive].title}`;
+  };
   const weaponName = (id) => (player.weapons[id]?.evolved ? COMBOS[id].name : WEAPONS[id].name());
   const weaponIcon = (id) => (player.weapons[id]?.evolved ? COMBOS[id].icon : WEAPONS[id].icon());
 
@@ -666,7 +1055,9 @@
     { id: 'level20', icon: '⛰️', name: '경지에 오르다', desc: '한 판에 Lv.20 도달', check: (p) => p.level >= 20 },
     { id: 'fullSlots', icon: '🎒', name: '무공 수집', desc: '무공 칸 5개를 모두 채우기', check: (p) => Object.keys(p.weapons).length >= MAX_WEAPONS },
     { id: 'chest3', icon: '🎁', name: '보물 사냥꾼', desc: '한 판에 보물함 3개 열기', check: (p) => p.chests >= 3 },
-    { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '기본 협객 10명으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
+    { id: 'sectUlt1', icon: '🏮', name: '문파의 비전', desc: '문파 오의를 처음으로 깨우치기', check: () => [...seen].some((id) => COMBOS[id]?.partner) },
+    { id: 'sectUlt3', icon: '🐉', name: '무림의 패자', desc: '서로 다른 문파 오의 3가지 발견 (누적)', check: () => [...seen].filter((id) => COMBOS[id]?.partner).length >= 3 },
+    { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
   const heroUnlocked = (id) => !HEROES[id].unlock || progress.achievements.includes(HEROES[id].unlock);
@@ -729,7 +1120,7 @@
       radius: SPRITE_DEFS[heroId].size * 0.3,
       speed: hero.speed, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
       crit: 0, critMul: 2, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0, killHeal: 0, combos: 0,
-      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0,
+      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {},
@@ -783,7 +1174,10 @@
   // ---------- Combos ----------
   function comboReady(id) {
     const w = player.weapons[id];
-    return w && !w.evolved && w.level >= WEAPONS[id].max && (player.picks[COMBOS[id].passive] || 0) > 0;
+    const c = COMBOS[id];
+    if (!w || w.evolved || w.level < WEAPONS[id].max) return false;
+    if (c.partner) return (player.weapons[c.partner]?.level || 0) >= WEAPONS[c.partner].max;
+    return (player.picks[c.passive] || 0) > 0;
   }
 
   function applyCombo(id) {
@@ -797,7 +1191,7 @@
     flash = 0.45;
     modalDelay = 1.6;
     burst(player.x, player.y, 40, ['#ffd76b', '#ffffff', '#e0503f', '#2a2224'], 280, 0.9, 5, true);
-    showBanner(`합성! ${c.name}`, '', c.desc);
+    showBanner(c.partner ? `오의! ${c.name}` : `합성! ${c.name}`, '', c.desc);
     markSeen(id);
     checkAchievements();
   }
@@ -817,19 +1211,22 @@
   function upgradeOffers() {
     const combos = Object.keys(COMBOS).filter(comboReady).map((id) => ({
       combo: true, icon: COMBOS[id].icon,
-      title: `합성: ${COMBOS[id].name}`,
-      desc: `${WEAPONS[id].name()} + ${PASSIVE_BY_ID[COMBOS[id].passive].title} → ${COMBOS[id].desc}`,
+      title: `${COMBOS[id].partner ? '문파 오의' : '합성'}: ${COMBOS[id].name}`,
+      desc: `${comboRecipe(id).replace(/\p{Extended_Pictographic}\uFE0F?\s?/gu, '')} → ${COMBOS[id].desc}`,
       pick: () => applyCombo(id),
     }));
     const cards = [];
+    const sectCards = [];
+    const hero = HEROES[player.hero];
     const owned = Object.keys(player.weapons).length;
     for (const [id, W] of Object.entries(WEAPONS)) {
       const w = player.weapons[id];
+      if (W.sect && !w && !hero.allSects && W.sect !== hero.sect) continue;
       if (w ? w.level >= W.max : owned >= MAX_WEAPONS) continue;
       const n = w ? w.level + 1 : 1;
-      cards.push({
-        icon: weaponIcon(id), title: `${weaponName(id)} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc,
-        stars: '★'.repeat(n) + '☆'.repeat(W.max - n),
+      (W.sect ? sectCards : cards).push({
+        icon: weaponIcon(id), title: `${W.sect ? `[${SECTS[W.sect]}] ` : ''}${weaponName(id)} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc,
+        stars: '★'.repeat(n) + '☆'.repeat(W.max - n), sect: !!W.sect,
         pick: () => grantWeapon(player, id),
       });
     }
@@ -841,7 +1238,8 @@
         pick: () => { player.picks[u.id] = n; u.apply(player); },
       });
     }
-    const offer = [...combos.slice(0, 3), ...shuffled(cards)].slice(0, 3);
+    const featured = sectCards.length && Math.random() < 0.65 ? [shuffled(sectCards)[0]] : [];
+    const offer = [...combos.slice(0, 3), ...featured, ...shuffled([...cards, ...sectCards.filter((c) => !featured.includes(c))])].slice(0, 3);
     if (offer.length < 3) offer.push(SNACK);
     return offer;
   }
@@ -852,8 +1250,8 @@
     state = 'choice';
     ui.banner.classList.remove('show');
     if (m.type === 'hero') {
-      showChoice('누구로 요괴를 물리칠까요?', '협객마다 시작 무공과 특성이 달라요', Object.entries(HEROES).map(([id, H]) => (heroUnlocked(id) ? {
-        img: id, title: `${H.name} · ${H.role}`, desc: `${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait}`, hero: true,
+      showChoice('누구로 요괴를 물리칠까요?', '협객마다 시작 무공과 특성이 달라요', Object.entries(HEROES).sort((x, y) => !heroUnlocked(x[0]) - !heroUnlocked(y[0])).map(([id, H]) => (heroUnlocked(id) ? {
+        img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait}`, hero: true,
         pick: () => {
           resetGame(id);
           if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
@@ -875,7 +1273,7 @@
     ui.choiceCards.replaceChildren();
     options.forEach((opt, i) => {
       const card = document.createElement('button');
-      card.className = `card${opt.big ? ' big' : ''}${opt.hero ? ' hero' : ''}${opt.combo ? ' combo' : ''}${opt.locked ? ' locked' : ''}`;
+      card.className = `card${opt.big ? ' big' : ''}${opt.hero ? ' hero' : ''}${opt.combo ? ' combo' : ''}${opt.sect ? ' sect' : ''}${opt.locked ? ' locked' : ''}`;
       if (opt.img) {
         card.append(pixelImg(opt.img));
       } else {
@@ -984,7 +1382,7 @@
 
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     const crit = Math.random() < player.crit;
-    amount *= player.dmgMul;
+    amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
     if (crit) amount *= player.critMul;
     e.hp -= amount;
     e.flash = 0.1;
@@ -1200,8 +1598,9 @@
   function collect(it) {
     const head = player.y - player.radius - 6;
     if (it.kind === 'peach' || it.kind === 'ginseng') {
-      player.hp = Math.min(player.maxHp, player.hp + it.value);
-      addFloatText(player.x, head, `+${it.value}`, '#ff8fb4');
+      const v = it.value * player.healMul;
+      player.hp = Math.min(player.maxHp, player.hp + v);
+      addFloatText(player.x, head, `+${v}`, '#ff8fb4');
     } else if (it.kind === 'gourd') {
       for (const g of pickups) if (g.kind === 'coin' || g.kind === 'coin_gold') g.vel = 300;
       addFloatText(player.x, head, '흡수!', '#e0503f');
@@ -1228,13 +1627,21 @@
       const sh = shells[i];
       if ((sh.t += dt) < sh.dur) continue;
       shells.splice(i, 1);
-      fx.push({ kind: 'ring', x: sh.tx, y: sh.ty, r: sh.radius, life: 0.3, max: 0.3 });
-      burst(sh.tx, sh.ty, 10, sh.chill ? ['#ffffff', '#bfe6ff', '#8cc8f0'] : ['#e0503f', '#ffd76b', '#ffffff', '#2a2224'], 160, 0.4, 4, true);
+      fx.push({ kind: 'ring', x: sh.tx, y: sh.ty, r: sh.radius, life: 0.3, max: 0.3, color: sh.ringColor });
+      burst(sh.tx, sh.ty, 10, sh.colors || (sh.chill ? ['#ffffff', '#bfe6ff', '#8cc8f0'] : ['#e0503f', '#ffd76b', '#ffffff', '#2a2224']), 160, 0.4, 4, true);
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
         if (dist(e.x, e.y, sh.tx, sh.ty) >= sh.radius + e.type.radius) continue;
         if (sh.chill) e.chill = 1.5;
-        damageEnemy(e, j, sh.damage, e.x - sh.tx, e.y - sh.ty, sh.chill ? 0 : 10);
+        damageEnemy(e, j, sh.damage, e.x - sh.tx, e.y - sh.ty, sh.push ?? (sh.chill ? 0 : 10));
+      }
+      if (sh.bounces > 0) {
+        let next = null, best = 260;
+        for (const e of enemies) {
+          const d = dist(e.x, e.y, sh.tx, sh.ty);
+          if (d > 30 && d < best) { best = d; next = e; }
+        }
+        if (next) shells.push({ ...sh, sx: sh.tx, sy: sh.ty, tx: next.x, ty: next.y, t: 0, bounces: sh.bounces - 1 });
       }
     }
     for (let i = mines.length - 1; i >= 0; i--) {
@@ -1316,7 +1723,7 @@
     ui.hpText.textContent = `${Math.ceil(player.hp)} / ${Math.round(player.maxHp)}`;
     ui.xpBar.style.width = `${clamp(player.xp / player.xpToNext, 0, 1) * 100}%`;
     ui.level.textContent = `Lv.${player.level}`;
-    ui.formName.textContent = `${HEROES[player.hero].name} · ${HEROES[player.hero].role}`;
+    ui.formName.textContent = HEROES[player.hero].name;
     ui.kills.textContent = `요괴 ${kills}마리 퇴치`;
     ui.timer.textContent = fmtTime(elapsed);
     ui.evoHint.textContent = player.combos ? `합성 무공 ${player.combos}개` : '';
@@ -1357,7 +1764,7 @@
       const a = clamp(z.life / 0.6, 0, 1);
       for (let i = 0; i < 3; i++) {
         const ox = Math.cos(z.seed + i * 2.1 + anim) * z.r * 0.3, oy = Math.sin(z.seed + i * 2.1 + anim) * z.r * 0.2;
-        ctx.fillStyle = `rgba(130, 80, 160, ${0.16 * a})`;
+        ctx.fillStyle = z.tint === 'green' ? `rgba(90, 160, 70, ${0.18 * a})` : `rgba(130, 80, 160, ${0.16 * a})`;
         ctx.beginPath();
         ctx.arc(z.x + ox, z.y + oy, z.r * (0.7 + i * 0.15), 0, Math.PI * 2);
         ctx.fill();
@@ -1387,20 +1794,27 @@
   function drawShells() {
     for (const sh of shells) {
       if (sh.kind === 'drop') {
-        drawSprite('icicle', sh.tx, sh.ty - (1 - sh.t / sh.dur) * 220);
+        drawSprite(sh.sprite || 'icicle', sh.tx, sh.ty - (1 - sh.t / sh.dur) * 220);
         continue;
       }
       const t = sh.t / sh.dur;
       const x = sh.sx + (sh.tx - sh.sx) * t;
       const y = sh.sy + (sh.ty - sh.sy) * t - Math.sin(Math.PI * t) * 70;
-      drawSprite('talisman', x, y, { rot: sh.t * 12 });
+      drawSprite(sh.sprite || 'talisman', x, y, { rot: sh.t * 12 });
     }
   }
 
   function drawFx() {
     for (const f of fx) {
       const a = clamp(f.life / f.max, 0, 1);
-      if (f.kind === 'slash') {
+      if (f.kind === 'spin') {
+        ctx.strokeStyle = `rgba(120, 90, 60, ${a})`;
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        const st = (1 - a) * Math.PI * 4;
+        ctx.arc(f.x, f.y, f.r * 0.85, st, st + Math.PI * 1.4);
+        ctx.stroke();
+      } else if (f.kind === 'slash') {
         ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
         ctx.lineWidth = 6 * a + 2;
         ctx.beginPath();
@@ -1415,17 +1829,21 @@
         ctx.rotate(f.a);
         ctx.globalAlpha = a;
         const g = ctx.createLinearGradient(0, -f.w, 0, f.w);
-        g.addColorStop(0, 'rgba(160, 210, 230, 0)');
-        g.addColorStop(0.35, 'rgba(190, 230, 245, 0.85)');
+        const edge = { gold: '240, 195, 80', blood: '170, 20, 30' }[f.tint] || '160, 210, 230';
+        const mid = { gold: '255, 236, 160', blood: '230, 60, 60' }[f.tint] || '190, 230, 245';
+        g.addColorStop(0, `rgba(${edge}, 0)`);
+        g.addColorStop(0.35, `rgba(${mid}, 0.85)`);
         g.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
-        g.addColorStop(0.65, 'rgba(190, 230, 245, 0.85)');
-        g.addColorStop(1, 'rgba(160, 210, 230, 0)');
+        g.addColorStop(0.65, `rgba(${mid}, 0.85)`);
+        g.addColorStop(1, `rgba(${edge}, 0)`);
         ctx.fillStyle = g;
         ctx.fillRect(0, -f.w, f.len, f.w * 2);
         ctx.restore();
       } else if (f.kind === 'ring') {
         const r = f.r * (1 - a * 0.6);
-        ctx.strokeStyle = `rgba(250, 245, 230, ${a})`;
+        if (f.color === 'none') continue;
+        const rgb = { gold: '240, 195, 80', ice: '170, 220, 255', blood: '200, 30, 40' }[f.color] || '250, 245, 230';
+        ctx.strokeStyle = `rgba(${rgb}, ${a})`;
         ctx.lineWidth = 6 * a + 2;
         ctx.beginPath();
         ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
@@ -1502,6 +1920,7 @@
     ctx.fillRect(camX, camY, viewW, viewH);
 
     drawAura();
+    for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawBelow) WEAPONS[id].drawBelow(w);
     drawZones();
     drawMines();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
@@ -1518,9 +1937,10 @@
     if (!playerDrawn) drawPlayer();
 
     for (const pt of orbitPoints()) drawSprite('foxfire', pt.x, pt.y);
+    for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawAbove) WEAPONS[id].drawAbove(w);
     for (const p of projectiles) {
       if (p.kind === 'tornado') { drawTornado(p); continue; }
-      const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : Math.atan2(p.vy, p.vx);
+      const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : p.kind === 'petal' ? p.spin + p.life * 8 : Math.atan2(p.vy, p.vx);
       drawSprite(p.sprite, p.x, p.y, { rot });
     }
     drawShells();
@@ -1598,9 +2018,7 @@
       const row = document.createElement('div');
       row.className = known ? 'book-row' : 'book-row unseen';
       const recipe = document.createElement('span');
-      recipe.textContent = known
-        ? `${WEAPONS[id].icon()} ${WEAPONS[id].name()} + ${PASSIVE_BY_ID[c.passive].icon} ${PASSIVE_BY_ID[c.passive].title}`
-        : '??? + ???';
+      recipe.textContent = known ? comboRecipe(id) : (c.partner ? `[${SECTS[WEAPONS[id].sect]} 오의] ??? + ???` : '??? + ???');
       const result = document.createElement('span');
       result.className = 'result';
       result.textContent = known ? `${c.icon} ${c.name}` : '???';

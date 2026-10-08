@@ -197,6 +197,8 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   box-shadow: 0 0 0 2px var(--gold), 3px 3px 0 rgba(42, 34, 36, 0.3);
 }
 .card.combo .title { color: var(--red); }
+.card.sect { border-color: var(--red); box-shadow: 3px 3px 0 rgba(184, 50, 42, 0.35); }
+.card.sect .title { color: var(--red-dark); }
 .card .icon { font-size: 36px; height: 48px; display: grid; place-items: center; }
 .card img { width: 96px; height: 96px; }
 .card .title { font-size: 18px; font-weight: 700; }
