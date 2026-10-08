@@ -625,8 +625,156 @@ def jegal():
     s.finish('jegal.png')
 
 
+# ---------- hidden heroes ----------
+
+def dokgo():
+    """검성: grey-haired swordmaster under a straw hat, eyes closed, sheathed blade, grey cape."""
+    s = H()
+    cape(s, rgba(70, 70, 80), rgba(200, 200, 210))
+    hair_back_long(s, rgba(190, 190, 200), 22)
+    legs(s, rgba(40, 40, 48), stance=0.8)
+    robe(s, rgba(36, 34, 44), rgba(210, 210, 220), trim=rgba(210, 210, 220), flare=1.4)
+    sash(s, rgba(210, 210, 220))
+    arms(s, rgba(32, 30, 40))
+    head(s, eye=INK, brow=rgba(150, 150, 160))
+    for x in (13, 18):
+        s.mark(x, 10, INK)
+    hair_cap(s, rgba(190, 190, 200))
+    s.blob(16, 5, 8.6, 1.6, rgba(200, 170, 110))
+    s.poly([(12, 4.6), (20, 4.6), (16, 0.8)], rgba(180, 150, 96))
+    s.shade()
+    s.line(10.4, 20.6, 3, 27.6, rgba(60, 50, 50), 2.2)
+    s.line(10.4, 20.6, 13, 18, rgba(120, 80, 50), 1.4)
+    s.put(10, 21, GOLD)
+    s.finish('dokgo.png')
+
+
+def hyeolrang():
+    """혈랑: wolf-pelt hood, bandaged arms, crimson sash, heavy dao."""
+    s = H()
+    pelt = rgba(130, 130, 140)
+    s.poly([(10, 4), (22, 4), (24, 18), (19, 22), (8, 24), (3, 20), (8, 12)], mul(pelt, 0.8))
+    legs(s, rgba(50, 40, 40), stance=1.4)
+    robe(s, rgba(70, 56, 52), rgba(150, 40, 40), flare=0.8, length=26)
+    sash(s, BLOODRED)
+    arms(s, rgba(214, 170, 130))
+    for y in (17, 19, 21):
+        s.line(8.4, y, 11.4, y - 0.6, rgba(230, 226, 214), 0.7)
+    head(s, skin=rgba(226, 186, 150), eye=rgba(240, 40, 40))
+    eyes_glow(s, rgba(255, 50, 50))
+    s.blob(16, 5.6, 5.4, 3.6, pelt, ymax=7.6)
+    s.poly([(11, 4.6), (10.6, 0.4), (13.6, 3)], pelt)
+    s.poly([(21, 4.6), (21.4, 0.4), (18.4, 3)], pelt)
+    s.poly([(12.4, 6.6), (19.6, 6.6), (16, 8.8)], mul(pelt, 0.7))
+    s.shade()
+    s.poly([(21.6, 21), (30.6, 26), (31, 29.6), (29, 30.6), (21, 23.6)], STEEL)
+    s.line(22.6, 22.4, 30, 27.4, mix(STEEL, WHITE, 0.6), 0.6)
+    s.line(19.6, 20, 22.6, 22.4, rgba(80, 40, 40), 1.6)
+    s.finish('hyeolrang.png')
+
+
+def hyeonmu():
+    """강시술사: violet hooded robe, pale face, talisman on the brow, bell staff and ghost lights."""
+    s = H()
+    violet = rgba(70, 44, 96)
+    cape(s, rgba(44, 28, 62), rgba(150, 90, 200))
+    legs(s, rgba(40, 28, 52))
+    robe(s, violet, rgba(170, 120, 220), trim=rgba(170, 120, 220), flare=1.8)
+    sash(s, rgba(170, 120, 220))
+    arms(s, rgba(60, 38, 84), wide=True, front_raised=True)
+    head(s, skin=rgba(222, 222, 230), eye=rgba(170, 120, 255))
+    s.blob(16, 6.6, 5.2, 5, violet, ymax=8.4)
+    s.rect(11.2, 6, 12.6, 13, violet)
+    s.rect(19.4, 6, 20.8, 13, violet)
+    s.rect(15, 4, 17, 8.6, PAPER)
+    s.mark(16, 5, RED)
+    s.mark(16, 7, RED)
+    eyes_glow(s, rgba(190, 140, 255))
+    s.shade()
+    staff(s, 26, 31, 26.6, 6, rgba(80, 60, 50), 1.2)
+    s.blob(26.6, 5, 1.6, 1.6, GOLD)
+    for x, y in [(3, 8), (5, 3), (29, 16)]:
+        s.blob(x, y, 1.4, 1.6, rgba(170, 230, 255))
+        s.put(x, y + 2, rgba(170, 230, 255))
+    s.finish('hyeonmu.png')
+
+
+def jusun():
+    """주선: flushed drunken master, loose open robe, gourd held high."""
+    s = H()
+    legs(s, rgba(90, 70, 50), stance=1.6)
+    robe(s, rgba(170, 120, 70), rgba(236, 220, 190), flare=1.2, length=26)
+    s.poly([(14.4, 14), (17.6, 14), (17, 19), (15, 19)], rgba(232, 180, 140))
+    sash(s, rgba(110, 60, 40))
+    arms(s, rgba(156, 108, 62), wide=True, front_raised=True)
+    head(s, skin=rgba(236, 186, 150), eye=rgba(80, 50, 30))
+    for x in (13, 14, 17, 18):
+        s.mark(x, 11, rgba(240, 120, 110))
+    hair_cap(s, HAIR)
+    s.poly([(13, 4), (18, 4), (20, 0.6), (16, 2.4), (12, 0.8)], HAIR)
+    s.shade()
+    s.blob(27, 9.4, 2.4, 2.6, rgba(214, 150, 70))
+    s.blob(27, 5.4, 1.6, 1.6, rgba(214, 150, 70))
+    s.rect(26.2, 2.6, 27.8, 4, RED)
+    s.rect(24.8, 7.4, 29.2, 8.2, RED)
+    s.finish('jusun.png')
+
+
+def hwaryeon():
+    """화련: phoenix maiden, flame hair, red-gold robe with feather tails, fire in hand."""
+    s = H()
+    fire = rgba(255, 120, 40)
+    s.poly([(10, 18), (2, 16), (0.6, 22), (4, 21), (2, 27), (8, 24), (11, 22)], fire)
+    s.poly([(10, 20), (4, 22), (3.4, 26), (9, 24)], FLAME_BLUE if False else rgba(255, 200, 80))
+    hair_back_long(s, rgba(230, 70, 40), 24)
+    legs(s, rgba(150, 40, 30))
+    robe(s, rgba(210, 50, 40), GOLD, trim=GOLD, flare=2.2)
+    sash(s, GOLD)
+    arms(s, rgba(190, 40, 34), wide=True, front_raised=True)
+    head(s, eye=rgba(255, 160, 40))
+    hair_cap(s, rgba(230, 70, 40))
+    for x, h in [(12, 3.4), (14.6, 5), (17.4, 4.4), (20, 3)]:
+        s.poly([(x - 1.4, 4.4), (x + 1.4, 4.4), (x + 0.4, 4.4 - h)], rgba(255, 150, 50))
+    s.mark(16, 5, GOLD)
+    s.shade()
+    s.blob(27, 12, 2.6, 2.8, fire)
+    s.poly([(25.2, 11), (28.8, 11), (27.6, 6)], rgba(255, 200, 80))
+    s.blob(27, 12.4, 1.2, 1.2, rgba(255, 240, 200))
+    s.finish('hwaryeon.png')
+
+
+def dueok():
+    """두억: dokkaebi king, blue skin, horns, gold crown, tiger-striped pants, studded club."""
+    s = H()
+    blue = rgba(70, 110, 190)
+    tiger = rgba(230, 150, 50)
+    legs(s, tiger, stance=1.6)
+    for x in (12.6, 14, 17.6, 19):
+        s.line(x, 26.8, x + 0.6, 29, INK, 0.6)
+    s.poly([(10.4, 14), (21.6, 14), (21, 22), (11, 22)], blue)
+    s.poly([(10.6, 21.4), (21.4, 21.4), (22.4, 27), (9.6, 27)], tiger)
+    for x in (11.6, 14.4, 17.4, 20.2):
+        s.line(x, 22, x + 0.8, 26.6, INK, 0.7)
+    sash(s, rgba(60, 50, 50), tails=False, y=20.6)
+    arms(s, blue, skin=blue, front_raised=True)
+    head(s, skin=blue, eye=rgba(255, 220, 60), mouth=False)
+    s.rect(14, 11.4, 18, 12.4, INK)
+    s.mark(14, 12, WHITE)
+    s.mark(17, 12, WHITE)
+    s.poly([(11.6, 6), (9.6, 1), (13.4, 4.4)], rgba(240, 236, 214))
+    s.poly([(20.4, 6), (22.4, 1), (18.6, 4.4)], rgba(240, 236, 214))
+    s.blob(16, 6, 4.4, 2, rgba(60, 40, 40), ymax=7)
+    s.poly([(12.6, 4.6), (19.4, 4.6), (20, 1.6), (18, 3), (16, 0.6), (14, 3), (12, 1.6)], GOLD)
+    s.shade()
+    s.line(25.6, 15, 29.6, 3, rgba(140, 90, 50), 3.2)
+    for (x, y) in [(28.6, 5), (29.6, 7.4), (27.6, 8.6), (28.8, 3)]:
+        s.put(x, y, rgba(240, 236, 214))
+    s.finish('dueok.png')
+
+
 HEROES = [cheongpung, unhak, yeoubi, cheolsan, dallae, yawol, songhwa, muyeong, geumbi, seola,
-          cheonma, sansin, baekmae, palgeol, dangyu, namgung, maengju, aemi, gonryun, jegal]
+          cheonma, sansin, baekmae, palgeol, dangyu, namgung, maengju, aemi, gonryun, jegal,
+          dokgo, hyeolrang, hyeonmu, jusun, hwaryeon, dueok]
 
 if __name__ == '__main__':
     for fn in HEROES:

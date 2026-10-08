@@ -73,6 +73,12 @@
     aemi: { size: 64, color: '#b096d2', emoji: '🗡️' },
     gonryun: { size: 64, color: '#6ea0d2', emoji: '🏔️' },
     jegal: { size: 64, color: '#46786e', emoji: '🪶' },
+    dokgo: { size: 64, color: '#24222c', emoji: '🗡️' },
+    hyeolrang: { size: 64, color: '#828290', emoji: '🐺' },
+    hyeonmu: { size: 64, color: '#462c60', emoji: '👻' },
+    jusun: { size: 64, color: '#aa7846', emoji: '🍶' },
+    hwaryeon: { size: 64, color: '#d23228', emoji: '🔥' },
+    dueok: { size: 64, color: '#466ebe', emoji: '👹' },
     daedokkaebi: { size: 64, color: '#4870be', emoji: '👹' },
     imugi: { size: 64, color: '#468c64', emoji: '🐍' },
     heukyo: { size: 64, color: '#3e3a4c', emoji: '⚔️' },
@@ -798,7 +804,7 @@
     { at: 5, name: '백보신권', desc: '백 걸음 밖의 요괴까지 주먹이 닿아 터져요' },
   ];
   function formIndex(forms, w) {
-    const realm = (player?.realm || 0) + (w?.evolved ? 1 : 0);
+    const realm = (player?.realm || 0) + (w?.evolved ? 1 : 0) + (player?.formBonus || 0);
     let i = 0;
     while (i + 1 < forms.length && forms[i + 1].at <= realm) i++;
     return i;
@@ -845,6 +851,13 @@
         const a = Math.atan2(target.y - player.y, target.x - player.x);
         const r = w.range * player.area * (stage >= 1 ? 1.4 : 1);
         arcStrike(a, r, stage >= 1 ? 1.5 : 1.25, w.damage * (stage >= 1 ? 1.15 : 1), 10);
+        if (player.issen && ++player.swings % 8 === 0) {
+          beamStrike(a, Math.hypot(viewW, viewH) * 0.6, 22, w.damage * 4, 'gold');
+          beamStrike(a + Math.PI, Math.hypot(viewW, viewH) * 0.6, 22, w.damage * 4, 'gold');
+          shake = Math.max(shake, 8);
+          flash = Math.max(flash, 0.15);
+          addFloatText(player.x, player.y - 46, '일섬!', '#ffd76b');
+        }
         const n = 1 + player.extra;
         for (let i = 0; i < n; i++) {
           const b = a + (i - (n - 1) / 2) * 0.3;
@@ -1438,6 +1451,42 @@
       trait: '얻는 경험치 +20%, 대기시간 -10%',
       setup(p) { p.xpMul += 0.2; p.haste *= 0.9; },
     },
+    dokgo: {
+      name: '독고', role: '검성', weapon: 'geomsul', hp: 100, speed: 205, unlock: 'reaper',
+      trait: '검술이 한 단계 높은 형으로 시작, 8번째 베기마다 화면을 가르는 일섬, 치명타 +10%',
+      ranks: ['무명검객', '검객', '검호', '검협', '검왕', '검존', '검신', '검성'],
+      setup(p) { p.formBonus = 1; p.issen = true; p.crit += 0.1; },
+    },
+    hyeolrang: {
+      name: '혈랑', role: '광전사 낭인', weapon: 'slash', extra: 'geomsul', hp: 130, speed: 210, unlock: 'kill1000',
+      trait: 'HP가 낮을수록 강해져요(최대 피해 ×2.2), 처치할 때마다 HP 0.5 흡혈',
+      ranks: ['떠돌이', '낭인', '혈랑', '혈귀', '혈왕', '광혈', '혈마', '혈랑왕'],
+      setup(p) { p.berserk = 1.2; p.killHeal += 0.5; },
+    },
+    hyeonmu: {
+      name: '현무', role: '강시술사', weapon: 'orbit', hp: 95, speed: 195, unlock: 'elite5',
+      trait: '쓰러진 요괴의 20%가 원귀로 일어나 다른 요괴를 덮쳐요',
+      ranks: ['수습 술사', '술사', '강시술사', '귀문술사', '귀왕', '명부지기', '저승관', '귀신왕'],
+      setup(p) { p.necro = 0.2; },
+    },
+    jusun: {
+      name: '주선', role: '취권 고수', weapon: 'gwonbeop', extra: 'bottle', hp: 115, speed: 215, unlock: 'lantern20',
+      trait: '취권: 요괴의 공격을 30% 확률로 흘려내요, 몸이 흔들흔들',
+      ranks: ['술꾼', '취객', '취협', '취선', '주광', '주성', '취불', '주선'],
+      setup(p) { p.dodge = 0.3; p.drunk = true; },
+    },
+    hwaryeon: {
+      name: '화련', role: '불사조의 무녀', weapon: 'firework', hp: 100, speed: 205, unlock: 'realm7',
+      trait: '지나간 자리에 불길이 남고, 한 번 불사조로 되살아나며 주변을 불태워요',
+      ranks: ['불씨', '화녀', '염화', '화령', '주작의 깃', '화신', '불사조', '주작'],
+      setup(p) { p.flameTrail = true; p.revives += 1; p.phoenix = true; },
+    },
+    dueok: {
+      name: '두억', role: '도깨비 왕', weapon: 'quake', hp: 170, speed: 190, unlock: 'gold1000',
+      trait: '은자 ×2, 줍는 범위 ×2, 보물함 선물 +1, 받는 피해 -10%',
+      ranks: ['꼬마 도깨비', '도깨비', '도깨비 장수', '도깨비 대장', '도깨비 두령', '방망이 왕', '도깨비 왕', '두억시니'],
+      setup(p) { p.greed += 1; p.pickupRadius *= 2; p.bonusGift = 1; p.armor *= 0.9; },
+    },
     maengju: {
       allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'geomsul', extra: 'jewang', hp: 180, speed: 205, unlock: 'sectUlt3',
       trait: '모든 문파의 무공을 배울 수 있음, 모든 피해 +30%, 대기시간 -10%',
@@ -1720,6 +1769,7 @@
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
+      formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {},
@@ -1811,7 +1861,7 @@
   }
   const rankOf = (realm) => {
     const h = HEROES[player.hero];
-    return RANKS[h.allSects ? 'maeng' : h.sect || 'none'][realm];
+    return (h.ranks || RANKS[h.allSects ? 'maeng' : h.sect || 'none'])[realm];
   };
 
   function checkRealm() {
@@ -1833,7 +1883,7 @@
       const w = player.weapons[id];
       if (!w) continue;
       const f = forms[formIndex(forms, w)];
-      if (f.at === player.realm + (w.evolved ? 1 : 0)) showToast(`${WEAPONS[id].icon()} ${f.name} 발현!`, f.desc);
+      if (f.at === player.realm + (w.evolved ? 1 : 0) + player.formBonus) showToast(`${WEAPONS[id].icon()} ${f.name} 발현!`, f.desc);
     }
     checkAchievements();
   }
@@ -2207,6 +2257,8 @@
     yeoubi: ['cast', '110, 190, 255'], sansin: ['cast', '255, 230, 150'],
     yawol: ['throw', '230, 60, 60'], dangyu: ['throw', '150, 230, 90'], aemi: ['throw', '190, 150, 240'],
     palgeol: ['spin', '120, 200, 90'],
+    dokgo: ['slash', '230, 230, 245'], hyeolrang: ['twin', '210, 30, 40'], hyeonmu: ['cast', '180, 130, 255'],
+    jusun: ['palm', '240, 170, 80'], hwaryeon: ['cast', '255, 120, 40'], dueok: ['palm', '90, 140, 230'],
   };
   function triggerAttack(proj) {
     if (player.atkCd > 0) return;
@@ -2224,6 +2276,7 @@
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
+    if (player.berserk) amount *= 1 + player.berserk * (1 - clamp(player.hp / player.maxHp, 0, 1));
     if (crit) amount *= player.critMul;
     player.dmgBy[dmgSrc] = (player.dmgBy[dmgSrc] || 0) + Math.min(amount, Math.max(0, e.hp));
     e.hp -= amount;
@@ -2277,6 +2330,13 @@
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
     pickups.push({ kind: e.type.xp >= 20 ? 'coin_gold' : 'coin', value: e.type.xp, x: e.x, y: e.y });
     if (player.killHeal) player.hp = Math.min(player.maxHp, player.hp + player.killHeal);
+    if (player.necro && Math.random() < player.necro && projectiles.length < 300) {
+      const a = Math.random() * Math.PI * 2;
+      projectiles.push({
+        kind: 'homing', x: e.x, y: e.y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120 - 60, speed: 300,
+        damage: 12 + player.level * 2.5, pierce: 3, radius: 12, sprite: 'wongwi', life: 3, hit: new Set(), src: 'necro', ghost: true,
+      });
+    }
     if (e.type.split) {
       for (const dx of [-10, 10]) spawnEnemy(ENEMY_TYPES[e.type.split], 0, 0, { x: e.x + dx, y: e.y });
     }
@@ -2345,6 +2405,10 @@
     if (player.glow > 0) player.glow -= dt;
     if (player.boost > 0) player.boost -= dt;
     if (player.atk > 0) player.atk -= dt;
+    if (player.flameTrail && player.moving && (player.trailCd -= dt) <= 0 && zones.length < 80) {
+      player.trailCd = 0.22;
+      zones.push({ x: player.x, y: player.y + player.radius * 0.6, r: 26 * player.area, damage: 5 + player.level * 1.2, life: 1.6, tick: 0, seed: Math.random() * 6, tint: 'fire', hold: 0.05, src: 'phoenix' });
+    }
     if (player.atkCd > 0) player.atkCd -= dt;
     if (shake > 0) shake = Math.max(0, shake - dt * 30);
   }
@@ -2386,6 +2450,14 @@
         e.y += (dx / d) * wiggle;
       }
       if (e.contactCd > 0) e.contactCd -= dt;
+      if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0 && player.dodge && Math.random() < player.dodge) {
+        e.contactCd = 0.6;
+        player.invuln = 0.25;
+        e.x -= (dx / d) * 18;
+        e.y -= (dy / d) * 18;
+        addFloatText(player.x, player.y - player.radius - 6, '흘림!', '#f0b050');
+        continue;
+      }
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
         const hurt = Math.max(1, Math.round(e.damage * player.armor));
         player.hp -= hurt;
@@ -2400,7 +2472,14 @@
           player.glow = 1.5;
           flash = 0.5;
           ringBlast(player.x, player.y, 260, 40, 60, 'gold');
-          showBanner('환생!', '', 'HP 절반으로 되살아났어요');
+          if (player.phoenix) {
+            player.phoenix = false;
+            player.hp = player.maxHp;
+            dmgSrc = 'item';
+            ringBlast(player.x, player.y, 420, 300 + player.level * 20, 80, 'blood');
+            burst(player.x, player.y, 60, ['#ff7828', '#ffd060', '#ffffff', '#e0302a'], 360, 1.2, 6, true);
+            showBanner('불사조 강림!', '', '불꽃 속에서 HP 전부 회복하며 되살아났어요');
+          } else showBanner('환생!', '', 'HP 절반으로 되살아났어요');
         } else if (player.hp <= 0) {
           player.hp = 0;
           gameOver();
@@ -2548,7 +2627,7 @@
       player.chests++;
       // Like other survivors games, a lucky chest holds 3 or 5 gifts.
       const r = Math.random() * player.luck;
-      const n = r > 0.94 ? 5 : r > 0.72 ? 3 : 1;
+      const n = (r > 0.94 ? 5 : r > 0.72 ? 3 : 1) + player.bonusGift;
       for (let k = n; k >= 1; k--) modalQueue.unshift({ type: 'chest', n: k, of: n });
       addGold(10 * n);
       burst(player.x, player.y, 20, ['#ffe066', '#ffffff', '#ffc2dc'], 200, 0.6, 4, true);
@@ -2733,6 +2812,17 @@
   function drawZones() {
     for (const z of zones) {
       const a = clamp(z.life / 0.6, 0, 1);
+      if (z.tint === 'fire') {
+        const k = clamp(z.life / 1.6, 0, 1);
+        for (let i = 0; i < 3; i++) {
+          const ox = Math.sin(z.seed + i * 2 + anim * 6) * z.r * 0.3;
+          ctx.fillStyle = i === 2 ? `rgba(255, 220, 120, ${0.5 * k})` : `rgba(255, ${90 + i * 50}, 40, ${0.35 * k})`;
+          ctx.beginPath();
+          ctx.ellipse(z.x + ox, z.y - i * 5 * k, z.r * (0.9 - i * 0.25) * k, z.r * (0.55 - i * 0.12) * k, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        continue;
+      }
       if (z.tint === 'formation') {
         ctx.save();
         ctx.translate(z.x, z.y);
@@ -3034,7 +3124,7 @@
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
     const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
-    const opts = (k, alpha) => ({ flip: false, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
+    const opts = (k, alpha) => ({ flip: false, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk ? Math.sin(anim * 2.6) * 0.14 : 0), sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
     if (player.atk > 0 && style !== 'cast') {
       for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
     }
@@ -3283,6 +3373,7 @@
         drawSprite(p.sprite, p.x, p.y, { rot, sx: 1.35, sy: 1.35 });
         continue;
       }
+      if (p.ghost) { drawSprite(p.sprite, p.x, p.y, { alpha: 0.7, sx: 0.7, sy: 0.7 }); continue; }
       drawSprite(p.sprite, p.x, p.y, { rot });
     }
     drawShells();
@@ -3422,7 +3513,7 @@
     const rows = Object.entries(player.dmgBy).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
     const total = rows.reduce((n, [, v]) => n + v, 0) || 1;
     return rows.map(([id, v]) => {
-      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : '🧨 아이템';
+      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : { necro: '💀 원귀 소환', phoenix: '🔥 불길' }[id] || '🧨 아이템';
       const row = document.createElement('div');
       row.className = 'book-row';
       const a = document.createElement('span');
