@@ -1313,7 +1313,7 @@
   let player, enemies, projectiles, pickups, particles, floatTexts, fx, shells, zones, mines;
   let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
   let propTimer = 0, finalSpawned = false, marchIdx = 0, banked = 0, dmgSrc = 'item', banishMode = false;
-  let modalDelay = 0, flash = 0, anim = 0;
+  let modalDelay = 0, flash = 0, anim = 0, shake = 0;
   const modalQueue = [];
   const keys = new Set();
 
@@ -1325,7 +1325,7 @@
       radius: SPRITE_DEFS[heroId].size * 0.3,
       speed: hero.speed, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
       crit: 0, critMul: 2, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0, killHeal: 0, combos: 0,
-      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0,
+      dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
       level: 1, xp: 0, xpToNext: 10, picks: {},
@@ -1348,6 +1348,7 @@
     achvTimer = 0;
     modalQueue.length = 0;
     elapsed = 0;
+    shake = 0;
     kills = 0;
     spawnTimer = 0;
     bossTimer = 0;
@@ -1426,6 +1427,7 @@
     player.hp = player.maxHp;
     player.invuln = Math.max(player.invuln, 1);
     player.glow = 1.4;
+    shake = Math.max(shake, 7);
     flash = Math.max(flash, 0.35);
     modalDelay = Math.max(modalDelay, 1.4);
     const aura = REALM_AURA[player.realm];
@@ -1732,6 +1734,21 @@
     return best;
   }
 
+  // Attack motion: the hero lunges and swings toward whatever the technique just targeted.
+  const ATK_TIME = 0.22;
+  function triggerAttack(proj) {
+    if (player.atkCd > 0) return;
+    let a;
+    if (proj && (proj.vx || proj.vy)) a = Math.atan2(proj.vy, proj.vx);
+    else {
+      const t = nearestEnemy(600);
+      a = t ? Math.atan2(t.y - player.y, t.x - player.x) : (player.facing < 0 ? Math.PI : 0);
+    }
+    player.atk = ATK_TIME;
+    player.atkDir = a;
+    player.atkCd = 0.28;
+  }
+
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
@@ -1739,6 +1756,8 @@
     player.dmgBy[dmgSrc] = (player.dmgBy[dmgSrc] || 0) + Math.min(amount, Math.max(0, e.hp));
     e.hp -= amount;
     e.flash = 0.1;
+    e.hurt = 0.14;
+    if (!quiet && fx.length < 160) fx.push({ kind: 'spark', x: e.x - (kx / (Math.hypot(kx, ky) || 1)) * e.type.radius * 0.6, y: e.y - (ky / (Math.hypot(kx, ky) || 1)) * e.type.radius * 0.6 - 4, life: 0.16, max: 0.16, rot: Math.random() * Math.PI, crit });
     const k = Math.hypot(kx, ky) || 1;
     const p = e.type.prop ? 0 : e.type.boss || e.elite ? push / 6 : push;
     e.x += (kx / k) * p;
@@ -1777,6 +1796,8 @@
     kills++;
     progress.totalKills++;
     enemies.splice(idx, 1);
+    if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
+    if (e.type.boss || e.elite) shake = Math.max(shake, e.type.boss ? 10 : 5);
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
     pickups.push({ kind: e.type.xp >= 20 ? 'coin_gold' : 'coin', value: e.type.xp, x: e.x, y: e.y });
     if (player.killHeal) player.hp = Math.min(player.maxHp, player.hp + player.killHeal);
@@ -1844,6 +1865,9 @@
     if (player.invuln > 0) player.invuln -= dt;
     if (player.glow > 0) player.glow -= dt;
     if (player.boost > 0) player.boost -= dt;
+    if (player.atk > 0) player.atk -= dt;
+    if (player.atkCd > 0) player.atkCd -= dt;
+    if (shake > 0) shake = Math.max(0, shake - dt * 30);
   }
 
   function updateEnemies(dt) {
@@ -1861,6 +1885,7 @@
         if ((e.x - player.x) * Math.sign(e.march) > viewW) e.gone = true;
       } else if (d > farLimit) { placeOnRing(e); continue; }
       if (e.flash > 0) e.flash -= dt;
+      if (e.hurt > 0) e.hurt -= dt;
       if (frozen) continue;
       let speed = e.march ? 0 : e.speed;
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
@@ -1886,6 +1911,7 @@
         const hurt = Math.max(1, Math.round(e.damage * player.armor));
         player.hp -= hurt;
         player.invuln = 0.5;
+        shake = Math.max(shake, 4);
         e.contactCd = 0.6;
         addFloatText(player.x, player.y - player.radius - 6, `-${hurt}`, '#e0503f');
         if (player.hp <= 0 && player.revives > 0) {
@@ -2020,6 +2046,7 @@
       addFloatText(player.x, head, '흡수!', '#e0503f');
     } else if (it.kind === 'thunderball') {
       flash = 0.25;
+      shake = 12;
       fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.5, max: 0.5 });
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
@@ -2138,9 +2165,11 @@
     if (state !== 'playing') return;
     for (const [id, w] of Object.entries(player.weapons)) {
       const before = [projectiles.length, shells.length, zones.length, mines.length];
+      const fxBefore = fx.length;
       dmgSrc = id;
       WEAPONS[id].update(w, dt);
       [projectiles, shells, zones, mines].forEach((arr, k) => { for (let i = before[k]; i < arr.length; i++) arr[i].src ??= id; });
+      if (fx.slice(fxBefore).some((f) => f.kind !== 'spark' && f.kind !== 'die') || before.some((n, k) => [projectiles, shells, zones, mines][k].length > n)) triggerAttack(projectiles.length > before[0] ? projectiles[projectiles.length - 1] : null);
     }
     dmgSrc = 'item';
     updateProjectiles(dt);
@@ -2266,6 +2295,24 @@
   function drawFx() {
     for (const f of fx) {
       const a = clamp(f.life / f.max, 0, 1);
+      if (f.kind === 'die') {
+        const k = 1 - a;
+        drawSprite(f.sprite, f.x, f.y - k * 10, { sx: f.sc * (1 + 0.5 * k), sy: f.sc * (1 - 0.7 * k), groundR: f.r, flash: k < 0.4, alpha: f.alpha * a });
+        continue;
+      }
+      if (f.kind === 'spark') {
+        const s = (f.crit ? 15 : 10) * (0.6 + (1 - a) * 0.8);
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.rot);
+        ctx.fillStyle = f.crit ? `rgba(255, 110, 70, ${a})` : `rgba(255, 255, 255, ${a})`;
+        ctx.fillRect(-s, -1.5, s * 2, 3);
+        ctx.fillRect(-1.5, -s, 3, s * 2);
+        ctx.fillStyle = `rgba(255, 230, 140, ${a})`;
+        ctx.fillRect(-3, -3, 6, 6);
+        ctx.restore();
+        continue;
+      }
       if (f.kind === 'spin') {
         ctx.strokeStyle = `rgba(120, 90, 60, ${a})`;
         ctx.lineWidth = 7;
@@ -2361,9 +2408,54 @@
     const b = Math.sin(anim * speed);
     const hop = player.moving ? Math.abs(Math.sin(anim * speed / 2)) * 3 : 0;
     const blink = player.invuln > 0 && player.glow <= 0 && Math.floor(anim * 20) % 2 === 0;
-    drawSprite(player.hero, player.x, player.y - hop, {
-      flip: false, sx: grow * (1 - amp * b), sy: grow * (1 + amp * b), groundR: r, alpha: blink ? 0.45 : 1,
+    // Attack motion: wind up, lunge toward the target, then recover.
+    const at = player.atk > 0 ? 1 - player.atk / ATK_TIME : 0;
+    const punch = player.atk > 0 ? Math.sin(at * Math.PI) : 0;
+    const dx = Math.cos(player.atkDir), dy = Math.sin(player.atkDir);
+    const side = dx >= 0 ? 1 : -1;
+    const lx = player.x + dx * punch * 7, ly = player.y + dy * punch * 5 - hop;
+    drawSprite(player.hero, lx, ly, {
+      flip: false, rot: side * punch * 0.22,
+      sx: grow * (1 - amp * b + 0.12 * punch), sy: grow * (1 + amp * b - 0.1 * punch), groundR: r, alpha: blink ? 0.45 : 1,
     });
+    if (player.atk > 0) drawSwing(at, side);
+  }
+
+  // A white crescent sweeping around the hero in the attack direction.
+  function drawSwing(t, side) {
+    const R = player.radius * 2.6;
+    const ease = 1 - (1 - t) ** 3;
+    const span = 2.8 * ease;
+    const a0 = player.atkDir - side * 1.4;
+    const a1 = a0 + side * span;
+    const lo = Math.min(a0, a1), hi = Math.max(a0, a1);
+    const cx = player.x, cy = player.y - 4;
+    const alpha = t < 0.7 ? 1 : (1 - t) / 0.3;
+    // Crescent: thick at the leading edge of the blade, thin at the trail.
+    const steps = 18;
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const ang = lo + (hi - lo) * u;
+      const lead = side > 0 ? u : 1 - u;
+      pts.push([ang, R, R * (1 - 0.38 * lead)]);
+    }
+    ctx.save();
+    ctx.beginPath();
+    pts.forEach(([ang, ro], i) => ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(ang) * ro, cy + Math.sin(ang) * ro));
+    for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(cx + Math.cos(pts[i][0]) * pts[i][2], cy + Math.sin(pts[i][0]) * pts[i][2]);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.92 * alpha})`;
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = `rgba(42, 34, 36, ${0.85 * alpha})`;
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(222, 176, 72, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R - 3, lo, hi);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawEnemy(e) {
@@ -2381,7 +2473,8 @@
       ctx.stroke();
     }
     const sq = t.prop || player.freeze > 0 ? 0 : 0.05 * b;
-    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq), sy: sc * (1 - sq), groundR: r, flash: e.flash > 0, alpha: t.alpha });
+    const hk = e.hurt > 0 && !t.prop ? e.hurt / 0.14 : 0;
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: t.alpha });
     if (t.boss || e.elite || (!t.prop && e.hp < e.maxHp)) {
       const w = t.boss ? 56 : e.elite ? 40 : 26;
       const x = Math.round(e.x - w / 2), y = Math.round(e.y - t.barY);
@@ -2395,8 +2488,9 @@
   }
 
   function render() {
-    const camX = Math.round(player.x - viewW / 2);
-    const camY = Math.round(player.y - viewH / 2);
+    const sk = state === 'playing' ? shake : 0;
+    const camX = Math.round(player.x - viewW / 2 + (Math.random() - 0.5) * sk);
+    const camY = Math.round(player.y - viewH / 2 + (Math.random() - 0.5) * sk);
     ctx.save();
     ctx.translate(-camX, -camY);
 
