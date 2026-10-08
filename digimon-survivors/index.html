@@ -30,6 +30,10 @@
       <div id="kills"></div>
       <div id="gold"></div>
     </div>
+    <div id="skill-bar">
+      <button id="dash-btn" class="skill"><span>경공</span><small>Space</small></button>
+      <button id="ult-btn" class="skill ult"><span>필살</span><small>Q</small></button>
+    </div>
   </div>
 
   <div id="toast" class="panel"><b id="toast-title"></b><small id="toast-sub"></small></div>
@@ -54,11 +58,20 @@
     <p class="subtitle">협객을 골라 밤마다 몰려오는 요괴를 물리치세요</p>
     <p id="title-stats" class="hint"></p>
     <p class="teaser">무공을 극한까지 단련하면, 비급에 없던 무언가가 깨어난다고 하는데…</p>
-    <p class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · P 일시정지</p>
+    <p class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
     <div class="btn-row">
       <button id="start-btn" class="btn">출정</button>
       <button id="shop-btn" class="btn ghost">수련장</button>
+      <button id="quest-btn" class="btn ghost">의뢰</button>
       <button id="achv-btn" class="btn ghost">업적</button>
+    </div>
+  </div>
+
+  <div id="quest-screen" class="overlay hidden">
+    <div id="quest-box" class="panel">
+      <div class="achv-head"><h2>오늘의 의뢰</h2><button id="quest-close" class="close" aria-label="닫기">✕</button></div>
+      <p class="hint">매일 새 의뢰 3개가 붙어요. 한 판 안에서 조건을 채우면 은자를 바로 받아요.</p>
+      <div id="quest-list"></div>
     </div>
   </div>
 

@@ -341,3 +341,33 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 .achv-icon .pi { width: 28px; height: 28px; vertical-align: middle; }
 #toast b .pi { width: 20px; height: 20px; vertical-align: -4px; }
 .tool .pi { width: 18px; height: 18px; vertical-align: -4px; }
+
+/* ---------- Dash / ultimate buttons ---------- */
+#skill-bar { position: absolute; right: 18px; bottom: 18px; display: flex; gap: 12px; pointer-events: auto; }
+.skill {
+  --p: 0;
+  position: relative;
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: conic-gradient(rgba(201, 154, 58, 0.85) calc(var(--p) * 360deg), rgba(243, 234, 214, 0.85) 0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'Nanum Brush Script', 'Gowun Batang', serif;
+  box-shadow: 2px 2px 0 rgba(42, 34, 36, 0.3);
+  touch-action: none;
+}
+.skill span { font-size: 22px; line-height: 1; }
+.skill small { font-family: 'Gowun Batang', serif; font-size: 10px; opacity: 0.7; }
+.skill.ult { width: 76px; height: 76px; background: conic-gradient(rgba(184, 50, 42, 0.85) calc(var(--p) * 360deg), rgba(243, 234, 214, 0.85) 0); }
+.skill.ready { border-color: var(--red); animation: skill-ready 0.9s ease-in-out infinite alternate; }
+.skill.ult.ready span { color: var(--paper); text-shadow: 0 0 4px var(--red); }
+@keyframes skill-ready { from { box-shadow: 0 0 0 0 rgba(184, 50, 42, 0.5); } to { box-shadow: 0 0 0 8px rgba(184, 50, 42, 0); } }
+#banner.ult { color: var(--red); font-size: 72px; }
+.chip.arc { border-color: var(--gold); background: #fbf1d2; }
+#quest-screen { z-index: 25; justify-content: flex-start; }
+#quest-box { width: 620px; max-width: 100%; padding: 16px 22px 20px; text-align: left; }
+#quest-list { display: grid; gap: 8px; margin-top: 10px; }
+@media (max-width: 560px) {
+  .skill { width: 54px; height: 54px; }
+  .skill.ult { width: 64px; height: 64px; }
+  #banner.ult { font-size: 48px; }
+}

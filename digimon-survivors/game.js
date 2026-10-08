@@ -29,6 +29,7 @@
     choiceSubtitle: $('choice-subtitle'), choiceCards: $('choice-cards'),
     pause: $('pause-screen'), pauseBuild: $('pause-build'), pauseDmg: $('pause-dmg'), pauseStats: $('pause-stats'), quitBtn: $('quit-btn'),
     choiceTools: $('choice-tools'), gold: $('gold'), gameoverTitle: $('gameover-title'), continueBtn: $('continue-btn'),
+    dashBtn: $('dash-btn'), ultBtn: $('ult-btn'), questScreen: $('quest-screen'), questList: $('quest-list'),
     shop: $('shop-screen'), shopList: $('shop-list'), shopGold: $('shop-gold'),
     gameover: $('gameover-screen'), gameoverPortrait: $('gameover-portrait'), gameoverStats: $('gameover-stats'),
   };
@@ -1629,7 +1630,7 @@
 
   // ---------- Progress & achievements (saved per browser) ----------
   const PROGRESS_KEY = 'yokai-survivors-progress';
-  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {} };
+  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {}, mastery: {}, quests: null, questsDone: 0 };
   try { Object.assign(progress, JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
   const seen = new Set(progress.combos);
   function saveProgress() {
@@ -1700,6 +1701,8 @@
     { id: 'cursed', icon: '💀', name: '마기를 품고', desc: '마기 3단계 이상으로 저승사자 퇴치', check: (p) => p.curse >= 0.29 && p.wonRun },
     { id: 'clearHard', icon: '🔥', name: '고수의 길', desc: '고수 난이도로 저승사자 퇴치', check: () => progress.clears.hard || progress.clears.hell },
     { id: 'clearHell', icon: '💀', name: '마경 정복', desc: '마경 난이도로 저승사자 퇴치', check: () => progress.clears.hell },
+    { id: 'quest5', icon: '📜', name: '의뢰 해결사', desc: '의뢰 5개 완료 (누적)', check: () => progress.questsDone >= 5 },
+    { id: 'mastery5', icon: '🥋', name: '일인전승', desc: '협객 하나의 숙련도를 Lv.5까지 올리기', check: () => Object.keys(HEROES).some((id) => masteryLevel(id) >= 5) },
     { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -1769,6 +1772,8 @@
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
+      dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
+      arc: new Set(), meteorT: 8, cleared: 0, trail: [],
       formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
@@ -1776,7 +1781,11 @@
     };
     hero.setup(player);
     applyShop(player);
-    grantWeapon(player, hero.weapon);
+    const ml = masteryLevel(heroId);
+    if (ml >= 1) { player.maxHp += 15; player.hp += 15; }
+    if (ml >= 3) player.dmgMul += 0.08;
+    if (ml >= 5) { player.ult = ULT_NEED / 2; player.ultMul = 1.5; }
+    grantWeapon(player, hero.weapon, masteryLevel(heroId) >= 2 ? 2 : 1);
     if (hero.extra) grantWeapon(player, hero.extra);
     enemies = [];
     projectiles = [];
@@ -1869,6 +1878,7 @@
     if (player.realm + 1 >= REALMS.length || c < REALMS[player.realm + 1].need) return;
     player.realm++;
     player.dmgMul += 0.06;
+    if (hasArc('ten')) for (const [id, w] of Object.entries(player.weapons)) if (w.level < WEAPONS[id].max) grantWeapon(player, id);
     player.maxHp += 10;
     player.hp = player.maxHp;
     player.invuln = Math.max(player.invuln, 1);
@@ -1924,6 +1934,200 @@
     }
   }
 
+  // ---------- Hero mastery (협객 숙련도) ----------
+  const MASTERY_XP = [0, 40, 120, 250, 450, 700];
+  const MASTERY_PERKS = ['최대 HP +15', '시작 무공 +1단계', '모든 피해 +8%', '비전서 선택지 +1', '필살기 게이지 절반으로 시작 · 필살기 피해 +50%'];
+  function masteryLevel(id) {
+    const xp = progress.mastery[id] || 0;
+    let lv = 0;
+    while (lv + 1 < MASTERY_XP.length && xp >= MASTERY_XP[lv + 1]) lv++;
+    return lv;
+  }
+  function gainMastery(win) {
+    const id = player.hero;
+    const before = masteryLevel(id);
+    const xp = Math.floor(kills / 15) + 25 * player.cleared + (win ? 80 : 0) + Math.floor(elapsed / 30);
+    progress.mastery[id] = (progress.mastery[id] || 0) + xp;
+    saveProgress();
+    const after = masteryLevel(id);
+    if (after > before) showToast(`🌟 ${HEROES[id].name} 숙련 Lv.${after}!`, MASTERY_PERKS[after - 1]);
+    return xp;
+  }
+
+  // ---------- 비전서 (arcana): run-wide rule changers ----------
+  const ARCANA = [
+    { id: 'thunder', icon: '⚡', name: '뇌정', desc: '치명타가 터지면 25% 확률로 벼락이 떨어져 주변을 태워요' },
+    { id: 'bloodrain', icon: '🩸', name: '혈우', desc: '요괴를 쓰러뜨리면 8% 확률로 피의 비가 내려 주변에 큰 피해' },
+    { id: 'diamond', icon: '🛡️', name: '금강신체', desc: '엽전을 주울 때마다 HP 0.4 회복, 잠깐 무적' },
+    { id: 'chain', icon: '👥', name: '연환', desc: '모든 무공 발사 수 +1, 대신 모든 피해 -15%', apply(p) { p.extra++; p.dmgMul *= 0.85; } },
+    { id: 'reverse', icon: '🔥', name: '역천', desc: 'HP가 절반 이하면 모든 피해 +50%' },
+    { id: 'ten', icon: '📖', name: '만류귀종', desc: '경지가 오를 때마다 모든 무공이 1단계 강해져요' },
+    { id: 'greedy', icon: '💰', name: '탐욕의 길', desc: '은자 ×2, 대신 받는 피해 +25%', apply(p) { p.greed *= 2; p.armor *= 1.25; } },
+    { id: 'absorb', icon: '🧲', name: '흡성', desc: '줍는 범위 ×2.5, 경험치 +20%', apply(p) { p.pickupRadius *= 2.5; p.xpMul += 0.2; } },
+    { id: 'heaven', icon: '⚔️', name: '천벌', desc: '보스·정예에게 주는 피해 ×1.8' },
+    { id: 'meteor', icon: '🌟', name: '유성검우', desc: '8초마다 하늘에서 검 8자루가 떨어져요' },
+    { id: 'frost', icon: '❄️', name: '빙결지체', desc: '맞은 요괴가 12% 확률로 얼어붙어요' },
+    { id: 'gale', icon: '🍃', name: '질풍', desc: '대시 대기시간 절반, 대시가 지나간 길의 요괴를 베어요' },
+    { id: 'ghostgate', icon: '💀', name: '귀문', desc: '필살기 게이지가 2배 빨리 차요' },
+    { id: 'twinult', icon: '☯️', name: '쌍천', desc: '필살기가 두 번 연속으로 터져요' },
+  ];
+  const ARC_BY_ID = Object.fromEntries(ARCANA.map((a) => [a.id, a]));
+  const hasArc = (id) => player.arc.has(id);
+  // Effects that hit other enemies are deferred so they never splice `enemies` mid-loop.
+  const pendingProcs = [];
+  function runProcs() {
+    while (pendingProcs.length) {
+      const f = pendingProcs.shift();
+      dmgSrc = 'arcana';
+      f();
+    }
+  }
+  function arcanaOffers() {
+    const pool = shuffled(ARCANA.filter((a) => !player.arc.has(a.id)));
+    return pool.slice(0, masteryLevel(player.hero) >= 4 ? 4 : 3).map((a) => ({
+      icon: a.icon, title: `비전서: ${a.name}`, desc: a.desc, combo: true,
+      pick: () => { player.arc.add(a.id); if (a.apply) a.apply(player); },
+    }));
+  }
+
+  // ---------- Dash (경공) & ultimate (필살기) ----------
+  const DASH_CD = 2.4, DASH_TIME = 0.16, DASH_SPEED = 900, ULT_NEED = 100;
+  const ULT_NAMES = {
+    cheongpung: '청풍만검', unhak: '뇌정만리', yeoubi: '구미호화', cheolsan: '나한대권', dallae: '만신강림', yawol: '월하난무',
+    songhwa: '백초독무', muyeong: '쌍귀참', geumbi: '천부폭렬', seola: '설녀의 숨결', cheonma: '천마혈우', sansin: '산군강림',
+    baekmae: '매화폭풍', palgeol: '타구광풍', dangyu: '만천암우', namgung: '창궁제왕검', maengju: '천하제일검', aemi: '금정연화',
+    gonryun: '설산검우', jegal: '팔진천라', dokgo: '독고일검', hyeolrang: '혈월광란', hyeonmu: '백귀야행', jusun: '취팔선',
+    hwaryeon: '주작강림', dueok: '도깨비 대잔치',
+  };
+  function moveInput() {
+    let dx = 0, dy = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) dy -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) dy += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) dx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1;
+    if (stick.active && Math.hypot(stick.dx, stick.dy) > 8) { dx = stick.dx; dy = stick.dy; }
+    return [dx, dy];
+  }
+  function dash() {
+    if (state !== 'playing' || player.dashCd > 0) return;
+    let [dx, dy] = moveInput();
+    if (!dx && !dy) dx = player.facing || 1;
+    const len = Math.hypot(dx, dy);
+    player.dashVx = (dx / len) * DASH_SPEED;
+    player.dashVy = (dy / len) * DASH_SPEED;
+    player.dashT = DASH_TIME;
+    player.dashFrom = { x: player.x, y: player.y };
+    player.invuln = Math.max(player.invuln, 0.32);
+    player.dashCd = DASH_CD * (hasArc('gale') ? 0.5 : 1);
+    player.dashes++;
+    burst(player.x, player.y + player.radius, 10, ['#d8cbb0', '#ffffff'], 140, 0.4, 4);
+  }
+  function ultimate(second = false) {
+    if (!second && (state !== 'playing' || player.ult < ULT_NEED)) return;
+    if (!second) { player.ult = 0; player.ults++; if (hasArc('twinult')) player.ultAgainAt = elapsed + 0.7; }
+    const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
+    const dmg = (40 + player.level * 7) * player.ultMul;
+    const L = Math.hypot(viewW, viewH) * 0.6;
+    dmgSrc = 'ult';
+    flash = Math.max(flash, 0.3);
+    shake = Math.max(shake, 12);
+    fx.push({ kind: 'ultwave', x: player.x, y: player.y, rgb, life: 0.9, max: 0.9 });
+    burst(player.x, player.y, 50, [`rgb(${rgb})`, '#ffffff', '#2a2224'], 380, 1.1, 6, true);
+    if (!second) showBanner(ULT_NAMES[player.hero] || '필살기', 'ult', `${HEROES[player.hero].name}의 필살기!`);
+    if (style === 'slash') {
+      for (let i = 0; i < 16; i++) waveShot((i / 16) * Math.PI * 2, dmg * 1.2, 520, 30, 1.3);
+      arcStrike(0, 170, Math.PI, dmg, 30);
+    } else if (style === 'twin') {
+      for (const a of [Math.PI / 4, -Math.PI / 4, Math.PI * 3 / 4, -Math.PI * 3 / 4]) beamStrike(a, L, 26, dmg * 2, 'blood');
+    } else if (style === 'palm') {
+      ringBlast(player.x, player.y, 380, dmg * 2.4, 70, 'gold');
+      fx.push({ kind: 'bigpalm', x: player.x, y: player.y, life: 0.7, max: 0.7 });
+    } else if (style === 'cast') {
+      ringBlast(player.x, player.y, 260, dmg, 30, 'none');
+      zones.push({ x: player.x, y: player.y, r: 260, damage: dmg * 0.35, life: 3.2, tick: 0, seed: 0, tint: 'ult', rgb, hold: 0.6, src: 'ult' });
+    } else if (style === 'throw') {
+      for (let i = 0; i < 36; i++) {
+        const a = (i / 36) * Math.PI * 2;
+        projectiles.push({ x: player.x, y: player.y, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, damage: dmg * 0.9, pierce: 6, radius: 10, sprite: 'needle', life: 1.4, hit: new Set(), src: 'ult' });
+      }
+    } else {
+      player.spinUlt = 2.4;
+    }
+    dmgSrc = 'item';
+  }
+
+  // ---------- 의뢰판 (daily requests) ----------
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+  const QUEST_TYPES = [
+    (r) => { const n = [300, 500, 800][Math.floor(r() * 3)]; return { type: 'kills', n, text: `한 판에 요괴 ${n}마리 퇴치`, reward: Math.round(n / 4) }; },
+    (r) => { const n = 1 + Math.floor(r() * 2); return { type: 'clear', n, text: `${n}장 돌파`, reward: 120 * n }; },
+    (r) => { const ids = Object.keys(HEROES).filter(heroUnlocked); const h = ids[Math.floor(r() * ids.length)]; return { type: 'heroClear', h, text: `${HEROES[h].name}(으)로 1장 돌파`, reward: 180 }; },
+    (r) => { const n = [3, 5][Math.floor(r() * 2)]; return { type: 'ults', n, text: `한 판에 필살기 ${n}번 사용`, reward: 40 * n }; },
+    (r) => { const n = [20, 40][Math.floor(r() * 2)]; return { type: 'dashes', n, text: `한 판에 대시 ${n}번`, reward: 3 * n }; },
+    (r) => { const n = 2 + Math.floor(r() * 2); return { type: 'elites', n, text: `한 판에 정예 요괴 ${n}마리 처치`, reward: 60 * n }; },
+    (r) => { const n = [8, 12][Math.floor(r() * 2)]; return { type: 'lanterns', n, text: `한 판에 석등 ${n}개 부수기`, reward: 10 * n }; },
+    () => ({ type: 'combo', n: 1, text: '한 판에 무공 합성 성공', reward: 150 }),
+    (r) => { const n = 3 + Math.floor(r() * 2); return { type: 'realm', n, text: `한 판에 ${REALMS[n].name}의 경지 도달`, reward: 60 * n }; },
+    () => ({ type: 'hardClear', n: 1, text: '고수 이상 난이도로 1장 돌파', reward: 250 }),
+  ];
+  function ensureQuests() {
+    const key = todayKey();
+    if (progress.quests && progress.quests.date === key) return progress.quests.list;
+    const r = seededRandom([...key].reduce((h, c) => h * 31 + c.charCodeAt(0), 7) >>> 0);
+    const types = [...QUEST_TYPES.keys()].sort(() => r() - 0.5).slice(0, 3);
+    progress.quests = { date: key, list: types.map((i) => ({ ...QUEST_TYPES[i](r), done: false })) };
+    saveProgress();
+    return progress.quests.list;
+  }
+  function questMet(q, p) {
+    switch (q.type) {
+      case 'kills': return kills >= q.n;
+      case 'clear': return p.cleared >= q.n;
+      case 'heroClear': return p.hero === q.h && p.cleared >= 1;
+      case 'ults': return p.ults >= q.n;
+      case 'dashes': return p.dashes >= q.n;
+      case 'elites': return p.elites >= q.n;
+      case 'lanterns': return p.lanterns >= q.n;
+      case 'combo': return p.combos >= 1;
+      case 'realm': return p.realm >= q.n;
+      case 'hardClear': return diff.hp >= 1.5 && p.cleared >= 1;
+    }
+    return false;
+  }
+  function checkQuests() {
+    if (state !== 'playing' && state !== 'choice') return;
+    for (const q of ensureQuests()) {
+      if (q.done || !questMet(q, player)) continue;
+      q.done = true;
+      progress.gold += q.reward;
+      progress.totalGold += q.reward;
+      progress.questsDone++;
+      saveProgress();
+      showToast(`📜 의뢰 완료: ${q.text}`, `보상 은자 ${q.reward}냥`);
+    }
+  }
+  function buildQuests() {
+    const list = ensureQuests();
+    ui.questList.replaceChildren(...list.map((q) => {
+      const el = document.createElement('div');
+      el.className = q.done ? 'achv done' : 'achv';
+      const icon = document.createElement('span');
+      icon.className = 'achv-icon';
+      icon.append(iconImg(q.done ? '🏆' : '📜'));
+      const text = document.createElement('div');
+      const b = document.createElement('b');
+      b.textContent = q.text;
+      const sm = document.createElement('small');
+      sm.textContent = q.done ? `완료 · 은자 ${q.reward}냥 받음` : `보상 은자 ${q.reward}냥 · 한 판 안에 달성하면 바로 받아요`;
+      text.append(b, sm);
+      el.append(icon, text);
+      return el;
+    }));
+  }
+
   // Chapter boss down: sweep the field, reward the hero, then ask whether to press on.
   function stageClear() {
     progress.bestStage = Math.max(progress.bestStage, stageIdx + 1);
@@ -1934,8 +2138,9 @@
     flash = 0.4;
     addGold(40 * (stageIdx + 1));
     showBanner(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '', '요괴가 물러갔어요 · HP 전부 회복');
+    player.cleared++;
     for (let k = 3; k >= 1; k--) modalQueue.push({ type: 'chest', n: 4 - k, of: 3 });
-    modalQueue.push({ type: 'stage' });
+    modalQueue.push({ type: 'arcana' }, { type: 'stage' });
     modalDelay = 1.6;
     checkAchievements();
   }
@@ -1995,16 +2200,19 @@
     ui.banner.classList.remove('show');
     if (m.type === 'hero') {
       showChoice('누구로 요괴를 물리칠까요?', '협객마다 시작 무공과 특성이 달라요', Object.entries(HEROES).sort((x, y) => !heroUnlocked(x[0]) - !heroUnlocked(y[0])).map(([id, H]) => (heroUnlocked(id) ? {
-        img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait}`, hero: true,
+        img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait} · 숙련 Lv.${masteryLevel(id)}`, hero: true,
         pick: () => {
           resetGame(id);
           enterStage(0);
+          modalQueue.unshift({ type: 'arcana' });
           if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
           updateHud();
         },
       } : {
         img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true,
       })));
+    } else if (m.type === 'arcana') {
+      showChoice('비전서', '이번 판의 규칙을 바꿀 비전서 한 권을 골라요', arcanaOffers());
     } else if (m.type === 'difficulty') {
       showChoice('난이도', '요괴의 세기를 골라주세요 (어려울수록 은자를 더 줘요)', DIFFICULTIES.map((d) => ({
         icon: d.icon, title: d.name + (progress.clears[d.id] ? ' ✓' : ''), desc: d.desc + (d.id === progress.difficulty ? ' · 지난번 선택' : ''), sect: d.id === progress.difficulty,
@@ -2277,6 +2485,18 @@
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
     if (player.berserk) amount *= 1 + player.berserk * (1 - clamp(player.hp / player.maxHp, 0, 1));
+    if (player.arc.size) {
+      if (hasArc('reverse') && player.hp < player.maxHp / 2) amount *= 1.5;
+      if (hasArc('heaven') && (e.type.boss || e.elite)) amount *= 1.8;
+      if (hasArc('frost') && Math.random() < 0.12) e.chill = 2;
+      if (hasArc('thunder') && crit && dmgSrc !== 'arcana' && Math.random() < 0.25) {
+        const ex = e.x, ey = e.y, v = amount * 0.6;
+        pendingProcs.push(() => {
+          fx.push({ kind: 'bolt', x: ex, y: ey, seed: Math.random() * 10, life: 0.3, max: 0.3 });
+          ringBlast(ex, ey, 60, v, 10, 'gold');
+        });
+      }
+    }
     if (crit) amount *= player.critMul;
     player.dmgBy[dmgSrc] = (player.dmgBy[dmgSrc] || 0) + Math.min(amount, Math.max(0, e.hp));
     e.hp -= amount;
@@ -2323,6 +2543,14 @@
   function killEnemy(e, idx) {
     if (e.type.prop) { breakLantern(e, idx); return; }
     kills++;
+    player.ult = Math.min(ULT_NEED, player.ult + (hasArc('ghostgate') ? 2 : 1) * (e.type.boss ? 10 : 1));
+    if (hasArc('bloodrain') && Math.random() < 0.08) {
+      const ex = e.x, ey = e.y;
+      pendingProcs.push(() => {
+        fx.push({ kind: 'ultwave', x: ex, y: ey, rgb: '200, 20, 40', life: 0.5, max: 0.5, small: true });
+        ringBlast(ex, ey, 110, 40 + player.level * 5, 20, 'blood');
+      });
+    }
     progress.totalKills++;
     enemies.splice(idx, 1);
     if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
@@ -2347,6 +2575,7 @@
     }
     if (e.type.final && e.stageBoss) {
       progress.wins++;
+      player.cleared++;
       progress.clears[diff.id] = true;
       player.wonRun = true;
       saveProgress();
@@ -2383,16 +2612,47 @@
 
   // ---------- Update ----------
   function movePlayer(dt) {
-    let dx = 0, dy = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) dy -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) dy += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) dx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1;
-    if (stick.active && Math.hypot(stick.dx, stick.dy) > 8) {
-      dx = stick.dx;
-      dy = stick.dy;
-    }
+    const [dx, dy] = moveInput();
     player.moving = dx !== 0 || dy !== 0;
+    if (player.dashCd > 0) player.dashCd -= dt;
+    if (player.dashT > 0) {
+      player.dashT -= dt;
+      player.x += player.dashVx * dt;
+      player.y += player.dashVy * dt;
+      player.trail.push({ x: player.x, y: player.y, life: 0.28 });
+      if (player.dashT <= 0 && hasArc('gale') && player.dashFrom) {
+        const a = Math.atan2(player.y - player.dashFrom.y, player.x - player.dashFrom.x);
+        const len = dist(player.x, player.y, player.dashFrom.x, player.dashFrom.y);
+        const sx = player.x, sy = player.y;
+        player.x = player.dashFrom.x; player.y = player.dashFrom.y;
+        dmgSrc = 'arcana';
+        beamStrike(a, len + 20, 20, 30 + player.level * 5, 'ice');
+        player.x = sx; player.y = sy;
+      }
+    }
+    for (let i = player.trail.length - 1; i >= 0; i--) if ((player.trail[i].life -= dt) <= 0) player.trail.splice(i, 1);
+    player.ult = Math.min(ULT_NEED, player.ult + dt * 0.6 * (hasArc('ghostgate') ? 2 : 1));
+    if (player.ultAgainAt && elapsed >= player.ultAgainAt) { player.ultAgainAt = 0; ultimate(true); }
+    if (player.spinUlt > 0) {
+      const before = player.spinUlt;
+      player.spinUlt -= dt;
+      if (Math.floor(before * 5) !== Math.floor(player.spinUlt * 5)) {
+        dmgSrc = 'ult';
+        fx.push({ kind: 'spin', x: player.x, y: player.y, r: 180, life: 0.25, max: 0.25 });
+        ringBlast(player.x, player.y, 180, (40 + player.level * 7) * player.ultMul * 0.45, 24, 'none');
+      }
+    }
+    if (hasArc('meteor') && (player.meteorT -= dt) <= 0) {
+      player.meteorT = 8;
+      const targets = shuffled(enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewH / 2)).slice(0, 8);
+      for (const e of targets) {
+        const ex = e.x, ey = e.y;
+        pendingProcs.push(() => {
+          fx.push({ kind: 'beam', x: ex, y: ey - 240, a: Math.PI / 2, len: 240, w: 7, life: 0.3, max: 0.3, tint: 'gold' });
+          ringBlast(ex, ey, 50, 30 + player.level * 5, 12, 'gold');
+        });
+      }
+    }
     if (player.moving) {
       const len = Math.hypot(dx, dy);
       const spd = player.speed * (player.boost > 0 ? 1.4 : 1);
@@ -2633,6 +2893,10 @@
       burst(player.x, player.y, 20, ['#ffe066', '#ffffff', '#ffc2dc'], 200, 0.6, 4, true);
     } else {
       gainXp(it.value);
+      if (hasArc('diamond')) {
+        player.hp = Math.min(player.maxHp, player.hp + 0.4);
+        player.invuln = Math.max(player.invuln, 0.12);
+      }
     }
   }
 
@@ -2750,11 +3014,14 @@
       if (w.flairCd > 0) w.flairCd -= dt;
     }
     dmgSrc = 'item';
+    runProcs();
     updateProjectiles(dt);
+    runProcs();
     updateShellsAndZones(dt);
+    runProcs();
     updatePickups(dt);
     updateEffects(dt);
-    if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); }
+    if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); checkQuests(); }
     if (player.victoryAt && elapsed >= player.victoryAt && !modalQueue.length) { player.victoryAt = 0; progress.bestStage = Math.max(progress.bestStage, STAGES.length); saveProgress(); victory(); return; }
     if (player.stageClearAt && elapsed >= player.stageClearAt && !modalQueue.length) { player.stageClearAt = 0; stageClear(); }
     if (modalQueue.length && modalDelay <= 0) openNextModal();
@@ -2774,6 +3041,11 @@
     ui.stageInfo.textContent = `[${diff.name}] ` + (st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`);
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
+    const dashP = player.dashCd > 0 ? 1 - player.dashCd / (DASH_CD * (hasArc('gale') ? 0.5 : 1)) : 1;
+    ui.dashBtn.style.setProperty('--p', dashP);
+    ui.dashBtn.classList.toggle('ready', dashP >= 1);
+    ui.ultBtn.style.setProperty('--p', player.ult / ULT_NEED);
+    ui.ultBtn.classList.toggle('ready', player.ult >= ULT_NEED);
     const row = Object.entries(player.weapons).map(([id, w]) => `${weaponIcon(id)}${w.evolved ? '★' : w.level}`).join(' ');
     if (row !== ui.weaponRow.dataset.row) {
       ui.weaponRow.dataset.row = row;
@@ -2812,6 +3084,28 @@
   function drawZones() {
     for (const z of zones) {
       const a = clamp(z.life / 0.6, 0, 1);
+      if (z.tint === 'ult') {
+        const k = clamp(z.life / 0.6, 0, 1);
+        ctx.save();
+        ctx.translate(z.x, z.y);
+        ctx.rotate(anim * 1.5);
+        ctx.fillStyle = `rgba(${z.rgb}, ${0.14 * k})`;
+        ctx.strokeStyle = `rgba(${z.rgb}, ${0.8 * k})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, z.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i <= 5; i++) {
+          const p = (i * 2 * Math.PI * 2) / 5;
+          ctx[i ? 'lineTo' : 'moveTo'](Math.cos(p) * z.r * 0.8, Math.sin(p) * z.r * 0.8);
+        }
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       if (z.tint === 'fire') {
         const k = clamp(z.life / 1.6, 0, 1);
         for (let i = 0; i < 3; i++) {
@@ -2985,6 +3279,26 @@
         continue;
       }
       if (f.kind === 'sigil') { drawSigil(f); continue; }
+      if (f.kind === 'ultwave') {
+        const t = 1 - a;
+        const R = (f.small ? 110 : Math.hypot(viewW, viewH) * 0.55) * (0.15 + t * 0.85);
+        ctx.strokeStyle = `rgba(${f.rgb}, ${a})`;
+        ctx.lineWidth = (f.small ? 6 : 18) * a + 2;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(42, 34, 36, ${0.6 * a})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, R * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+      if (f.kind === 'bigpalm') {
+        const t = 1 - a;
+        drawSprite('palm', f.x, f.y - 140 * (1 - Math.min(1, t * 3)), { sx: 3.2, sy: 3.2, alpha: Math.min(1, a * 2) });
+        continue;
+      }
       if (f.evo && drawEvoFx(f, a)) continue;
       if (f.kind === 'bloom') {
         const rr = f.r * (1.4 - a * 0.4);
@@ -3120,6 +3434,7 @@
     const dx = Math.cos(player.atkDir), dy = Math.sin(player.atkDir);
     const side = dx >= 0 ? 1 : -1;
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
+    for (const t of player.trail) drawSprite(player.hero, t.x, t.y - ((SPRITES[player.hero]?.size || 48) / 2 - r), { groundR: r + (SPRITES[player.hero]?.size || 48) / 2 - r, alpha: t.life * 1.6, sx: grow, sy: grow, flash: true });
     const reach = style === 'cast' ? 3 : 9;
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
@@ -3513,7 +3828,7 @@
     const rows = Object.entries(player.dmgBy).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
     const total = rows.reduce((n, [, v]) => n + v, 0) || 1;
     return rows.map(([id, v]) => {
-      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : { necro: '💀 원귀 소환', phoenix: '🔥 불길' }[id] || '🧨 아이템';
+      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : { necro: '💀 원귀 소환', phoenix: '🔥 불길', ult: `💫 ${ULT_NAMES[player.hero] || '필살기'}`, arcana: '📖 비전서' }[id] || '🧨 아이템';
       const row = document.createElement('div');
       row.className = 'book-row';
       const a = document.createElement('span');
@@ -3532,6 +3847,12 @@
       el.className = 'chip';
       richText(el, `${weaponIcon(id)} ${weaponName(id)} ${w.evolved ? '★' : `Lv.${w.level}`}`);
       return el;
+    }), ...[...player.arc].map((id) => {
+      const el = document.createElement('span');
+      el.className = 'chip arc';
+      richText(el, `${ARC_BY_ID[id].icon} ${ARC_BY_ID[id].name}`);
+      el.title = ARC_BY_ID[id].desc;
+      return el;
     }), ...PASSIVES.filter((u) => player.picks[u.id]).map((u) => {
       const el = document.createElement('span');
       el.className = 'chip passive';
@@ -3545,7 +3866,9 @@
   }
 
   function toLobby() {
+    const wasPlaying = state === 'paused';
     bankGold();
+    if (wasPlaying) { checkQuests(); gainMastery(false); }
     checkAchievements();
     state = 'title';
     for (const el of [ui.hud, ui.pause, ui.choice, ui.gameover]) el.classList.add('hidden');
@@ -3556,7 +3879,7 @@
   function startGame() {
     if (state !== 'title' && state !== 'gameover' && state !== 'victory') return;
     resetGame();
-    for (const el of [ui.start, ui.gameover, ui.choice, ui.pause, ui.achv, ui.shop]) el.classList.add('hidden');
+    for (const el of [ui.start, ui.gameover, ui.choice, ui.pause, ui.achv, ui.shop, ui.questScreen]) el.classList.add('hidden');
     ui.hud.classList.remove('hidden');
     updateHud();
     state = 'playing';
@@ -3570,10 +3893,12 @@
     const h = HEROES[player.hero];
     if (win) addGold(100);
     bankGold();
+    checkQuests();
+    const mxp = gainMastery(win);
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
     ui.continueBtn.classList.toggle('hidden', !win);
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)})`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
@@ -3607,13 +3932,16 @@
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
     if (e.repeat) return;
-    const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden');
+    const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden');
     if (e.code === 'Escape' && overlayOpen) {
       ui.achv.classList.add('hidden');
       ui.shop.classList.add('hidden');
+      ui.questScreen.classList.add('hidden');
       return;
     }
     if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
+    if (state === 'playing' && (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight')) { e.preventDefault(); dash(); return; }
+    if (state === 'playing' && e.code === 'KeyQ') { ultimate(); return; }
     if (state === 'choice' && /^Digit[0-9]$/.test(e.code)) {
       const card = ui.choiceCards.children[(Number(e.code.slice(5)) + 9) % 10];
       if (card) card.click();
@@ -3649,6 +3977,10 @@
   for (const id of ['achv-btn', 'achv-btn-2']) $(id).addEventListener('click', openAchievements);
   $('achv-close').addEventListener('click', () => ui.achv.classList.add('hidden'));
   $('shop-btn').addEventListener('click', openShop);
+  $('quest-btn').addEventListener('click', () => { buildQuests(); ui.questScreen.classList.remove('hidden'); });
+  $('quest-close').addEventListener('click', () => ui.questScreen.classList.add('hidden'));
+  ui.dashBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); dash(); });
+  ui.ultBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); ultimate(); });
   $('shop-close').addEventListener('click', () => ui.shop.classList.add('hidden'));
   $('refund-btn').addEventListener('click', refundShop);
   $('resume-btn').addEventListener('click', togglePause);
