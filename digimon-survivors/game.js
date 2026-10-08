@@ -37,24 +37,24 @@
   // Each key loads assets/<key>.png. If the file is missing, a colored circle + emoji is drawn instead.
   // size = on-screen size in CSS px (our pixel art is drawn at exactly 2x its grid size).
   const SPRITE_DEFS = {
-    cheongpung: { size: 48, color: '#34767f', emoji: '🗡️' },
-    unhak: { size: 48, color: '#e4e2d6', emoji: '📜' },
-    yeoubi: { size: 48, color: '#c4303c', emoji: '🦊' },
-    cheolsan: { size: 48, color: '#c47a34', emoji: '📿' },
-    dallae: { size: 48, color: '#be342e', emoji: '🔔' },
-    yawol: { size: 48, color: '#34324e', emoji: '🥷' },
-    songhwa: { size: 48, color: '#608c56', emoji: '🌿' },
-    muyeong: { size: 48, color: '#6e707c', emoji: '⚔️' },
-    geumbi: { size: 48, color: '#deba50', emoji: '🧧' },
-    seola: { size: 48, color: '#ecf4fa', emoji: '❄️' },
-    cheonma: { size: 48, color: '#781824', emoji: '😈' },
-    sansin: { size: 48, color: '#f0eee4', emoji: '🏔️' },
+    cheongpung: { size: 64, color: '#34767f', emoji: '🗡️' },
+    unhak: { size: 64, color: '#e4e2d6', emoji: '📜' },
+    yeoubi: { size: 64, color: '#c4303c', emoji: '🦊' },
+    cheolsan: { size: 64, color: '#c47a34', emoji: '📿' },
+    dallae: { size: 64, color: '#be342e', emoji: '🔔' },
+    yawol: { size: 64, color: '#34324e', emoji: '🥷' },
+    songhwa: { size: 64, color: '#608c56', emoji: '🌿' },
+    muyeong: { size: 64, color: '#6e707c', emoji: '⚔️' },
+    geumbi: { size: 64, color: '#deba50', emoji: '🧧' },
+    seola: { size: 64, color: '#ecf4fa', emoji: '❄️' },
+    cheonma: { size: 64, color: '#781824', emoji: '😈' },
+    sansin: { size: 64, color: '#f0eee4', emoji: '🏔️' },
     icicle: { size: 20, color: '#bee6ff' },
-    baekmae: { size: 48, color: '#463c46', emoji: '🌸' },
-    palgeol: { size: 48, color: '#967d5f', emoji: '🥢' },
-    dangyu: { size: 48, color: '#28503c', emoji: '📍' },
-    namgung: { size: 48, color: '#284696', emoji: '👑' },
-    maengju: { size: 48, color: '#f5f2e8', emoji: '🐉' },
+    baekmae: { size: 64, color: '#463c46', emoji: '🌸' },
+    palgeol: { size: 64, color: '#967d5f', emoji: '🥢' },
+    dangyu: { size: 64, color: '#28503c', emoji: '📍' },
+    namgung: { size: 64, color: '#284696', emoji: '👑' },
+    maengju: { size: 64, color: '#f5f2e8', emoji: '🐉' },
     petal: { size: 20, color: '#fa9fbe' },
     needle: { size: 24, color: '#c8cdd4' },
     bottle: { size: 24, color: '#d69646', emoji: '🍶' },
@@ -70,9 +70,9 @@
     gangsi: { size: 48, color: '#a0c4b0', emoji: '🧟' },
     eodukssini: { size: 48, color: '#282434', emoji: '🌑' },
     bulgasari: { size: 48, color: '#78706e', emoji: '🦏' },
-    aemi: { size: 48, color: '#b096d2', emoji: '🗡️' },
-    gonryun: { size: 48, color: '#6ea0d2', emoji: '🏔️' },
-    jegal: { size: 48, color: '#46786e', emoji: '🪶' },
+    aemi: { size: 64, color: '#b096d2', emoji: '🗡️' },
+    gonryun: { size: 64, color: '#6ea0d2', emoji: '🏔️' },
+    jegal: { size: 64, color: '#46786e', emoji: '🪶' },
     daedokkaebi: { size: 64, color: '#4870be', emoji: '👹' },
     imugi: { size: 64, color: '#468c64', emoji: '🐍' },
     heukyo: { size: 64, color: '#3e3a4c', emoji: '⚔️' },
@@ -1322,7 +1322,7 @@
     player = {
       x: 0, y: 0,
       hero: heroId,
-      radius: SPRITE_DEFS[heroId].size * 0.3,
+      radius: 14.4,
       speed: hero.speed, maxHp: hero.hp, hp: hero.hp, regen: 0, pickupRadius: 100, haste: 1,
       crit: 0, critMul: 2, xpMul: 1, armor: 1, area: 1, extra: 0, luck: 1, chests: 0, killHeal: 0, combos: 0,
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
@@ -1735,7 +1735,18 @@
   }
 
   // Attack motion: the hero lunges and swings toward whatever the technique just targeted.
-  const ATK_TIME = 0.22;
+  const ATK_TIME = 0.24;
+  // How each hero's strike looks: slash (sword arc), twin, palm, cast (magic circle), throw, spin (staff).
+  const MOTION = {
+    cheongpung: ['slash', '64, 200, 210'], baekmae: ['slash', '250, 140, 180'], muyeong: ['twin', '220, 60, 70'],
+    namgung: ['slash', '240, 200, 90'], maengju: ['slash', '255, 220, 120'], gonryun: ['slash', '150, 210, 255'],
+    cheonma: ['palm', '220, 30, 50'], cheolsan: ['palm', '255, 190, 70'],
+    unhak: ['cast', '120, 140, 255'], dallae: ['cast', '255, 120, 140'], geumbi: ['cast', '255, 200, 70'],
+    jegal: ['cast', '90, 200, 170'], seola: ['cast', '160, 220, 255'], songhwa: ['cast', '150, 230, 90'],
+    yeoubi: ['cast', '110, 190, 255'], sansin: ['cast', '255, 230, 150'],
+    yawol: ['throw', '230, 60, 60'], dangyu: ['throw', '150, 230, 90'], aemi: ['throw', '190, 150, 240'],
+    palgeol: ['spin', '120, 200, 90'],
+  };
   function triggerAttack(proj) {
     if (player.atkCd > 0) return;
     let a;
@@ -2401,7 +2412,7 @@
         ctx.fillRect(player.x + Math.cos(a) * R * 0.7 - 2, player.y + Math.sin(a) * R * 0.45 - 2 - (anim * 40 + i * 13) % 20, 3, 3);
       }
     }
-    drawShadow(player.x, player.y + r * 0.9, r * 1.05);
+    drawShadow(player.x, player.y + r * 0.9, r * 1.2);
     const grow = 1 + player.realm * 0.035;
     const speed = player.moving ? 14 : 4;
     const amp = player.moving ? 0.07 : 0.035;
@@ -2413,48 +2424,162 @@
     const punch = player.atk > 0 ? Math.sin(at * Math.PI) : 0;
     const dx = Math.cos(player.atkDir), dy = Math.sin(player.atkDir);
     const side = dx >= 0 ? 1 : -1;
-    const lx = player.x + dx * punch * 7, ly = player.y + dy * punch * 5 - hop;
-    drawSprite(player.hero, lx, ly, {
-      flip: false, rot: side * punch * 0.22,
-      sx: grow * (1 - amp * b + 0.12 * punch), sy: grow * (1 + amp * b - 0.1 * punch), groundR: r, alpha: blink ? 0.45 : 1,
-    });
-    if (player.atk > 0) drawSwing(at, side);
+    const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
+    const reach = style === 'cast' ? 3 : 9;
+    const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
+    // 64px heroes stand with their feet on the shadow
+    const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
+    const opts = (k, alpha) => ({ flip: false, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
+    if (player.atk > 0 && style !== 'cast') {
+      for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
+    }
+    if (player.atk > 0 && style === 'cast') drawMagicCircle(at, rgb);
+    drawSprite(player.hero, lx, ly - lift, opts(1, blink ? 0.45 : 1));
+    if (player.atk > 0) drawStrike(style, at, side, rgb);
   }
 
-  // A white crescent sweeping around the hero in the attack direction.
-  function drawSwing(t, side) {
-    const R = player.radius * 2.6;
-    const ease = 1 - (1 - t) ** 3;
-    const span = 2.8 * ease;
-    const a0 = player.atkDir - side * 1.4;
-    const a1 = a0 + side * span;
-    const lo = Math.min(a0, a1), hi = Math.max(a0, a1);
-    const cx = player.x, cy = player.y - 4;
-    const alpha = t < 0.7 ? 1 : (1 - t) / 0.3;
-    // Crescent: thick at the leading edge of the blade, thin at the trail.
-    const steps = 18;
-    const pts = [];
+  // Crescent blade trail: thick at the leading edge, coloured rim, white core.
+  function crescent(cx, cy, R, lo, hi, side, rgb, alpha, thick = 0.4) {
+    const steps = 20;
+    const outer = [], inner = [];
     for (let i = 0; i <= steps; i++) {
       const u = i / steps;
       const ang = lo + (hi - lo) * u;
       const lead = side > 0 ? u : 1 - u;
-      pts.push([ang, R, R * (1 - 0.38 * lead)]);
+      outer.push([cx + Math.cos(ang) * R, cy + Math.sin(ang) * R]);
+      inner.push([cx + Math.cos(ang) * R * (1 - thick * lead), cy + Math.sin(ang) * R * (1 - thick * lead)]);
     }
-    ctx.save();
     ctx.beginPath();
-    pts.forEach(([ang, ro], i) => ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(ang) * ro, cy + Math.sin(ang) * ro));
-    for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(cx + Math.cos(pts[i][0]) * pts[i][2], cy + Math.sin(pts[i][0]) * pts[i][2]);
+    outer.forEach(([x, y], i) => ctx[i ? 'lineTo' : 'moveTo'](x, y));
+    for (let i = inner.length - 1; i >= 0; i--) ctx.lineTo(inner[i][0], inner[i][1]);
     ctx.closePath();
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.92 * alpha})`;
+    const g = ctx.createRadialGradient(cx, cy, R * (1 - thick), cx, cy, R);
+    g.addColorStop(0, `rgba(${rgb}, ${0.15 * alpha})`);
+    g.addColorStop(0.55, `rgba(${rgb}, ${0.85 * alpha})`);
+    g.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
+    ctx.fillStyle = g;
     ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = `rgba(42, 34, 36, ${0.85 * alpha})`;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(42, 34, 36, ${0.7 * alpha})`;
+    ctx.stroke();
+  }
+
+  function drawMagicCircle(t, rgb) {
+    const a = Math.sin(t * Math.PI);
+    const R = player.radius * (1.8 + t * 0.8);
+    const cx = player.x, cy = player.y + player.radius * 0.8;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, 0.45);
+    ctx.rotate(anim * 3);
+    ctx.strokeStyle = `rgba(${rgb}, ${0.9 * a})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
     ctx.stroke();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = `rgba(222, 176, 72, ${alpha})`;
     ctx.beginPath();
-    ctx.arc(cx, cy, R - 3, lo, hi);
+    ctx.arc(0, 0, R * 0.7, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const p = (i * 2 * Math.PI * 2) / 6;
+      ctx[i ? 'lineTo' : 'moveTo'](Math.cos(p) * R * 0.7, Math.sin(p) * R * 0.7);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = `rgba(${rgb}, ${0.18 * a})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStrike(style, t, side, rgb) {
+    const ease = 1 - (1 - t) ** 3;
+    const alpha = t < 0.65 ? 1 : (1 - t) / 0.35;
+    const dir = player.atkDir;
+    const cx = player.x, cy = player.y - 6;
+    ctx.save();
+    if (style === 'slash' || style === 'twin') {
+      const R = player.radius * 3;
+      const sweeps = style === 'twin' ? [side, -side] : [side];
+      for (const sd of sweeps) {
+        const a0 = dir - sd * 1.5;
+        const a1 = a0 + sd * 3 * ease;
+        crescent(cx, cy, R, Math.min(a0, a1), Math.max(a0, a1), sd, rgb, alpha);
+        crescent(cx, cy, R * 0.72, Math.min(a0, a1 - sd * 0.5), Math.max(a0, a1 - sd * 0.5), sd, rgb, alpha * 0.5, 0.25);
+        // blade tip sparkle
+        const tx = cx + Math.cos(a1) * R, ty = cy + Math.sin(a1) * R;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.fillRect(tx - 6, ty - 1, 12, 2);
+        ctx.fillRect(tx - 1, ty - 6, 2, 12);
+      }
+    } else if (style === 'palm') {
+      // a shockwave burst in front of the fist
+      const px = cx + Math.cos(dir) * player.radius * (1.4 + ease * 1.2), py = cy + Math.sin(dir) * player.radius * (1.4 + ease * 1.2);
+      ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
+      ctx.lineWidth = 4 * (1 - t) + 1;
+      ctx.beginPath();
+      ctx.arc(px, py, 6 + ease * 26, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const a = dir + (i - 3.5) * 0.28;
+        const r0 = 8 + ease * 14, r1 = r0 + 12 * (1 - t) + 4;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0);
+        ctx.lineTo(px + Math.cos(a) * r1, py + Math.sin(a) * r1);
+        ctx.stroke();
+      }
+      const g = ctx.createRadialGradient(px, py, 0, px, py, 16);
+      g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+      g.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, py, 16, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (style === 'cast') {
+      // a glowing sigil at the raised hand
+      const hx = cx + side * 18, hy = cy - 12;
+      const R = 7 + ease * 9;
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, R * 1.6);
+      g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+      g.addColorStop(0.4, `rgba(${rgb}, ${0.8 * alpha})`);
+      g.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(hx, hy, R * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.translate(hx, hy);
+      ctx.rotate(anim * 6);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-R * 0.6, -R * 0.6, R * 1.2, R * 1.2);
+      ctx.rotate(Math.PI / 4);
+      ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
+      ctx.strokeRect(-R * 0.6, -R * 0.6, R * 1.2, R * 1.2);
+    } else if (style === 'throw') {
+      // a quick flick: speed streaks leaving the hand toward the target
+      ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++) {
+        const a = dir + i * 0.16;
+        const r0 = 12 + ease * 30, r1 = r0 + 22 * (1 - t) + 6;
+        ctx.strokeStyle = i ? `rgba(${rgb}, ${alpha * 0.8})` : `rgba(255, 255, 255, ${alpha})`;
+        ctx.lineWidth = i ? 2 : 3;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+        ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+        ctx.stroke();
+      }
+      const a0 = dir - side * 0.9;
+      crescent(cx, cy, player.radius * 2, Math.min(a0, a0 + side * 1.8 * ease), Math.max(a0, a0 + side * 1.8 * ease), side, rgb, alpha * 0.7, 0.3);
+    } else if (style === 'spin') {
+      const R = player.radius * 2.8;
+      const a0 = dir - Math.PI;
+      crescent(cx, cy, R, a0 + 0, a0 + Math.PI * 2 * ease, 1, rgb, alpha, 0.3);
+    }
     ctx.restore();
   }
 
