@@ -113,7 +113,7 @@
   }
 
   // Pixel-art badges (assets/icons) that stand in for emoji anywhere in the UI.
-  const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker"};
+  const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "👊": "fist", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker"};
   const EMOJI_RE = /\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
   function iconImg(emoji, cls = 'pi') {
     const name = ICON_FILES[emoji] || ICON_FILES[emoji.replace(/\uFE0F/g, '')] || ICON_FILES[emoji + '\uFE0F'];
@@ -525,6 +525,127 @@
         w.timer = w.cooldown * player.haste;
         if (mines.length >= 10) mines.shift();
         mines.push({ x: player.x, y: player.y, arm: 0.3, life: 10 * player.durMul, damage: w.damage, radius: w.radius * player.area, pull: w.pull });
+      },
+    },
+  });
+
+  // ---------- Martial basics whose form grows with the realm (경지) ----------
+  // A classic wuxia progression: a blade first only cuts what it touches, then its qi extends
+  // (검기), stretches into a thread (검사), hardens into a flying aura (검강) and finally the sword
+  // flies by will alone (이기어검). Fists go 권각 → 권풍 → 권강 → 백보신권.
+  const SWORD_FORMS = [
+    { at: 0, name: '검술', desc: '눈앞의 요괴를 베어요' },
+    { at: 2, name: '검기', desc: '칼날에 검기가 서려 베는 범위가 넓어져요' },
+    { at: 3, name: '검사', desc: '실처럼 가는 검사가 멀리 뻗어 나가요' },
+    { at: 4, name: '검강', desc: '단단히 맺힌 검강이 초승달처럼 날아가 모두 꿰뚫어요' },
+    { at: 6, name: '이기어검', desc: '의지만으로 검을 날려 요괴를 쫓아 베어요' },
+  ];
+  const FIST_FORMS = [
+    { at: 0, name: '권각', desc: '주먹과 발로 눈앞의 요괴를 쳐요' },
+    { at: 2, name: '권풍', desc: '주먹 끝에서 바람이 일어 앞쪽 요괴를 날려버려요' },
+    { at: 4, name: '권강', desc: '응축된 권강이 날아가 요괴를 꿰뚫어요' },
+    { at: 5, name: '백보신권', desc: '백 걸음 밖의 요괴까지 주먹이 닿아 터져요' },
+  ];
+  function formIndex(forms, w) {
+    const realm = (player?.realm || 0) + (w?.evolved ? 1 : 0);
+    let i = 0;
+    while (i + 1 < forms.length && forms[i + 1].at <= realm) i++;
+    return i;
+  }
+  const heroRgb = () => (MOTION[player.hero] || [0, '255, 255, 255'])[1];
+
+  // A close-range sweep in front of the hero.
+  function arcStrike(a, radius, half, damage, push) {
+    fx.push({ kind: 'arc', x: player.x, y: player.y, a, r: radius, half, rgb: heroRgb(), life: 0.2, max: 0.2 });
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      const dx = e.x - player.x, dy = e.y - player.y;
+      const d = Math.hypot(dx, dy);
+      if (d > radius + e.type.radius) continue;
+      let da = Math.atan2(dy, dx) - a;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) > half && d > e.type.radius + player.radius) continue;
+      damageEnemy(e, j, damage, dx, dy, push);
+    }
+  }
+
+  function waveShot(a, damage, speed, radius, life) {
+    projectiles.push({
+      kind: 'wave', x: player.x, y: player.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+      damage, pierce: 999, radius, life, max: life, rgb: heroRgb(), hit: new Set(),
+    });
+  }
+
+  Object.assign(WEAPONS, {
+    geomsul: {
+      name: () => { const f = SWORD_FORMS[formIndex(SWORD_FORMS, player?.weapons.geomsul)]; return f.at ? `검술 · ${f.name}` : '검술'; },
+      icon: () => '⚔️',
+      desc: '눈앞을 베는 근접 검술. 경지가 오를수록 검기 → 검사 → 검강 → 이기어검으로 뻗어 나가요',
+      up: '데미지 +6, 대기시간 -6%',
+      max: 6,
+      create: () => ({ damage: 17, cooldown: 0.8, timer: 0.2, range: 82 }),
+      upgrade(w) { w.damage += 6; w.cooldown *= 0.94; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const stage = formIndex(SWORD_FORMS, w);
+        const target = nearestEnemy(stage >= 2 ? 420 : w.range + 60);
+        if (!target) return;
+        w.timer = w.cooldown * player.haste;
+        const a = Math.atan2(target.y - player.y, target.x - player.x);
+        const r = w.range * player.area * (stage >= 1 ? 1.4 : 1);
+        arcStrike(a, r, stage >= 1 ? 1.3 : 1.0, w.damage * (stage >= 1 ? 1.15 : 1), 10);
+        const n = 1 + player.extra;
+        for (let i = 0; i < n; i++) {
+          const b = a + (i - (n - 1) / 2) * 0.3;
+          if (stage === 2) beamStrike(b, 300, 5, w.damage * 0.8);
+          if (stage >= 3) waveShot(b, w.damage * 1.6, 430, 24 * player.area, 0.9);
+        }
+        if (stage >= 4) {
+          for (let i = 0; i < 2 + player.extra; i++) {
+            const b = a + Math.PI + (i - 0.5) * 1.2;
+            projectiles.push({
+              kind: 'homing', x: player.x, y: player.y, vx: Math.cos(b) * 300, vy: Math.sin(b) * 300,
+              speed: 460, damage: w.damage * 1.2, pierce: 3 + player.pierce, radius: 10, sprite: 'sword', life: 2.2, hit: new Set(),
+            });
+          }
+        }
+      },
+    },
+    gwonbeop: {
+      name: () => { const f = FIST_FORMS[formIndex(FIST_FORMS, player?.weapons.gwonbeop)]; return f.at ? `권법 · ${f.name}` : '권법'; },
+      icon: () => '👊',
+      desc: '눈앞을 치는 근접 권법. 경지가 오를수록 권풍 → 권강 → 백보신권으로 멀리 닿아요',
+      up: '데미지 +7, 밀쳐내기 +4',
+      max: 6,
+      create: () => ({ damage: 20, cooldown: 0.62, timer: 0.2, range: 66, push: 18 }),
+      upgrade(w) { w.damage += 7; w.push += 4; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const stage = formIndex(FIST_FORMS, w);
+        const far = stage >= 3 ? 560 : stage >= 2 ? 420 : w.range + 50;
+        const target = nearestEnemy(far);
+        if (!target) return;
+        w.timer = w.cooldown * player.haste;
+        const a = Math.atan2(target.y - player.y, target.x - player.x);
+        const r = w.range * player.area;
+        arcStrike(a, r, 0.75, w.damage, w.push);
+        if (stage >= 1) {
+          const fx0 = player.x + Math.cos(a) * r * 1.3, fy0 = player.y + Math.sin(a) * r * 1.3;
+          ringBlast(fx0, fy0, 46 * player.area, w.damage * 0.8, w.push + 10, 'gold');
+        }
+        for (let i = 0; i < 1 + player.extra; i++) {
+          const b = a + (i - player.extra / 2) * 0.3;
+          if (stage >= 2) waveShot(b, w.damage * 1.5, 470, 20 * player.area, 0.8);
+        }
+        if (stage >= 3) {
+          // 백보신권: the blow lands on a distant yokai and bursts there
+          const pool = enemies.filter((e) => !e.type.prop && dist(e.x, e.y, player.x, player.y) < 560);
+          for (let k = 0; k < Math.min(pool.length, 2 + player.extra); k++) {
+            const e = pool[Math.floor(Math.random() * pool.length)];
+            fx.push({ kind: 'beam', x: player.x, y: player.y, a: Math.atan2(e.y - player.y, e.x - player.x), len: dist(e.x, e.y, player.x, player.y), w: 8, life: 0.2, max: 0.2, tint: 'gold' });
+            ringBlast(e.x, e.y, 70 * player.area, w.damage * 2.2, 24, 'gold');
+          }
+        }
       },
     },
   });
@@ -972,7 +1093,7 @@
   // One form per hero; each has its own starting weapon and a trait.
   const HEROES = {
     cheongpung: {
-      name: '청풍', role: '검객', weapon: 'shot', hp: 100, speed: 195,
+      name: '청풍', role: '검객', weapon: 'geomsul', hp: 100, speed: 195,
       trait: '치명타 확률 +15%, 치명타 피해 ×2.5',
       setup(p) { p.crit += 0.15; p.critMul = 2.5; },
     },
@@ -987,7 +1108,7 @@
       setup(p) { p.killHeal = 0.25; },
     },
     cheolsan: {
-      sect: 'sorim', name: '철산', role: '소림 무승', weapon: 'quake', hp: 150, speed: 170,
+      sect: 'sorim', name: '철산', role: '소림 무승', weapon: 'gwonbeop', hp: 150, speed: 170,
       trait: '최대 HP 150, 받는 피해 -15% (느림)',
       setup(p) { p.armor *= 0.85; },
     },
@@ -1067,7 +1188,7 @@
       setup(p) { p.xpMul += 0.2; p.haste *= 0.9; },
     },
     maengju: {
-      allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'jewang', extra: 'plum', hp: 180, speed: 205, unlock: 'sectUlt3',
+      allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'geomsul', extra: 'jewang', hp: 180, speed: 205, unlock: 'sectUlt3',
       trait: '모든 문파의 무공을 배울 수 있음, 모든 피해 +30%, 대기시간 -10%',
       setup(p) { p.dmgMul += 0.3; p.haste *= 0.9; },
     },
@@ -1098,6 +1219,10 @@
       apply(w) { w.radius += 30; w.damage *= 2; w.life += 3; } },
   };
   Object.assign(COMBOS, {
+    geomsul: { passive: 'crit', name: '심검합일', icon: '🌟', desc: '검과 마음이 하나가 되어 한 단계 높은 형으로 펼쳐져요. 데미지 ×2, 대기시간 -25%',
+      apply(w) { w.damage *= 2; w.cooldown *= 0.75; } },
+    gwonbeop: { passive: 'armor', name: '금강패권', icon: '☀️', desc: '한 단계 높은 형의 권법. 데미지 ×2, 범위 +20',
+      apply(w) { w.damage *= 2; w.range += 20; } },
     slash: { passive: 'dmg', name: '쌍룡참', icon: '🐲', desc: '항상 양쪽을 크게 베어요. 범위 +60, 데미지 ×2',
       apply(w) { w.count = 2; w.range += 60; w.height += 30; w.damage *= 2; } },
     icicle: { passive: 'pierce', name: '빙창우', icon: '❄️', desc: '얼음 +5, 폭발 범위 +15, 데미지 ×1.6',
@@ -1435,6 +1560,12 @@
     const aura = REALM_AURA[player.realm];
     burst(player.x, player.y, 36, aura && aura !== 'rainbow' ? [`rgb(${aura})`, '#ffffff'] : ['#ffd76b', '#ffffff', '#e0503f'], 260, 0.9, 5, true);
     showBanner(`경지 상승! ${REALMS[player.realm].name}`, '', `${rankOf(player.realm)}(으)로 승격 · 모든 피해 +6%, 최대 HP +10`);
+    for (const [id, forms] of [['geomsul', SWORD_FORMS], ['gwonbeop', FIST_FORMS]]) {
+      const w = player.weapons[id];
+      if (!w) continue;
+      const f = forms[formIndex(forms, w)];
+      if (f.at === player.realm + (w.evolved ? 1 : 0)) showToast(`${WEAPONS[id].icon()} ${f.name} 발현!`, f.desc);
+    }
     checkAchievements();
   }
 
@@ -2313,6 +2444,14 @@
         drawSprite(f.sprite, f.x, f.y - k * 10, { sx: f.sc * (1 + 0.5 * k), sy: f.sc * (1 - 0.7 * k), groundR: f.r, flash: k < 0.4, alpha: f.alpha * a });
         continue;
       }
+      if (f.kind === 'arc') {
+        const t = 1 - a;
+        const sweep = f.half * 2 * (1 - (1 - Math.min(1, t * 1.6)) ** 3);
+        ctx.save();
+        crescent(f.x, f.y - 4, f.r, f.a - f.half, f.a - f.half + sweep, 1, f.rgb, a, 0.42);
+        ctx.restore();
+        continue;
+      }
       if (f.kind === 'spark') {
         const s = (f.crit ? 15 : 10) * (0.6 + (1 - a) * 0.8);
         ctx.save();
@@ -2646,6 +2785,14 @@
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawAbove) WEAPONS[id].drawAbove(w);
     for (const p of projectiles) {
       if (p.kind === 'tornado') { drawTornado(p); continue; }
+      if (p.kind === 'wave') {
+        const a = Math.atan2(p.vy, p.vx);
+        const R = p.radius * 1.6;
+        ctx.save();
+        crescent(p.x - Math.cos(a) * R * 0.6, p.y - Math.sin(a) * R * 0.6, R, a - 1.1, a + 1.1, 1, p.rgb, clamp(p.life / p.max * 2, 0, 1), 0.5);
+        ctx.restore();
+        continue;
+      }
       const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : p.kind === 'petal' ? p.spin + p.life * 8 : Math.atan2(p.vy, p.vx);
       drawSprite(p.sprite, p.x, p.y, { rot });
     }

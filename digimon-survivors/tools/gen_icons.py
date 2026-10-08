@@ -424,6 +424,20 @@ def _(g):
     g.line(2, 15, 11.4, 3, BROWN, 0.9)
 
 
+@icon('fist', '👊')
+def _(g):
+    skin = rgba(240, 200, 160)
+    g.rect(3, 4, 12, 12, skin)
+    for i, x in enumerate((3, 5.4, 7.8, 10.2)):
+        g.rect(x, 3, x + 2, 5.4, mix(skin, WHITE, 0.25) if i % 2 else skin)
+        g.line(x + 2, 4, x + 2, 7, mul(skin, 0.7), 0.5)
+    g.rect(1.6, 7, 4.6, 10.4, skin)
+    g.rect(4, 12, 11, 15, RED)
+    g.line(12.4, 3, 15.4, 1, FLAME, 0.9)
+    g.line(12.6, 7, 15.6, 7, FLAME, 0.9)
+    g.line(12.4, 11, 15.4, 13, FLAME, 0.9)
+
+
 # ---------- combos ----------
 
 @icon('fox', '🦊')
