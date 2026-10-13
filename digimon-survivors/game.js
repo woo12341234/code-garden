@@ -104,6 +104,9 @@
     bangul: { size: 24, color: '#deb048', emoji: '🔔' },
     jeoseung: { size: 72, color: '#242028', emoji: '💀' },
     golddokkaebi: { size: 48, color: '#ecba3c', emoji: '💰' },
+    wolf: { size: 48, color: '#605c6c', emoji: '🐺' },
+    foxmage: { size: 48, color: '#78283c', emoji: '🦊' },
+    firebomb: { size: 48, color: '#3c2828', emoji: '💣' },
   };
   const SPRITES = {};
   const spritePath = (key) => `assets/${key}.png`;
@@ -1615,16 +1618,19 @@
     meok: { name: '먹물요괴', sprite: 'meok', hp: 24, speed: 75, damage: 8, radius: 14, xp: 6, weight: 1.2, minTime: 120, barY: 18, split: 'meokMini' },
     meokMini: { name: '꼬마먹물', sprite: 'meok', scale: 0.6, hp: 8, speed: 105, damage: 4, radius: 9, xp: 2, weight: 0, barY: 12 },
     jangseung: { name: '돌장승', sprite: 'jangseung', hp: 70, speed: 38, damage: 12, radius: 16, xp: 12, weight: 1, minTime: 150, barY: 26 },
-    wongwi: { name: '원귀', sprite: 'wongwi', hp: 22, speed: 88, damage: 7, radius: 14, xp: 8, weight: 1, minTime: 210, barY: 22, move: 'float', alpha: 0.85 },
+    wongwi: { blink: true, name: '원귀', sprite: 'wongwi', hp: 22, speed: 88, damage: 7, radius: 14, xp: 8, weight: 1, minTime: 210, barY: 22, move: 'float', alpha: 0.85 },
     gangsi: { name: '강시', sprite: 'gangsi', hp: 40, speed: 70, damage: 11, radius: 15, xp: 9, weight: 1.2, minTime: 270, barY: 24, move: 'hop' },
     eodukssini: { name: '어둑시니', sprite: 'eodukssini', hp: 30, speed: 80, damage: 10, radius: 15, xp: 9, weight: 1, minTime: 330, barY: 24, grows: true, alpha: 0.9 },
     bulgasari: { name: '불가사리', sprite: 'bulgasari', hp: 160, speed: 34, damage: 16, radius: 18, xp: 25, weight: 0.4, minTime: 360, barY: 24 },
-    daedokkaebi: { name: '대도깨비', sprite: 'daedokkaebi', hp: 260, speed: 48, damage: 18, radius: 24, xp: 50, boss: true, barY: 34 },
-    imugi: { name: '이무기', sprite: 'imugi', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
+    daedokkaebi: { name: '대도깨비', sprite: 'daedokkaebi', hp: 260, speed: 48, damage: 18, radius: 24, xp: 50, boss: true, barY: 34, special: 'slam' },
+    imugi: { name: '이무기', sprite: 'imugi', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34, special: 'spit' },
+    wolf: { name: '이리 요괴', sprite: 'wolf', hp: 34, speed: 105, damage: 13, radius: 14, xp: 10, weight: 1.2, minTime: 200, barY: 18, ai: 'charger' },
+    foxmage: { name: '여우 요술사', sprite: 'foxmage', hp: 40, speed: 70, damage: 10, radius: 14, xp: 12, weight: 0.8, minTime: 260, barY: 22, ai: 'ranged' },
+    firebomb: { name: '불덩이 요괴', sprite: 'firebomb', hp: 26, speed: 95, damage: 22, radius: 14, xp: 9, weight: 0.8, minTime: 300, barY: 20, ai: 'bomber' },
     golddokkaebi: { name: '황금 도깨비', sprite: 'golddokkaebi', hp: 140, speed: 0, damage: 0, radius: 15, xp: 0, weight: 0, barY: 22, gold: true },
     seokdeung: { name: '석등', sprite: 'seokdeung', hp: 1, speed: 0, damage: 0, radius: 14, xp: 0, weight: 0, barY: 22, prop: true },
-    jeoseung: { name: '저승사자', sprite: 'jeoseung', hp: 1500, speed: 72, damage: 40, radius: 28, xp: 300, boss: true, final: true, barY: 42, summon: true },
-    heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true },
+    jeoseung: { name: '저승사자', sprite: 'jeoseung', hp: 1500, speed: 72, damage: 40, radius: 28, xp: 300, boss: true, final: true, barY: 42, summon: true, special: 'souls' },
+    heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true, special: 'charge' },
   };
   const BOSSES = [ENEMY_TYPES.daedokkaebi, ENEMY_TYPES.imugi, ENEMY_TYPES.heukyo];
   const MAX_ENEMIES = 260;
@@ -1638,9 +1644,9 @@
   const STAGE_LEN = 210;
   const STAGES = [
     { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow'], mid: null, boss: 'daedokkaebi', tint: null },
-    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
-    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
-    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
+    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
+    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi', 'wolf', 'foxmage', 'firebomb'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
+    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari', 'wolf', 'foxmage', 'firebomb'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
   ];
   const ENDLESS = { name: '무한 수련', sub: '끝없는 요괴의 밤', pool: null, mid: null, boss: null, tint: 'rgba(120, 20, 30, 0.16)', endless: true };
   const MARCH_TIMES = [420, 720]; // 백귀야행: a parade of ghosts crossing the screen (then every 5 min)
@@ -1883,7 +1889,8 @@
     { id: 'shop1', icon: '🥋', name: '수련의 시작', desc: '수련장에서 처음으로 수련하기', check: () => Object.keys(progress.shop).length > 0 },
     { id: 'cursed', icon: '💀', name: '마기를 품고', desc: '마기 3단계 이상으로 저승사자 퇴치', check: (p) => p.curse >= 0.29 && p.wonRun },
     { id: 'clearHard', icon: '🔥', name: '고수의 길', desc: '고수 난이도로 저승사자 퇴치', check: () => progress.clears.hard || progress.clears.hell },
-    { id: 'clearHell', icon: '💀', name: '마경 정복', desc: '마경 난이도로 저승사자 퇴치', check: () => progress.clears.hell },
+    { id: 'clearHell', icon: '💀', name: '마경 정복', desc: '마경 난이도로 저승사자 퇴치', check: () => progress.clears.hell || progress.clears.cheonma },
+    { id: 'clearCheonma', icon: '😈', name: '천마경 정복', desc: '천마경 난이도로 저승사자 퇴치', check: () => progress.clears.cheonma },
     { id: 'quest5', icon: '📜', name: '의뢰 해결사', desc: '의뢰 5개 완료 (누적)', check: () => progress.questsDone >= 5 },
     { id: 'mastery5', icon: '🥋', name: '일인전승', desc: '협객 하나의 숙련도를 Lv.5까지 올리기', check: () => Object.keys(HEROES).some((id) => masteryLevel(id) >= 5) },
     { id: 'combo300', icon: '🔥', name: '삼백연격', desc: '한 판에 300연격 달성', check: (p) => p.maxCombo >= 300 },
@@ -2398,15 +2405,6 @@
       e.move = ['fan', 'ring', 'dash'][Math.floor(Math.random() * 3)];
       e.tele = 0.5;
     }
-    for (let i = enemyShots.length - 1; i >= 0; i--) {
-      const s2 = enemyShots[i];
-      s2.x += s2.vx * dt; s2.y += s2.vy * dt;
-      if ((s2.life -= dt) <= 0) { enemyShots.splice(i, 1); continue; }
-      if (dist(s2.x, s2.y, player.x, player.y) < s2.r + player.radius * 0.7) {
-        enemyShots.splice(i, 1);
-        if (hurtPlayer(s2.dmg)) return true;
-      }
-    }
     return false;
   }
   function drawDuel() {
@@ -2436,20 +2434,6 @@
       ctx.beginPath();
       ctx.arc(e.x, e.y, 30 + (0.5 - e.tele) * 30, 0, Math.PI * 2);
       ctx.stroke();
-    }
-    for (const s2 of enemyShots) {
-      ctx.fillStyle = `rgba(${s2.rgb}, 0.35)`;
-      ctx.beginPath();
-      ctx.arc(s2.x, s2.y, s2.r * 1.8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#2a2224';
-      ctx.beginPath();
-      ctx.arc(s2.x, s2.y, s2.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgb(${s2.rgb})`;
-      ctx.beginPath();
-      ctx.arc(s2.x, s2.y, s2.r * 0.65, 0, Math.PI * 2);
-      ctx.fill();
     }
     ctx.restore();
   }
@@ -2592,6 +2576,7 @@
     updateDisciples(dt);
     updateOddities(dt);
     if (updateDuel(dt)) return;
+    if (updateEnemyShots(dt)) return;
     for (let i = bombs.length - 1; i >= 0; i--) {
       const b = bombs[i];
       if ((b.t -= dt) > 0) continue;
@@ -2922,6 +2907,7 @@
     saveProgress();
     for (const e of enemies) if (!e.type.prop) burst(e.x, e.y, 4, ['#2a2224', '#ffffff'], 120, 0.5, 4);
     enemies = enemies.filter((e) => e.type.prop);
+    enemyShots = [];
     player.hp = player.maxHp;
     flash = 0.4;
     addGold(40 * (stageIdx + 1));
@@ -3111,10 +3097,11 @@
   // ---------- Spawning ----------
   // ---------- Difficulty (난이도) ----------
   const DIFFICULTIES = [
-    { id: 'easy', icon: '🍃', name: '입문', desc: '요괴 체력·공격력 ×0.6, 조금 덜 나와요. 은자 ×0.7', hp: 0.6, dmg: 0.6, spawn: 0.8, speed: 0.92, gold: 0.7 },
-    { id: 'normal', icon: '⚔️', name: '강호', desc: '기본 난이도', hp: 1, dmg: 1, spawn: 1, speed: 1, gold: 1 },
-    { id: 'hard', icon: '🔥', name: '고수', desc: '요괴 체력 ×1.5, 공격력 ×1.4, 더 많이 몰려와요. 은자 ×1.5', hp: 1.5, dmg: 1.4, spawn: 1.25, speed: 1.08, gold: 1.5 },
-    { id: 'hell', icon: '💀', name: '마경', desc: '요괴 체력 ×2.4, 공격력 ×2, 훨씬 많고 빨라요. 은자 ×2.5', hp: 2.4, dmg: 2, spawn: 1.6, speed: 1.15, gold: 2.5 },
+    { id: 'easy', icon: '🍃', name: '입문', desc: '요괴 체력·공격력 ×0.6, 조금 덜 나와요. 은자 ×0.7', hp: 0.6, dmg: 0.6, spawn: 0.8, speed: 0.92, gold: 0.7, ramp: 0.8, elite: 0.6 },
+    { id: 'normal', icon: '⚔️', name: '강호', desc: '기본 난이도', hp: 1, dmg: 1, spawn: 1, speed: 1, gold: 1, ramp: 1, elite: 1 },
+    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×1.6, 공격력 ×1.5, 더 많이. 시간이 갈수록 훨씬 빨리 강해져요. 은자 ×1.6', hp: 1.6, dmg: 1.5, spawn: 1.3, speed: 1.1, gold: 1.6, ramp: 1.45, elite: 1.6 },
+    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×2.6, 공격력 ×2.1, 훨씬 많고 빨라요. 정예가 자주 나와요. 은자 ×2.8', hp: 2.6, dmg: 2.1, spawn: 1.7, speed: 1.2, gold: 2.8, ramp: 1.9, elite: 2.5 },
+    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×3.6, 공격력 ×2.8, 쉴 틈 없이 몰려오고 1분마다 미친 듯이 강해져요. 은자 ×4.5', hp: 3.6, dmg: 2.8, spawn: 2.2, speed: 1.3, gold: 4.5, ramp: 2.6, elite: 4 },
   ];
   let diff = DIFFICULTIES[1];
 
@@ -3139,15 +3126,17 @@
   function spawnEnemy(type, angle, distance, at) {
     const t = elapsed;
     const c = player.curse;
-    const hp = type.prop ? 1 : type.hp * (1 + t / 120 + (t / 300) ** 2) * (1 + c) * diff.hp;
+    // Yokai grow tougher, faster and deadlier with time; harder difficulties ramp up much faster.
+    const ramp = diff.ramp || 1;
+    const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
-      speed: type.speed * (1 + Math.min(t / 360, 0.5)) * (1 + c / 2) * diff.speed,
-      damage: Math.round(type.damage * (1 + t / 240) * diff.dmg),
+      speed: type.speed * (1 + Math.min((t / 360) * ramp, 0.5 + 0.3 * ramp)) * (1 + c / 2) * diff.speed,
+      damage: Math.round(type.damage * (1 + (ramp * t) / 240) * diff.dmg),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
-    if (!type.boss && !type.prop && !at && t >= 90 && Math.random() < 0.01) {
+    if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.03, 0.006 * (diff.elite || 1) * (1 + t / 400))) {
       e.elite = true;
       e.affix = Object.keys(AFFIX)[Math.floor(Math.random() * 4)];
       if (e.affix === 'swift') e.speed *= 1.6;
@@ -3531,6 +3520,96 @@
     if (shake > 0) shake = Math.max(0, shake - dt * 30);
   }
 
+  // ---------- Enemy special behaviour (chargers, casters, bombers, blinking ghosts, boss attacks) ----------
+  function shoot(x, y, a, speed, dmg, rgb, r = 9) {
+    if (enemyShots.length < 220) enemyShots.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r, dmg, life: 3, rgb });
+  }
+  function enemyAI(e, d, dx, dy, dt, speed) {
+    const t = e.type;
+    const a = Math.atan2(dy, dx);
+    if (e.dashT > 0) {
+      e.dashT -= dt;
+      e.x += e.dvx * dt;
+      e.y += e.dvy * dt;
+      return 0;
+    }
+    if (e.tele > 0) {
+      if ((e.tele -= dt) <= 0) {
+        if (e.act === 'dash') { const sp = (t.boss ? 520 : 460) * diff.speed; e.dashT = t.boss ? 0.6 : 0.38; e.dvx = Math.cos(a) * sp; e.dvy = Math.sin(a) * sp; }
+        else if (e.act === 'fan') for (let i = -1; i <= 1; i++) shoot(e.x, e.y, a + i * 0.25, 240, e.damage * 0.7, '120, 190, 255');
+        else if (e.act === 'slam') { for (let i = 0; i < 18; i++) shoot(e.x, e.y, (i / 18) * Math.PI * 2, 210, e.damage * 0.6, '255, 170, 60', 11); shake = Math.max(shake, 6); sfx('boom'); }
+        else if (e.act === 'spit') for (let i = -3; i <= 3; i++) shoot(e.x, e.y, a + i * 0.16, 270, e.damage * 0.55, '150, 230, 90');
+        else if (e.act === 'souls') for (let k = 0; k < 3; k++) for (let i = 0; i < 10; i++) shoot(e.x, e.y, (i / 10) * Math.PI * 2 + k * 0.3, 150 + k * 50, e.damage * 0.5, '200, 220, 255', 10);
+      }
+      return 0;
+    }
+    if ((e.aiT = (e.aiT ?? 1 + Math.random() * 2) - dt) > 0) {
+      if (t.ai === 'ranged') return d < 200 ? -speed : d > 300 ? speed : 0;
+      if (t.ai === 'bomber' && d < 70 && !e.fuse) { e.fuse = 0.75; }
+      if (e.fuse > 0) {
+        if ((e.fuse -= dt) <= 0) {
+          bombs.push({ x: e.x, y: e.y, t: 0.01, max: 0.01, r: 85, dmg: e.damage });
+          e.gone = true;
+          burst(e.x, e.y, 14, ['#ff8040', '#ffd060'], 200, 0.5, 5);
+        }
+        return 0;
+      }
+      return speed;
+    }
+    // choose the next move
+    if (t.ai === 'charger') {
+      e.aiT = 2.2 + Math.random() * 1.2;
+      if (d < 340) { e.act = 'dash'; e.tele = 0.5; return 0; }
+    } else if (t.ai === 'ranged') {
+      e.aiT = 2.4 + Math.random();
+      if (d < 420) { e.act = 'fan'; e.tele = 0.4; return 0; }
+    } else if (t.blink) {
+      e.aiT = 5 + Math.random() * 3;
+      if (d > 220) {
+        burst(e.x, e.y, 8, ['#2a2224', '#e8e8f0'], 120, 0.4, 4);
+        const b = Math.random() * Math.PI * 2;
+        e.x = player.x + Math.cos(b) * 130;
+        e.y = player.y + Math.sin(b) * 130;
+        e.born = 0.45;
+      }
+    } else if (t.special) {
+      e.aiT = (t.special === 'souls' ? 3.2 : 4.2) / Math.min(1.8, diff.ramp || 1);
+      e.act = t.special === 'charge' ? 'dash' : t.special;
+      e.tele = 0.75;
+      return 0;
+    } else e.aiT = 2;
+    return speed;
+  }
+  function updateEnemyShots(dt) {
+    for (let i = enemyShots.length - 1; i >= 0; i--) {
+      const s2 = enemyShots[i];
+      s2.x += s2.vx * dt;
+      s2.y += s2.vy * dt;
+      if ((s2.life -= dt) <= 0) { enemyShots.splice(i, 1); continue; }
+      if (dist(s2.x, s2.y, player.x, player.y) < s2.r + player.radius * 0.7) {
+        enemyShots.splice(i, 1);
+        if (hurtPlayer(s2.dmg)) return true;
+      }
+    }
+    return false;
+  }
+  function drawEnemyShots() {
+    for (const s2 of enemyShots) {
+      ctx.fillStyle = `rgba(${s2.rgb}, 0.35)`;
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2224';
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgb(${s2.rgb})`;
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Damage to the hero (contact, explosions...). Returns true when the run ended.
   function hurtPlayer(raw) {
     if (player.invuln > 0) return false;
@@ -3584,6 +3663,10 @@
       if (e.born > 0) e.born -= dt;
       if (frozen) continue;
       let speed = e.march || e.type.gold || e.type.duelist ? 0 : e.speed;
+      if (e.type.ai || e.type.special || e.type.blink) {
+        speed = enemyAI(e, d, dx, dy, dt, speed);
+        if (e.gone) continue;
+      }
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
       if (e.type.move === 'hop') speed *= Math.max(0, Math.sin(elapsed * 6 + e.phase)) * 2.2;
       if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
@@ -4538,6 +4621,23 @@
       ctx.fill();
     }
     drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (t.alpha ?? 1) * bk, flip: !t.prop && player.x < e.x });
+    if ((e.tele > 0 && !t.duelist) || e.fuse > 0) {
+      const warn = e.fuse > 0;
+      ctx.strokeStyle = `rgba(255, 70, 50, ${0.5 + 0.5 * Math.sin(anim * 40)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, warn ? 85 * (1 - e.fuse / 0.75) + 10 : r * 1.6 + 6, 0, Math.PI * 2);
+      ctx.stroke();
+      if (e.act === 'dash' && !warn) {
+        const a = Math.atan2(player.y - e.y, player.x - e.x);
+        ctx.strokeStyle = 'rgba(255, 70, 50, 0.5)';
+        ctx.lineWidth = r;
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(e.x + Math.cos(a) * 160, e.y + Math.sin(a) * 160);
+        ctx.stroke();
+      }
+    }
     if (e.affix && bk >= 1) {
       ctx.font = 'bold 12px "Gowun Batang", serif';
       ctx.textAlign = 'center';
@@ -4603,6 +4703,7 @@
     drawZones();
     drawDuel();
     drawOddities();
+    drawEnemyShots();
     drawBombs();
     drawShrines();
     drawMines();

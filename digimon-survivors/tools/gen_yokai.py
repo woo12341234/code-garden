@@ -344,6 +344,62 @@ def golddokkaebi():
     s.finish('golddokkaebi.png', rim=(255, 250, 200, 255))
 
 
+def wolf():
+    """이리 요괴: a lean grey demon wolf with red eyes, low to the ground, ready to lunge."""
+    s = Y(24)
+    fur = rgba(96, 92, 108)
+    s.blob(12, 14.6, 7.6, 4.6, fur)
+    s.poly([(4.6, 12), (1, 9.6), (2.6, 13.6)], fur)
+    s.poly([(1, 9.6), (0.4, 7), (3.4, 10.6)], mul(fur, 0.8))
+    s.blob(18.4, 11.4, 3.8, 3.4, fur)
+    s.poly([(20, 11), (23.6, 12.4), (20.4, 14)], fur)
+    s.poly([(16.6, 9), (17, 5.4), (18.6, 8.4)], fur)
+    s.poly([(19.4, 8.6), (20.4, 5.4), (21, 9)], fur)
+    s.mark(19, 10, GLOW_R)
+    s.mark(20, 10, GLOW_R)
+    s.line(20.6, 13.4, 23.4, 13.4, BONE, 0.6)
+    for x in (6.4, 9.4, 14.4, 17):
+        s.rect(x - 0.9, 17.4, x + 0.9, 21.6, mul(fur, 0.8))
+    for x in (8, 11, 14):
+        s.line(x, 11, x + 1.4, 13, mul(fur, 1.4), 0.6)
+    s.finish('wolf.png', rim=(255, 190, 190, 255))
+
+
+def foxmage():
+    """여우 요술사: a masked fox spirit in a shaman robe, a blue fireball in its paw."""
+    s = Y(24)
+    robe = rgba(120, 40, 60)
+    s.poly([(6, 11), (18, 11), (20, 23.4), (4, 23.4)], robe)
+    s.rect(11, 11, 13, 23.4, GOLD)
+    s.poly([(4, 18), (1, 21), (3, 23), (6, 21)], rgba(240, 170, 80))
+    s.blob(12, 7.4, 4.6, 4, rgba(236, 232, 226))
+    s.poly([(7.6, 5.6), (7, 0.6), (10, 4)], rgba(236, 232, 226))
+    s.poly([(16.4, 5.6), (17, 0.6), (14, 4)], rgba(236, 232, 226))
+    s.poly([(8.6, 8), (15.4, 8), (14, 10.6), (10, 10.6)], RED)
+    s.mark(10, 7, INK)
+    s.mark(14, 7, INK)
+    s.mark(10, 8, GLOW_Y)
+    s.mark(14, 8, GLOW_Y)
+    s.blob(20, 12, 2.4, 2.6, rgba(110, 190, 255))
+    s.blob(20, 12.4, 1.1, 1.1, WHITE)
+    s.finish('foxmage.png', rim=(200, 230, 255, 255))
+
+
+def firebomb():
+    """불덩이 요괴: a cracked, glowing ember ball with a fuse-like flame, grinning madly."""
+    s = Y(24)
+    s.poly([(10, 6), (12, 0.6), (14, 6)], rgba(255, 200, 80))
+    s.blob(12, 14, 8, 7.6, rgba(60, 40, 40))
+    for (x0, y0, x1, y1) in [(6, 10, 10, 15), (16, 9, 13, 16), (8, 19, 14, 17)]:
+        s.line(x0, y0, x1, y1, rgba(255, 140, 40), 1.2)
+    s.blob(12, 14, 3.6, 3, rgba(255, 120, 40))
+    for x in (8, 9, 15, 16):
+        s.mark(x, 11, GLOW_Y)
+    for x in range(8, 17):
+        s.mark(x, 17 if 9 < x < 15 else 16, GLOW_Y)
+    s.finish('firebomb.png', rim=(255, 210, 150, 255))
+
+
 if __name__ == '__main__':
-    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi):
+    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi, wolf, foxmage, firebomb):
         fn()
