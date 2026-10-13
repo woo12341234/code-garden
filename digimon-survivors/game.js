@@ -2930,7 +2930,7 @@
     midOut = false;
     waveTimer = 30;
     const st = curStage();
-    showBanner(st.name, '', st.sub);
+    showBanner(st.name, '', i > 0 ? `${st.sub} · 요괴의 기운이 한층 짙어졌다` : st.sub);
     sfx('gong');
   }
 
@@ -3128,21 +3128,32 @@
     e.y = player.y + Math.sin(a) * d;
   }
 
+  // Each chapter steps the yokai up on top of the time ramp: tougher, harder-hitting, faster and more of them.
+  const STAGE_SCALE = [
+    { hp: 1, dmg: 1, speed: 1, spawn: 1, elite: 1 },
+    { hp: 1.8, dmg: 1.35, speed: 1.08, spawn: 1.4, elite: 1.6 },
+    { hp: 3, dmg: 1.75, speed: 1.16, spawn: 1.8, elite: 2.2 },
+    { hp: 4.8, dmg: 2.2, speed: 1.24, spawn: 2.2, elite: 3 },
+  ];
+  const stageScale = () => STAGE_SCALE[Math.min(stageIdx, STAGE_SCALE.length - 1)];
   // Enemies get tougher, faster and hit harder the longer the run goes.
   function spawnEnemy(type, angle, distance, at) {
     const t = elapsed;
     const c = player.curse;
+    const sc = stageScale();
     // Yokai grow tougher, faster and deadlier with time; harder difficulties ramp up much faster.
     const ramp = diff.ramp || 1;
-    const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp;
+    // Bosses take the chapter step more gently so they stay beatable inside the 10-minute run.
+    const scHp = type.boss ? Math.sqrt(sc.hp) : sc.hp;
+    const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp * scHp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
-      speed: type.speed * (1 + Math.min((t / 360) * ramp, 0.5 + 0.3 * ramp)) * (1 + c / 2) * diff.speed,
-      damage: Math.round(type.damage * (1 + (ramp * t) / 240) * diff.dmg),
+      speed: type.speed * (1 + Math.min((t / 360) * ramp, 0.5 + 0.3 * ramp)) * (1 + c / 2) * diff.speed * sc.speed,
+      damage: Math.round(type.damage * (1 + (ramp * t) / 240) * diff.dmg * sc.dmg),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
-    if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.03, 0.006 * (diff.elite || 1) * (1 + t / 400))) {
+    if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.045, 0.006 * (diff.elite || 1) * sc.elite * (1 + t / 400))) {
       e.elite = true;
       e.affix = Object.keys(AFFIX)[Math.floor(Math.random() * 4)];
       if (e.affix === 'swift') e.speed *= 1.6;
@@ -3221,7 +3232,7 @@
     spawnTimer -= dt;
     if (spawnTimer <= 0 && enemies.length < MAX_ENEMIES) {
       spawnTimer = clamp(1.0 - elapsed / 160, 0.25, 1.0);
-      const n = Math.max(1, Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse) * diff.spawn));
+      const n = Math.max(1, Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse) * diff.spawn * stageScale().spawn));
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
     if (st.endless && elapsed >= BOSS_START) {
