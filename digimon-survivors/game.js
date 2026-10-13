@@ -1641,7 +1641,8 @@
   // ---------- Chapters (장) ----------
   // Each chapter runs STAGE_LEN seconds, then its boss appears; beating it clears the chapter and the
   // hero chooses to press on (keeping the build) or return home with the loot. Chapter 4 ends the run.
-  const STAGE_LEN = 210;
+  const STAGE_LEN = 120; // 2:00 per chapter, then its boss
+  const RUN_LIMIT = 600; // a run lasts at most 10 minutes
   const STAGES = [
     { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow'], mid: null, boss: 'daedokkaebi', tint: null },
     { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
@@ -2915,7 +2916,7 @@
     player.cleared++;
     const gifts = 3 + (player.stageGiftBonus || 0);
     for (let k = 1; k <= gifts; k++) modalQueue.push({ type: 'chest', n: k, of: gifts });
-    modalQueue.push({ type: 'arcana' }, { type: 'stage' });
+    modalQueue.push({ type: 'arcana' }, { type: 'nextStage' });
     modalDelay = 1.6;
     checkAchievements();
   }
@@ -3001,6 +3002,11 @@
         icon: d.icon, title: d.name + (progress.clears[d.id] ? ' ✓' : ''), desc: d.desc + (d.id === progress.difficulty ? ' · 지난번 선택' : ''), sect: d.id === progress.difficulty,
         pick: () => { diff = d; progress.difficulty = d.id; saveProgress(); },
       })));
+    } else if (m.type === 'nextStage') {
+      // chapters roll on automatically
+      state = 'playing';
+      enterStage(stageIdx + 1);
+      return;
     } else if (m.type === 'stage') {
       const next = STAGES[stageIdx + 1];
       showChoice(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '무공은 그대로 이어져요. 더 깊이 들어갈까요?', [
@@ -3995,6 +4001,7 @@
     updatePickups(dt);
     updateEffects(dt);
     if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); checkQuests(); }
+    if (elapsed >= RUN_LIMIT && !player.victoryAt) { gameOver('timeup'); return; }
     if (player.victoryAt && elapsed >= player.victoryAt && !modalQueue.length) { player.victoryAt = 0; progress.bestStage = Math.max(progress.bestStage, STAGES.length); saveProgress(); victory(); return; }
     if (player.stageClearAt && elapsed >= player.stageClearAt && !modalQueue.length) { player.stageClearAt = 0; stageClear(); }
     if (modalQueue.length && modalDelay <= 0) openNextModal();
@@ -4030,7 +4037,7 @@
     }
     ui.gold.textContent = `은자 ${Math.floor(player.gold)}냥`;
     const st = curStage();
-    ui.timer.textContent = fmtTime(st.endless ? elapsed : stageTime);
+    ui.timer.textContent = `${fmtTime(Math.max(0, RUN_LIMIT - elapsed))} 남음`;
     ui.stageInfo.textContent = `[${diff.name}] ` + (st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`);
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
@@ -4983,8 +4990,8 @@
     checkQuests();
     const mxp = gainMastery(win);
     const fame = gainFame(win);
-    ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
-    ui.continueBtn.classList.toggle('hidden', !win);
+    ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : kind === 'timeup' ? '시간 종료' : '쓰러졌다...';
+    ui.continueBtn.classList.add('hidden'); // runs are capped at 10 minutes, no endless continue
     ui.gameoverPortrait.src = spritePath(player.hero);
     ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}`;
     $('gameover-dmg').replaceChildren(...damageReport());
