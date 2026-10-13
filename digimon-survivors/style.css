@@ -516,3 +516,13 @@ body.touch .tool { padding: 8px 12px; }
 #choice-cards { perspective: 900px; }
 .card.combo { animation-name: card-in, combo-glow !important; animation-duration: 0.34s, 1.4s !important; animation-iteration-count: 1, infinite !important; animation-direction: normal, alternate !important; }
 @keyframes combo-glow { from { box-shadow: 0 0 0 2px var(--gold), 0 0 6px rgba(201, 154, 58, 0.5); } to { box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(255, 200, 80, 0.95); } }
+
+/* ---------- 문파 screen ---------- */
+#sect-screen { z-index: 25; justify-content: flex-start; }
+#sect-box { width: 860px; max-width: 100%; padding: 16px 22px 18px; }
+#sect-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+#sect-name {
+  font: inherit; font-weight: 700; width: 9em; padding: 2px 6px;
+  border: 2px solid var(--ink); border-radius: 3px; background: #fbf4e2; color: var(--red-dark);
+  user-select: text;
+}

@@ -1048,7 +1048,7 @@ REUSE = {
     'shot': 'sword', 'boomerang': 'chakram', 'beam': 'qi', 'fairy': 'crane', 'tornado': 'tornado', 'mine': 'talisman',
     'gwonbeop': 'fist', 'plumrain': 'plumfall', 'yeorae': 'palm', 'tagu': 'staff', 'bottle': 'bottle', 'needles': 'needles',
     'dokmu': 'flask', 'binbaek': 'icepalm', 'hanbing': 'snowcloud', 'cheonmasingong': 'demon', 'geumjeong': 'lotus',
-    'formation': 'formation', 'fan': 'feather',
+    'formation': 'formation', 'fan': 'feather', 'cheonoe': 'sparkles', 'disciple': 'clones',
 }
 
 

@@ -73,11 +73,21 @@
     <p id="controls-hint" class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
     <div class="btn-row">
       <button id="start-btn" class="btn">출정</button>
+      <button id="sect-btn" class="btn ghost">문파</button>
       <button id="shop-btn" class="btn ghost">수련장</button>
       <button id="quest-btn" class="btn ghost">의뢰</button>
       <button id="achv-btn" class="btn ghost">업적</button>
     </div>
     <div class="settings tool-row"></div>
+  </div>
+
+  <div id="sect-screen" class="overlay hidden">
+    <div id="sect-box" class="panel">
+      <div class="achv-head"><h2>나의 문파</h2><button id="sect-close" class="close" aria-label="닫기">✕</button></div>
+      <p class="subtitle">문파 이름 <input id="sect-name" maxlength="8" placeholder="이름 없는 문파"> · <b id="sect-fame"></b></p>
+      <p class="hint">판이 끝날 때마다 명성을 얻어요. 명성으로 건물을 지으면 모든 협객이 강해져요.</p>
+      <div id="sect-list"></div>
+    </div>
   </div>
 
   <div id="quest-screen" class="overlay hidden">

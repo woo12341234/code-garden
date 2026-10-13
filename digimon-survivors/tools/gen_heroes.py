@@ -791,9 +791,30 @@ def dueok():
     s.finish('dueok.png')
 
 
+def nameless():
+    """무명: secret hero. A hooded wanderer in a ragged grey cloak, face in shadow, one plain blade."""
+    s = H()
+    cloak = rgba(92, 90, 98)
+    s.poly([(10, 12), (22, 12), (25, 29), (21, 27.6), (18, 30.6), (14, 27.6), (10, 30.6), (7, 27.6), (4, 29), (7, 18)], mul(cloak, 0.8))
+    legs(s, rgba(50, 48, 56))
+    robe(s, cloak, rgba(40, 38, 46), flare=1.0, length=26.6)
+    sash(s, rgba(40, 38, 46))
+    arms(s, mul(cloak, 0.9))
+    head(s, skin=rgba(150, 140, 136), eye=rgba(230, 230, 240), mouth=False)
+    s.blob(16, 6.4, 5.6, 5.6, cloak, ymax=9.4)
+    s.rect(10.6, 6, 12.6, 14, cloak)
+    s.rect(19.4, 6, 21.4, 14, cloak)
+    s.rect(12.4, 8.6, 19.6, 10, rgba(40, 38, 46))
+    for x in (13, 18):
+        s.mark(x, 10, rgba(240, 240, 250))
+    s.shade()
+    sword(s, 22.4, 22.8, 30.4, 30.4, blade=rgba(220, 222, 230), guard=rgba(90, 90, 100))
+    s.finish('nameless.png')
+
+
 HEROES = [cheongpung, unhak, yeoubi, cheolsan, dallae, yawol, songhwa, muyeong, geumbi, seola,
           cheonma, sansin, baekmae, palgeol, dangyu, namgung, maengju, aemi, gonryun, jegal,
-          dokgo, hyeolrang, hyeonmu, jusun, hwaryeon, dueok]
+          dokgo, hyeolrang, hyeonmu, jusun, hwaryeon, dueok, nameless]
 
 if __name__ == '__main__':
     for fn in HEROES:

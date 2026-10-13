@@ -30,6 +30,7 @@
     pause: $('pause-screen'), pauseBuild: $('pause-build'), pauseDmg: $('pause-dmg'), pauseStats: $('pause-stats'), quitBtn: $('quit-btn'),
     choiceTools: $('choice-tools'), gold: $('gold'), gameoverTitle: $('gameover-title'), continueBtn: $('continue-btn'),
     combo: $('combo'), buffRow: $('buff-row'), letterbox: $('letterbox'),
+    sectScreen: $('sect-screen'), sectList: $('sect-list'), sectFame: $('sect-fame'), sectName: $('sect-name'),
     dashBtn: $('dash-btn'), ultBtn: $('ult-btn'), questScreen: $('quest-screen'), questList: $('quest-list'),
     shop: $('shop-screen'), shopList: $('shop-list'), shopGold: $('shop-gold'),
     gameover: $('gameover-screen'), gameoverPortrait: $('gameover-portrait'), gameoverStats: $('gameover-stats'),
@@ -81,6 +82,7 @@
     jusun: { size: 64, color: '#aa7846', emoji: '🍶' },
     hwaryeon: { size: 64, color: '#d23228', emoji: '🔥' },
     dueok: { size: 64, color: '#466ebe', emoji: '👹' },
+    nameless: { size: 64, color: '#5c5a62', emoji: '🗡️' },
     daedokkaebi: { size: 64, color: '#4870be', emoji: '👹' },
     imugi: { size: 64, color: '#468c64', emoji: '🐍' },
     heukyo: { size: 64, color: '#3e3a4c', emoji: '⚔️' },
@@ -918,6 +920,31 @@
     },
   });
 
+  // Secret technique found at the hidden sanctum (only offered once discovered).
+  Object.assign(WEAPONS, {
+    cheonoe: {
+      secret: true,
+      name: () => '천외비선',
+      icon: () => '✨',
+      desc: '하늘 밖에서 검이 비처럼 떨어져 화면의 요괴를 꿰뚫어요 (숨겨진 무공)',
+      up: '검 +1, 데미지 +8',
+      max: 6,
+      create: () => ({ damage: 30, count: 4, cooldown: 2.4, timer: 0.5 }),
+      upgrade(w) { w.count++; w.damage += 8; },
+      update(w, dt) {
+        if ((w.timer -= dt) > 0) return;
+        const pool = enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewH / 2);
+        if (!pool.length) return;
+        w.timer = w.cooldown * player.haste;
+        for (let i = 0; i < w.count + player.extra; i++) {
+          const e = pool[Math.floor(Math.random() * pool.length)];
+          fx.push({ kind: 'beam', x: e.x, y: e.y - 260, a: Math.PI / 2, len: 260, w: 9, life: 0.3, max: 0.3, tint: 'gold' });
+          ringBlast(e.x, e.y, 46 * player.area, w.damage, 14, 'gold');
+        }
+      },
+    },
+  });
+
   // ---------- Sect techniques (only offered to heroes of that sect) ----------
   const SECTS = {
     hwasan: '화산파', mudang: '무당파', sorim: '소림사', gaebang: '개방',
@@ -1491,6 +1518,12 @@
       ranks: ['꼬마 도깨비', '도깨비', '도깨비 장수', '도깨비 대장', '도깨비 두령', '방망이 왕', '도깨비 왕', '두억시니'],
       setup(p) { p.greed += 1; p.pickupRadius *= 2; p.bonusGift = 1; p.armor *= 0.9; },
     },
+    nameless: {
+      name: '무명', role: '이름 없는 검객', weapon: 'geomsul', hp: 110, speed: 215, unlock: 'secretOne', startLevel: 3,
+      trait: '평생 무공 하나만 익힐 수 있지만, 그 무공이 3단계로 시작하고 모든 피해 +120%',
+      ranks: ['이름 없는 자', '떠돌이', '무명검객', '외길 검객', '일검', '검귀', '검마', '무명'],
+      setup(p) { p.maxWeapons = 1; p.dmgMul += 1.2; },
+    },
     maengju: {
       allSects: true, name: '무림맹주', role: '천하제일인', weapon: 'geomsul', extra: 'jewang', hp: 180, speed: 205, unlock: 'sectUlt3',
       trait: '모든 문파의 무공을 배울 수 있음, 모든 피해 +30%, 대기시간 -10%',
@@ -1639,7 +1672,8 @@
 
   // ---------- Progress & achievements (saved per browser) ----------
   const PROGRESS_KEY = 'yokai-survivors-progress';
-  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {}, mastery: {}, quests: null, questsDone: 0, settings: { sfx: true, music: true, vib: true }, goldKills: 0 };
+  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {}, mastery: {}, quests: null, questsDone: 0, settings: { sfx: true, music: true, vib: true }, goldKills: 0,
+    fame: 0, sect: {}, sectName: '', secrets: {}, duelWins: 0, giyeonCount: 0 };
   try { Object.assign(progress, JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
   const seen = new Set(progress.combos);
   function saveProgress() {
@@ -1855,6 +1889,13 @@
     { id: 'combo300', icon: '🔥', name: '삼백연격', desc: '한 판에 300연격 달성', check: (p) => p.maxCombo >= 300 },
     { id: 'goldHunt', icon: '💰', name: '황금 사냥꾼', desc: '황금 도깨비 포획 (누적 3마리)', check: () => (progress.goldKills || 0) >= 3 },
     { id: 'shrine3', icon: '🏮', name: '제단의 축복', desc: '한 판에 제단 3번 사용', check: (p) => p.shrinesUsed >= 3 },
+    { id: 'duel1', icon: '⚔️', name: '비무 승리', desc: '떠돌이 고수와의 비무에서 승리', check: () => (progress.duelWins || 0) >= 1 },
+    { id: 'duel5', icon: '👑', name: '천하무적', desc: '비무 5승 (누적)', check: () => (progress.duelWins || 0) >= 5 },
+    { id: 'giyeon3', icon: '📖', name: '기연을 만나다', desc: '기연 3번 겪기 (누적)', check: () => (progress.giyeonCount || 0) >= 3 },
+    { id: 'sect10', icon: '🏯', name: '문파의 기틀', desc: '문파 건물 레벨 합 10', check: () => Object.values(progress.sect || {}).reduce((a, b) => a + b, 0) >= 10 },
+    { id: 'sanctum', icon: '✨', name: '하늘 밖의 검', desc: '숨겨진 사당을 찾아 천외비선을 깨우치기', secret: true, hint: '맵 어딘가, 아주 드물게 이끼 낀 비석이…', check: () => !!progress.secrets?.sanctum },
+    { id: 'secretOne', icon: '🗡️', name: '하나의 길', desc: '무공을 단 하나만 지닌 채 3장 돌파', secret: true, hint: '하나의 길만 걷는 자에게…', check: (p) => p.cleared >= 3 && Object.keys(p.weapons).length === 1 },
+    { id: 'sealTap', icon: '🏮', name: '일곱 번의 낙관', desc: '제목의 낙관을 일곱 번 두드리기 (은자 300)', secret: true, hint: '제목을 유심히 보면…', check: () => !!progress.secrets?.seal },
     { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -1928,7 +1969,7 @@
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
-      vx: 0, vy: 0, dustT: 0,
+      vx: 0, vy: 0, dustT: 0, bonusCult: 0, cardCount: 3, disciples: 0, discipleList: [], innChests: 0, stageGiftBonus: 0,
       combo: 0, comboT: 0, maxCombo: 0, coinChain: 0, coinAt: -9, buffs: {}, goldKills: 0, shrinesUsed: 0, heartT: 0,
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
       arc: new Set(), meteorT: 8, cleared: 0, trail: [],
@@ -1939,11 +1980,12 @@
     };
     hero.setup(player);
     applyShop(player);
+    applySectBuildings(player);
     const ml = masteryLevel(heroId);
     if (ml >= 1) { player.maxHp += 15; player.hp += 15; }
     if (ml >= 3) player.dmgMul += 0.08;
     if (ml >= 5) { player.ult = ULT_NEED / 2; player.ultMul = 1.5; }
-    grantWeapon(player, hero.weapon, masteryLevel(heroId) >= 2 ? 2 : 1);
+    grantWeapon(player, hero.weapon, (hero.startLevel || 1) + (masteryLevel(heroId) >= 2 ? 1 : 0));
     if (hero.extra) grantWeapon(player, hero.extra);
     enemies = [];
     projectiles = [];
@@ -1968,6 +2010,7 @@
     waveTimer = 0;
     propTimer = 2;
     finalSpawned = false;
+    oddities = []; oddTimer = 60; duel = null; enemyShots = []; stageDuelDone = false;
     stageIdx = 0;
     stageTime = 0;
     stageBossOut = false;
@@ -2030,7 +2073,7 @@
   function cultivation() {
     const lv = Object.values(player.weapons).reduce((n, w) => n + w.level, 0);
     const picks = Object.values(player.picks).reduce((n, v) => n + v, 0);
-    return lv + player.combos * 4 + Math.floor(picks / 2);
+    return lv + player.combos * 4 + Math.floor(picks / 2) + (player.bonusCult || 0);
   }
   const rankOf = (realm) => {
     const h = HEROES[player.hero];
@@ -2178,6 +2221,341 @@
     }
   }
 
+  // ---------- 문파 육성: buildings bought with 명성 (fame) between runs ----------
+  const SECT_BUILDINGS = [
+    { id: 'hall', icon: '⚔️', name: '연무장', desc: '모든 피해 +4% (레벨마다)', max: 5, cost: 30, apply(p, l) { p.dmgMul += 0.04 * l; } },
+    { id: 'library', icon: '📚', name: '장경각', desc: 'Lv1 다시뽑기 +1 · Lv2 레벨업 카드 4장 · Lv3 다시뽑기 +2 더', max: 3, cost: 60, apply(p, l) { if (l >= 1) p.rerolls += 1; if (l >= 2) p.cardCount = 4; if (l >= 3) p.rerolls += 2; } },
+    { id: 'pharmacy', icon: '🍵', name: '약방', desc: '최대 HP +12, 회복 효과 +15% (레벨마다)', max: 4, cost: 35, apply(p, l) { p.maxHp += 12 * l; p.hp += 12 * l; p.healMul += 0.15 * l; } },
+    { id: 'treasury', icon: '💰', name: '보물고', desc: '얻는 은자 +10% (레벨마다)', max: 5, cost: 40, apply(p, l) { p.greed += 0.1 * l; } },
+    { id: 'inn', icon: '🏮', name: '객잔', desc: 'Lv1 출정 때 보물함 1개 · Lv2 장 돌파 선물 +1 · Lv3 출정 보물함 2개', max: 3, cost: 80, apply(p, l) { p.innChests = l >= 3 ? 2 : l >= 1 ? 1 : 0; p.stageGiftBonus = l >= 2 ? 1 : 0; } },
+    { id: 'guard', icon: '🛡️', name: '수호진', desc: '받는 피해 -3% (레벨마다)', max: 5, cost: 45, apply(p, l) { p.armor *= 0.97 ** l; } },
+    { id: 'disciples', icon: '👥', name: '제자 숙소', desc: '제자가 따라다니며 함께 싸워요 (레벨마다 1명)', max: 3, cost: 100, apply(p, l) { p.disciples = l; } },
+  ];
+  const sectLevel = (id) => progress.sect[id] || 0;
+  const buildCost = (b) => b.cost * (sectLevel(b.id) + 1);
+  function applySectBuildings(p) {
+    for (const b of SECT_BUILDINGS) if (sectLevel(b.id)) b.apply(p, sectLevel(b.id));
+    const pool = BASE_HEROES().filter((id) => id !== p.hero);
+    p.discipleList = Array.from({ length: p.disciples }, (_, i) => ({ hero: pool[(i * 7 + 3) % pool.length], x: p.x, y: p.y, cd: 0.6 + i * 0.4 }));
+  }
+  function gainFame(win) {
+    const f = Math.floor(kills / 25) + 15 * (player.cleared || 0) + (win ? 60 : 0) + Math.floor(elapsed / 20);
+    progress.fame = (progress.fame || 0) + f;
+    saveProgress();
+    return f;
+  }
+  function buildSect() {
+    ui.sectFame.textContent = `명성 ${progress.fame || 0}`;
+    ui.sectName.value = progress.sectName || '';
+    ui.sectList.replaceChildren(...SECT_BUILDINGS.map((b) => {
+      const lv = sectLevel(b.id);
+      const maxed = lv >= b.max;
+      const el = document.createElement('button');
+      el.className = 'card shop-card' + (maxed ? ' maxed' : '');
+      el.disabled = maxed || (progress.fame || 0) < buildCost(b);
+      for (const [cls, text] of [['icon', b.icon], ['title', b.name], ['stars', '★'.repeat(lv) + '☆'.repeat(b.max - lv)], ['desc', b.desc], ['key', maxed ? '완공' : `명성 ${buildCost(b)}`]]) {
+        const d = document.createElement('div');
+        d.className = cls;
+        if (cls === 'icon') d.append(iconImg(text, 'pi big'));
+        else d.textContent = text;
+        el.append(d);
+      }
+      el.addEventListener('click', () => {
+        if (maxed || (progress.fame || 0) < buildCost(b)) return;
+        progress.fame -= buildCost(b);
+        progress.sect[b.id] = lv + 1;
+        saveProgress();
+        sfx('chest');
+        checkAchievements();
+        buildSect();
+      });
+      return el;
+    }));
+  }
+  function updateDisciples(dt) {
+    player.discipleList.forEach((d, i) => {
+      const a = anim * 0.8 + (i / Math.max(1, player.discipleList.length)) * Math.PI * 2;
+      const tx = player.x + Math.cos(a) * 58 - player.facing * 20, ty = player.y + Math.sin(a) * 30 + 8;
+      d.x += (tx - d.x) * Math.min(1, dt * 5);
+      d.y += (ty - d.y) * Math.min(1, dt * 5);
+      if ((d.cd -= dt) > 0) return;
+      let best = null, bd = 380;
+      for (const e of enemies) {
+        if (e.type.prop) continue;
+        const dd = dist(e.x, e.y, d.x, d.y);
+        if (dd < bd) { bd = dd; best = e; }
+      }
+      if (!best) return;
+      d.cd = 1.3;
+      const ang = Math.atan2(best.y - d.y, best.x - d.x);
+      projectiles.push({ kind: 'wave', x: d.x, y: d.y, vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, damage: 10 + player.level * 2.5, pierce: 4, radius: 14, life: 0.7, max: 0.7, rgb: (MOTION[d.hero] || [0, '255, 255, 255'])[1], hit: new Set(), src: 'disciple' });
+    });
+  }
+  function drawDisciples() {
+    for (const d of player.discipleList) {
+      drawShadow(d.x, d.y + 10, 9);
+      drawSprite(d.hero, d.x, d.y - 8, { sx: 0.6, sy: 0.6, flip: player.facing < 0, groundR: 14 });
+    }
+  }
+
+  // ---------- 기연 (fortuitous encounters) ----------
+  const GIYEON = [
+    { title: '동굴 속 영약', text: '이끼 낀 동굴 깊은 곳에서 백 년 묵은 영약이 은은히 빛난다.', options: [
+      { icon: '🍵', label: '삼킨다', desc: '운이 좋으면 내공이 크게 늘지만, 탈이 날 수도 있다', run() { if (Math.random() < 0.7) { player.maxHp += 40; player.hp += 40; player.bonusCult += 4; return ['영약을 흡수했다!', '최대 HP +40 · 경지 수련도 +4']; } player.hp = Math.max(1, player.hp * 0.5); player.buffs.weak = 30; return ['주화입마!', 'HP 절반을 잃고 30초 동안 피해 -25%']; } },
+      { icon: '💰', label: '챙겨서 판다', desc: '확실한 은자', run() { addGold(80); return ['영약을 챙겼다', '은자 +80']; } },
+      { icon: '🧭', label: '그냥 지나간다', desc: '아무 일도 없다', run() { return ['조용히 동굴을 나섰다', '']; } },
+    ] },
+    { title: '무너진 서고의 비급', text: '무너진 서고 더미 속에서 낡은 비급 한 권이 손에 잡혔다.', options: [
+      { icon: '📖', label: '읽는다', desc: '가진 무공이 크게 깨우쳐지거나… 머리가 어지러워진다', run() { const ids = Object.keys(player.weapons).filter((id) => player.weapons[id].level < WEAPONS[id].max); if (ids.length && Math.random() < 0.65) { const id = ids[Math.floor(Math.random() * ids.length)]; grantWeapon(player, id, 2); return ['깨달음!', `${weaponName(id)} +2단계`]; } player.buffs.dizzy = 25; return ['글자가 뒤엉킨다…', '25초 동안 무공 대기시간 +30%']; } },
+      { icon: '🔥', label: '불태운다', desc: '불꽃 속에서 기운을 얻는다', run() { player.ult = ULT_NEED; addGold(30); return ['비급이 타오른다', '필살기 게이지 가득 · 은자 +30']; } },
+    ] },
+    { title: '이름 없는 고수의 무덤', text: '풀숲 사이, 이름조차 새겨지지 않은 무덤 하나가 있다.', options: [
+      { icon: '🙏', label: '절하고 지나간다', desc: '고수의 혼이 지켜준다', run() { player.buffs.guard = 40; player.luck += 0.2; return ['고수의 가호', '40초 동안 받는 피해 -50% · 행운 증가']; } },
+      { icon: '⚰️', label: '무덤을 판다', desc: '보물이 있을지도… 아니면', run() { if (Math.random() < 0.55) { pickups.push({ kind: 'treasure', x: player.x + 30, y: player.y }, { kind: 'treasure', x: player.x - 30, y: player.y }); return ['보물이다!', '보물함 2개']; } for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; spawnEnemy(ENEMY_TYPES.wongwi, 0, 0, { x: player.x + Math.cos(a) * 200, y: player.y + Math.sin(a) * 200 }); } return ['원귀들이 깨어났다!', '버텨내세요']; } },
+    ] },
+    { title: '술 권하는 노인', text: '바위에 걸터앉은 노인이 껄껄 웃으며 술 한 잔을 내민다.', options: [
+      { icon: '🍶', label: '받아 마신다', desc: '노인의 정체는…?', run() { if (Math.random() < 0.5 && player.realm + 1 < REALMS.length) { player.bonusCult += Math.max(0, REALMS[player.realm + 1].need - cultivation()); return ['은둔 고수의 술!', '경지가 한 단계 오른다']; } player.buffs.drunk = 20; player.ult = Math.min(ULT_NEED, player.ult + 40); return ['독한 술이다…', '20초 동안 비틀비틀 · 필살기 게이지 +40']; } },
+      { icon: '🧭', label: '정중히 사양한다', desc: '노인이 은자를 쥐여준다', run() { addGold(30); return ['노인이 웃으며 은자를 건넨다', '은자 +30']; } },
+    ] },
+    { title: '요괴의 거래', text: '어둠 속에서 붉은 눈이 속삭인다. "피를 조금 주면… 힘을 주지."', options: [
+      { icon: '🩸', label: '피를 내준다', desc: '최대 HP를 바치고 힘을 얻는다', run() { player.maxHp = Math.max(30, player.maxHp - 30); player.hp = Math.min(player.hp, player.maxHp); player.dmgMul += 0.25; return ['계약이 맺어졌다', '최대 HP -30 · 모든 피해 +25%']; } },
+      { icon: '⚔️', label: '베어버린다', desc: '거절의 대가로 요괴 무리가 몰려온다 (경험치)', run() { for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2; spawnEnemy(ENEMY_TYPES.dokkaebi, 0, 0, { x: player.x + Math.cos(a) * 230, y: player.y + Math.sin(a) * 230 }); } return ['요괴 무리가 덤벼든다!', '']; } },
+    ] },
+    { title: '폭포 아래 수련터', text: '천 길 폭포 아래, 옛 고수들이 수련하던 바위가 있다.', options: [
+      { icon: '🌊', label: '폭포수를 맞으며 수련한다', desc: '고통 끝에 깨달음', run() { player.hp = Math.max(1, player.hp - player.maxHp * 0.3); for (const id of Object.keys(player.weapons)) if (player.weapons[id].level < WEAPONS[id].max) grantWeapon(player, id); return ['폭포 수련 완료!', 'HP 30% 잃음 · 모든 무공 +1단계']; } },
+      { icon: '🍵', label: '물을 마시고 쉰다', desc: '기운을 회복한다', run() { player.hp = player.maxHp; return ['맑은 물에 기운이 돈다', 'HP 전부 회복']; } },
+    ] },
+  ];
+  let oddities = [], oddTimer = 70, duel = null, enemyShots = [], stageDuelDone = false;
+
+  // ---------- 비무 (duels with wandering masters) ----------
+  function challengerType(hid) {
+    const h = HEROES[hid];
+    return { name: h.name, sprite: hid, hp: 700, speed: 0, damage: 16, radius: 18, xp: 0, weight: 0, barY: 40, boss: true, duelist: true, hero: hid };
+  }
+  function startDuel(hid, x, y) {
+    for (const e of enemies) if (!e.type.prop && !e.type.boss) { e.gone = true; burst(e.x, e.y, 4, ['#2a2224', '#ffffff'], 100, 0.4, 4); }
+    enemies = enemies.filter((e) => !e.gone);
+    duel = { x: player.x, y: player.y, r: 300, t: 60, hid };
+    spawnEnemy(challengerType(hid), 0, 0, { x: player.x + 160, y: player.y });
+    const e = enemies[enemies.length - 1];
+    e.aiT = 1.2;
+    e.tele = 0;
+    duel.e = e;
+    sfx('gong');
+    showBanner(`비무 시작! ${HEROES[hid].name}`, 'boss', '원 밖으로는 나갈 수 없어요 · 60초 안에 쓰러뜨리세요');
+  }
+  function endDuel(win) {
+    const hid = duel.hid;
+    duel = null;
+    enemyShots = [];
+    if (!win) { showBanner('비무 종료', '', `${HEROES[hid].name}: "다음에 다시 겨루자!"`); return; }
+    progress.duelWins = (progress.duelWins || 0) + 1;
+    saveProgress();
+    const wid = HEROES[hid].weapon;
+    let gift;
+    if (player.weapons[wid]) { grantWeapon(player, wid, 2); gift = `${weaponName(wid)} +2단계`; }
+    else if (Object.keys(player.weapons).length < (player.maxWeapons || MAX_WEAPONS)) { grantWeapon(player, wid); gift = `무공 「${weaponName(wid)}」 전수`; }
+    else { addGold(120); gift = '은자 +120'; }
+    showBanner('비무 승리!', '', `${HEROES[hid].name}에게서 ${gift}`);
+    checkAchievements();
+  }
+  function updateDuel(dt) {
+    if (!duel) return false;
+    const e = duel.e;
+    if ((duel.t -= dt) <= 0 || !enemies.includes(e)) {
+      if (enemies.includes(e)) { e.gone = true; enemies = enemies.filter((x) => !x.gone); endDuel(false); }
+      else endDuel(true);
+      return false;
+    }
+    // keep the hero inside the ring
+    const pd = dist(player.x, player.y, duel.x, duel.y);
+    if (pd > duel.r - 16) { player.x = duel.x + ((player.x - duel.x) / pd) * (duel.r - 16); player.y = duel.y + ((player.y - duel.y) / pd) * (duel.r - 16); }
+    // challenger AI: keep a fighting distance, telegraph and strike
+    const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1;
+    if (e.dashT > 0) {
+      e.dashT -= dt;
+      e.x += e.dvx * dt; e.y += e.dvy * dt;
+    } else if (e.tele <= 0) {
+      const want = d > 170 ? 1 : d < 110 ? -1 : 0;
+      e.x += (dx / d) * 150 * want * dt + (-dy / d) * 90 * dt * Math.sin(elapsed);
+      e.y += (dy / d) * 150 * want * dt + (dx / d) * 90 * dt * Math.sin(elapsed);
+    }
+    const ed = dist(e.x, e.y, duel.x, duel.y);
+    if (ed > duel.r - 20) { e.x = duel.x + ((e.x - duel.x) / ed) * (duel.r - 20); e.y = duel.y + ((e.y - duel.y) / ed) * (duel.r - 20); }
+    const rgb = (MOTION[duel.hid] || [0, '230, 60, 60'])[1];
+    if (e.tele > 0) {
+      if ((e.tele -= dt) <= 0) {
+        const a = Math.atan2(dy, dx);
+        const dmg = 12 + elapsed / 20;
+        if (e.move === 'fan') for (let i = -2; i <= 2; i++) enemyShots.push({ x: e.x, y: e.y, vx: Math.cos(a + i * 0.22) * 300, vy: Math.sin(a + i * 0.22) * 300, r: 10, dmg, life: 2.4, rgb });
+        else if (e.move === 'ring') for (let i = 0; i < 12; i++) { const b = (i / 12) * Math.PI * 2; enemyShots.push({ x: e.x, y: e.y, vx: Math.cos(b) * 230, vy: Math.sin(b) * 230, r: 10, dmg, life: 2.4, rgb }); }
+        else { e.dashT = 0.32; e.dvx = Math.cos(a) * 620; e.dvy = Math.sin(a) * 620; }
+        sfx('dash');
+      }
+    } else if ((e.aiT -= dt) <= 0) {
+      e.aiT = 1.5 - Math.min(0.6, elapsed / 1200);
+      e.move = ['fan', 'ring', 'dash'][Math.floor(Math.random() * 3)];
+      e.tele = 0.5;
+    }
+    for (let i = enemyShots.length - 1; i >= 0; i--) {
+      const s2 = enemyShots[i];
+      s2.x += s2.vx * dt; s2.y += s2.vy * dt;
+      if ((s2.life -= dt) <= 0) { enemyShots.splice(i, 1); continue; }
+      if (dist(s2.x, s2.y, player.x, player.y) < s2.r + player.radius * 0.7) {
+        enemyShots.splice(i, 1);
+        if (hurtPlayer(s2.dmg)) return true;
+      }
+    }
+    return false;
+  }
+  function drawDuel() {
+    if (!duel) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(184, 50, 42, 0.06)';
+    ctx.strokeStyle = 'rgba(184, 50, 42, 0.85)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([18, 10]);
+    ctx.beginPath();
+    ctx.arc(duel.x, duel.y, duel.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const x = duel.x + Math.cos(a) * duel.r, y = duel.y + Math.sin(a) * duel.r;
+      ctx.fillStyle = '#5a3a2a';
+      ctx.fillRect(x - 2, y - 26, 4, 28);
+      ctx.fillStyle = i % 2 ? '#b8322a' : '#f3ead6';
+      ctx.fillRect(x + 2, y - 26, 12, 8);
+    }
+    const e = duel.e;
+    if (e && e.tele > 0) {
+      ctx.strokeStyle = `rgba(255, 80, 60, ${0.5 + 0.5 * Math.sin(anim * 40)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 30 + (0.5 - e.tele) * 30, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    for (const s2 of enemyShots) {
+      ctx.fillStyle = `rgba(${s2.rgb}, 0.35)`;
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2224';
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgb(${s2.rgb})`;
+      ctx.beginPath();
+      ctx.arc(s2.x, s2.y, s2.r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Map oddities: 기연 spots, wandering challengers and the rare hidden sanctum.
+  function updateOddities(dt) {
+    if (duel) return;
+    if (stageTime > 40 && (oddTimer -= dt) <= 0) {
+      oddTimer = 80 + Math.random() * 60;
+      if (oddities.length < 2) {
+        const a = Math.random() * Math.PI * 2, r = 340 + Math.random() * 200;
+        oddities.push({ kind: 'giyeon', ev: GIYEON[Math.floor(Math.random() * GIYEON.length)], x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r, life: 75 });
+      }
+    }
+    if (!stageDuelDone && stageTime > 100 && !curStage().endless) {
+      stageDuelDone = true;
+      // secret heroes never appear before they are unlocked
+      const ids = Object.keys(HEROES).filter((id) => id !== player.hero && !(HEROES[id].unlock && ACHV_BY_ID[HEROES[id].unlock].secret && !heroUnlocked(id)));
+      const hid = ids[Math.floor(Math.random() * ids.length)];
+      const a = Math.random() * Math.PI * 2;
+      oddities.push({ kind: 'duel', hid, x: player.x + Math.cos(a) * 280, y: player.y + Math.sin(a) * 280, life: 45 });
+      showBanner(`떠돌이 고수 ${HEROES[hid].name}`, '', '비무를 청해 왔어요 · 다가가면 겨룰지 정할 수 있어요');
+    }
+    if (!player.sanctumRolled && stageTime > 60) {
+      player.sanctumRolled = true;
+      if (Math.random() < 0.15) {
+        const a = Math.random() * Math.PI * 2;
+        oddities.push({ kind: 'sanctum', x: player.x + Math.cos(a) * 700, y: player.y + Math.sin(a) * 700, life: 999 });
+      }
+    }
+    for (let i = oddities.length - 1; i >= 0; i--) {
+      const o = oddities[i];
+      if ((o.life -= dt) <= 0) { oddities.splice(i, 1); continue; }
+      if (dist(o.x, o.y, player.x, player.y) > 40) continue;
+      oddities.splice(i, 1);
+      modalQueue.unshift({ type: 'oddity', o });
+    }
+  }
+  function drawOddities() {
+    for (const o of oddities) {
+      if (o.kind === 'duel') {
+        drawShadow(o.x, o.y + 14, 14);
+        drawSprite(o.hid, o.x, o.y - 18, { groundR: 32, flip: player.x < o.x });
+        ctx.fillStyle = '#f3ead6';
+        ctx.strokeStyle = '#2a2224';
+        ctx.lineWidth = 2;
+        ctx.fillRect(o.x + 18, o.y - 52, 16, 30);
+        ctx.strokeRect(o.x + 18, o.y - 52, 16, 30);
+        ctx.font = 'bold 12px "Gowun Batang", serif';
+        ctx.fillStyle = '#b8322a';
+        ctx.textAlign = 'center';
+        ctx.fillText('비', o.x + 26, o.y - 39);
+        ctx.fillText('무', o.x + 26, o.y - 26);
+        continue;
+      }
+      const sanctum = o.kind === 'sanctum';
+      const rgb = sanctum ? '140, 255, 200' : '190, 140, 255';
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(anim * (sanctum ? 0.6 : 2));
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = `rgba(${rgb}, ${0.8 - i * 0.2})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14 + i * 8, i, i + Math.PI * 1.3);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.font = 'bold 13px "Gowun Batang", serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
+      const label = sanctum ? '이끼 낀 비석' : '기연';
+      ctx.strokeText(label, o.x, o.y - 36);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, o.x, o.y - 36);
+    }
+  }
+  function oddityChoice(o) {
+    if (o.kind === 'giyeon') {
+      progress.giyeonCount = (progress.giyeonCount || 0) + 1;
+      saveProgress();
+      showChoice(`기연: ${o.ev.title}`, o.ev.text, o.ev.options.map((op) => ({
+        icon: op.icon, title: op.label, desc: op.desc, big: true,
+        pick: () => { const [t, sub] = op.run(); showToast(`📖 ${t}`, sub); },
+      })));
+    } else if (o.kind === 'duel') {
+      const h = HEROES[o.hid];
+      showChoice(`비무: ${h.name} · ${h.role}`, `"${player && HEROES[player.hero].name}, 그대의 무공을 보고 싶소."`, [
+        { img: o.hid, title: '비무를 받는다', desc: `이기면 ${h.name}의 무공 「${WEAPONS[h.weapon].name()}」을 전수받아요 (60초)`, hero: true, pick: () => startDuel(o.hid, o.x, o.y) },
+        { icon: '🧭', title: '정중히 거절한다', desc: '고수가 은자 30냥을 두고 떠나요', big: true, pick: () => addGold(30) },
+      ]);
+    } else {
+      const first = !progress.secrets.sanctum;
+      progress.secrets.sanctum = true;
+      saveProgress();
+      checkAchievements();
+      showChoice('숨겨진 사당', '이끼 낀 비석에 하늘 밖의 검결이 새겨져 있다… 글자가 눈에 들어오는 순간, 검이 비처럼 쏟아지는 광경이 떠오른다.', [
+        { icon: '✨', title: '검결을 깨우친다', desc: `숨겨진 무공 「천외비선」${first ? ' (이제 레벨업에도 등장해요)' : ''}`, combo: true, pick: () => {
+          if (player.weapons.cheonoe || Object.keys(player.weapons).length < (player.maxWeapons || MAX_WEAPONS)) grantWeapon(player, 'cheonoe', 2);
+          else { addGold(150); showBanner('무공 칸이 가득 찼다', '', '대신 은자 +150'); }
+        } },
+      ]);
+    }
+  }
+
   // ---------- 연격 (kill combo) ----------
   function comboMilestone(n) {
     sfx('combo');
@@ -2203,12 +2581,17 @@
     { id: 'fortune', icon: '💰', name: '재물의 제단', desc: '경험치·은자 ×2', rgb: '240, 190, 60' },
     { id: 'guard', icon: '🛡️', name: '수호의 제단', desc: '받는 피해 -50%', rgb: '200, 200, 225' },
   ];
-  const BUFF_BY_ID = Object.fromEntries(SHRINE_BUFFS.map((b) => [b.id, b]));
+  const BUFF_BY_ID = Object.fromEntries([...SHRINE_BUFFS,
+    { id: 'weak', icon: '💀' }, { id: 'dizzy', icon: '🌀' }, { id: 'drunk', icon: '🍶' },
+  ].map((b) => [b.id, b]));
   const SHRINE_R = 58, SHRINE_TIME = 2.2, BUFF_TIME = 30;
   function updateWorldEvents(dt) {
     for (const k of Object.keys(player.buffs)) if ((player.buffs[k] -= dt) <= 0) delete player.buffs[k];
     for (let i = decals.length - 1; i >= 0; i--) if ((decals[i].life -= dt) <= 0) decals.splice(i, 1);
     updateAmbient(dt);
+    updateDisciples(dt);
+    updateOddities(dt);
+    if (updateDuel(dt)) return;
     for (let i = bombs.length - 1; i >= 0; i--) {
       const b = bombs[i];
       if ((b.t -= dt) > 0) continue;
@@ -2544,7 +2927,8 @@
     addGold(40 * (stageIdx + 1));
     showBanner(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '', '요괴가 물러갔어요 · HP 전부 회복');
     player.cleared++;
-    for (let k = 3; k >= 1; k--) modalQueue.push({ type: 'chest', n: 4 - k, of: 3 });
+    const gifts = 3 + (player.stageGiftBonus || 0);
+    for (let k = 1; k <= gifts; k++) modalQueue.push({ type: 'chest', n: k, of: gifts });
     modalQueue.push({ type: 'arcana' }, { type: 'stage' });
     modalDelay = 1.6;
     checkAchievements();
@@ -2552,6 +2936,8 @@
 
   function enterStage(i) {
     stageIdx = i;
+    stageDuelDone = false;
+    if (player) player.sanctumRolled = false;
     stageTime = 0;
     stageBossOut = false;
     midOut = false;
@@ -2576,8 +2962,9 @@
     for (const [id, W] of Object.entries(WEAPONS)) {
       const w = player.weapons[id];
       if (W.sect && !w && !hero.allSects && W.sect !== hero.sect) continue;
+      if (W.secret && !w && !progress.secrets.sanctum) continue;
       if (!w && player.banished.has(id)) continue;
-      if (w ? w.level >= W.max : owned >= MAX_WEAPONS) continue;
+      if (w ? w.level >= W.max : owned >= (player.maxWeapons || MAX_WEAPONS)) continue;
       const n = w ? w.level + 1 : 1;
       (W.sect ? sectCards : cards).push({
         icon: weaponIcon(id), title: `${W.sect ? `[${SECTS[W.sect]}] ` : ''}${weaponName(id)} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc,
@@ -2594,7 +2981,8 @@
       });
     }
     const featured = sectCards.length && Math.random() < 0.65 ? [shuffled(sectCards)[0]] : [];
-    const offer = [...combos.slice(0, 3), ...featured, ...shuffled([...cards, ...sectCards.filter((c) => !featured.includes(c))])].slice(0, 3);
+    const nCards = player.cardCount || 3;
+    const offer = [...combos.slice(0, nCards), ...featured, ...shuffled([...cards, ...sectCards.filter((c) => !featured.includes(c))])].slice(0, nCards);
     if (offer.length < 3) offer.push(SNACK);
     return offer;
   }
@@ -2611,12 +2999,15 @@
           resetGame(id);
           enterStage(0);
           modalQueue.unshift({ type: 'arcana' });
+          for (let i = 0; i < player.innChests; i++) pickups.push({ kind: 'treasure', x: player.x + 60 + i * 30, y: player.y + 20 });
           if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
           updateHud();
         },
       } : {
-        img: id, title: '🔒 ???', desc: `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true, special: true,
+        img: id, title: '🔒 ???', desc: ACHV_BY_ID[H.unlock].secret ? `해금 조건: ??? (${ACHV_BY_ID[H.unlock].hint})` : `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true, special: true,
       })));
+    } else if (m.type === 'oddity') {
+      oddityChoice(m.o);
     } else if (m.type === 'arcana') {
       showChoice('비전서', '이번 판의 규칙을 바꿀 비전서 한 권을 골라요', arcanaOffers());
     } else if (m.type === 'difficulty') {
@@ -2803,6 +3194,7 @@
   }
 
   function updateSpawner(dt) {
+    if (duel) return;
     if ((propTimer -= dt) <= 0) {
       propTimer = 9;
       if (enemies.filter((e) => e.type.prop).length < 5) spawnLantern();
@@ -2879,7 +3271,7 @@
     yeoubi: ['cast', '110, 190, 255'], sansin: ['cast', '255, 230, 150'],
     yawol: ['throw', '230, 60, 60'], dangyu: ['throw', '150, 230, 90'], aemi: ['throw', '190, 150, 240'],
     palgeol: ['spin', '120, 200, 90'],
-    dokgo: ['slash', '230, 230, 245'], hyeolrang: ['twin', '210, 30, 40'], hyeonmu: ['cast', '180, 130, 255'],
+    nameless: ['slash', '200, 200, 215'], dokgo: ['slash', '230, 230, 245'], hyeolrang: ['twin', '210, 30, 40'], hyeonmu: ['cast', '180, 130, 255'],
     jusun: ['palm', '240, 170, 80'], hwaryeon: ['cast', '255, 120, 40'], dueok: ['palm', '90, 140, 230'],
   };
   function triggerAttack(proj) {
@@ -2899,6 +3291,7 @@
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
     if (player.buffs.fury > 0) amount *= 1.4;
+    if (player.buffs.weak > 0) amount *= 0.75;
     if (e.affix === 'armored') amount *= 0.5;
     if (player.berserk) amount *= 1 + player.berserk * (1 - clamp(player.hp / player.maxHp, 0, 1));
     if (player.arc.size) {
@@ -3022,6 +3415,9 @@
       player.elites++;
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
+    }
+    if (e.type.duelist) {
+      fx.push({ kind: 'ultwave', x: e.x, y: e.y, rgb: '255, 215, 90', life: 0.6, max: 0.6, small: true });
     }
     if (e.type.final && e.stageBoss) {
       progress.wins++;
@@ -3187,7 +3583,7 @@
       if (e.hurt > 0) e.hurt -= dt;
       if (e.born > 0) e.born -= dt;
       if (frozen) continue;
-      let speed = e.march || e.type.gold ? 0 : e.speed;
+      let speed = e.march || e.type.gold || e.type.duelist ? 0 : e.speed;
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
       if (e.type.move === 'hop') speed *= Math.max(0, Math.sin(elapsed * 6 + e.phase)) * 2.2;
       if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
@@ -3488,7 +3884,7 @@
       const before = [projectiles.length, shells.length, zones.length, mines.length];
       const fxBefore = fx.length;
       dmgSrc = id;
-      WEAPONS[id].update(w, dt * (player.buffs.focus > 0 ? 1.43 : 1));
+      WEAPONS[id].update(w, dt * (player.buffs.focus > 0 ? 1.43 : 1) * (player.buffs.dizzy > 0 ? 0.77 : 1));
       [projectiles, shells, zones, mines].forEach((arr, k) => { for (let i = before[k]; i < arr.length; i++) arr[i].src ??= id; });
       if (w.evolved) {
         const ev = evoTheme(id);
@@ -3963,7 +4359,7 @@
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
     const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
-    const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.07, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
+    const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk || player.buffs.drunk > 0 ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.07, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
     if (player.atk > 0 && style !== 'cast') {
       for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
     }
@@ -4205,6 +4601,8 @@
     drawAura();
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawBelow) WEAPONS[id].drawBelow(w);
     drawZones();
+    drawDuel();
+    drawOddities();
     drawBombs();
     drawShrines();
     drawMines();
@@ -4220,6 +4618,7 @@
       drawEnemy(e);
     }
     if (!playerDrawn) drawPlayer();
+    drawDisciples();
 
     const orbEvo = player.weapons.orbit?.evolved;
     for (const pt of orbitPoints()) {
@@ -4328,11 +4727,12 @@
       const icon = document.createElement('span');
       icon.className = 'achv-icon';
       icon.append(iconImg(done ? a.icon : '🔒'));
+      const hidden = a.secret && !done;
       const text = document.createElement('div');
       const name = document.createElement('b');
-      name.textContent = a.name;
+      name.textContent = hidden ? '??? (숨겨진 업적)' : a.name;
       const desc = document.createElement('small');
-      desc.textContent = a.desc + (hero ? ` · 보상: ${done ? hero.name : '???'} 해금` : '');
+      desc.textContent = (hidden ? a.hint : a.desc) + (hero ? ` · 보상: ${done ? hero.name : '???'} 해금` : '');
       text.append(name, desc);
       el.append(icon, text);
       return el;
@@ -4359,7 +4759,7 @@
     ui.achvCount.textContent = `${done} / ${ACHIEVEMENTS.length}`;
     ui.bookCount.textContent = `${seen.size} / ${Object.keys(COMBOS).length}`;
     const heroes = Object.keys(HEROES).filter(heroUnlocked).length;
-    ui.titleStats.textContent = `최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥`;
+    ui.titleStats.textContent = `${progress.sectName ? `[${progress.sectName}] ` : ''}명성 ${progress.fame || 0} · 최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥`;
   }
 
   function openAchievements() {
@@ -4410,7 +4810,7 @@
     const rows = Object.entries(player.dmgBy).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
     const total = rows.reduce((n, [, v]) => n + v, 0) || 1;
     return rows.map(([id, v]) => {
-      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : { necro: '💀 원귀 소환', phoenix: '🔥 불길', ult: `💫 ${ULT_NAMES[player.hero] || '필살기'}`, arcana: '📖 비전서' }[id] || '🧨 아이템';
+      const name = WEAPONS[id] ? `${weaponIcon(id)} ${weaponName(id)}` : { necro: '💀 원귀 소환', phoenix: '🔥 불길', disciple: '👥 제자', ult: `💫 ${ULT_NAMES[player.hero] || '필살기'}`, arcana: '📖 비전서' }[id] || '🧨 아이템';
       const row = document.createElement('div');
       row.className = 'book-row';
       const a = document.createElement('span');
@@ -4450,7 +4850,7 @@
   function toLobby() {
     const wasPlaying = state === 'paused';
     bankGold();
-    if (wasPlaying) { checkQuests(); gainMastery(false); }
+    if (wasPlaying) { checkQuests(); gainMastery(false); gainFame(false); }
     checkAchievements();
     state = 'title';
     for (const el of [ui.hud, ui.pause, ui.choice, ui.gameover]) el.classList.add('hidden');
@@ -4464,7 +4864,7 @@
     // Phones: go full screen when a run starts (ignored where unsupported, e.g. already installed as an app).
     if (isTouch && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     resetGame();
-    for (const el of [ui.start, ui.gameover, ui.choice, ui.pause, ui.achv, ui.shop, ui.questScreen]) el.classList.add('hidden');
+    for (const el of [ui.start, ui.gameover, ui.choice, ui.pause, ui.achv, ui.shop, ui.questScreen, ui.sectScreen]) el.classList.add('hidden');
     ui.hud.classList.remove('hidden');
     updateHud();
     state = 'playing';
@@ -4481,10 +4881,11 @@
     bankGold();
     checkQuests();
     const mxp = gainMastery(win);
+    const fame = gainFame(win);
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
     ui.continueBtn.classList.toggle('hidden', !win);
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)})`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
@@ -4518,8 +4919,10 @@
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
     if (e.repeat) return;
-    const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden');
+    const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden') || !ui.sectScreen.classList.contains('hidden');
+    if (e.target && e.target.id === 'sect-name') return;
     if (e.code === 'Escape' && overlayOpen) {
+      ui.sectScreen.classList.add('hidden');
       ui.achv.classList.add('hidden');
       ui.shop.classList.add('hidden');
       ui.questScreen.classList.add('hidden');
@@ -4563,6 +4966,22 @@
   for (const id of ['achv-btn', 'achv-btn-2']) $(id).addEventListener('click', openAchievements);
   $('achv-close').addEventListener('click', () => ui.achv.classList.add('hidden'));
   $('shop-btn').addEventListener('click', openShop);
+  $('sect-btn').addEventListener('click', () => { buildSect(); ui.sectScreen.classList.remove('hidden'); });
+  $('sect-close').addEventListener('click', () => { ui.sectScreen.classList.add('hidden'); buildAchievements(); });
+  ui.sectName.addEventListener('change', () => { progress.sectName = ui.sectName.value.trim().slice(0, 8); saveProgress(); buildAchievements(); });
+  let sealTaps = [];
+  document.querySelector('#start-screen h1').addEventListener('click', () => {
+    const now = performance.now();
+    sealTaps = sealTaps.filter((t) => now - t < 3000).concat(now);
+    sfx('select');
+    if (sealTaps.length >= 7 && !progress.secrets.seal) {
+      progress.secrets.seal = true;
+      progress.gold += 300;
+      saveProgress();
+      checkAchievements();
+      buildAchievements();
+    }
+  });
   $('quest-btn').addEventListener('click', () => { buildQuests(); ui.questScreen.classList.remove('hidden'); });
   $('quest-close').addEventListener('click', () => ui.questScreen.classList.add('hidden'));
   ui.dashBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); dash(); });
