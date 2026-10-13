@@ -316,6 +316,34 @@ def heukyo():
     s.finish('heukyo.png', rim=(255, 160, 160, 255))
 
 
+def golddokkaebi():
+    """황금 도깨비: a gilded dokkaebi hugging a bulging sack of silver."""
+    s = Y(24)
+    skin = rgba(236, 186, 60)
+    sack = rgba(170, 60, 50)
+    s.blob(17.4, 15, 5.4, 5.6, sack)
+    s.poly([(15.6, 9.6), (19.6, 9.6), (18.6, 11.4), (16.4, 11.4)], sack)
+    s.rect(15.6, 10.8, 19.6, 11.6, GOLD)
+    for x, y in [(15, 14), (19, 17), (17, 19)]:
+        s.mark(x, y, rgba(230, 236, 246))
+    s.blob(10, 16, 5.4, 5.2, skin)
+    s.rect(6, 18.6, 13.4, 21.6, rgba(120, 60, 160))
+    s.rect(6.6, 21.6, 8.8, 23.4, mul(skin, 0.75))
+    s.rect(11, 21.6, 13.2, 23.4, mul(skin, 0.75))
+    s.blob(10, 9.6, 4.8, 4.6, skin)
+    s.poly([(8.8, 5.4), (11.2, 5.4), (10, 1)], rgba(255, 245, 210))
+    s.mark(8, 9, INK)
+    s.mark(12, 9, INK)
+    s.mark(8, 10, rgba(80, 255, 120))
+    s.mark(12, 10, rgba(80, 255, 120))
+    s.rect(8, 12, 12.4, 13, rgba(90, 30, 20))
+    s.mark(9, 12, WHITE)
+    s.mark(11, 12, WHITE)
+    for x, y in [(3, 4), (21, 5), (2, 13)]:
+        s.mark(x, y, rgba(255, 250, 200))
+    s.finish('golddokkaebi.png', rim=(255, 250, 200, 255))
+
+
 if __name__ == '__main__':
-    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo):
+    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi):
         fn()

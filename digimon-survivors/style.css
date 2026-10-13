@@ -442,3 +442,27 @@ body.touch .tool { padding: 8px 12px; }
 @media (max-width: 480px) and (orientation: portrait) {
   #top-right { top: calc(max(10px, env(safe-area-inset-top)) + 128px); }
 }
+
+/* ---------- Combo counter & shrine buffs ---------- */
+#combo {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  top: calc(max(14px, env(safe-area-inset-top)) + 150px);
+  font-family: 'Nanum Brush Script', 'Gowun Batang', serif;
+  color: var(--red);
+  text-shadow: 0 0 4px var(--paper), 2px 2px 0 var(--paper);
+  line-height: 1;
+  pointer-events: none;
+}
+#combo b { font-size: 46px; font-weight: 400; }
+#combo span { font-size: 24px; margin-left: 4px; color: var(--ink); }
+#combo.bump b { display: inline-block; animation: combo-bump 0.18s ease-out; }
+@keyframes combo-bump { from { transform: scale(1.5); } to { transform: scale(1); } }
+#buff-row { font-size: 13px; margin-top: 3px; font-weight: 700; color: var(--red-dark); }
+#buff-row .pi { width: 18px; height: 18px; vertical-align: -4px; }
+.settings { margin-top: 4px; }
+#start-screen .settings .tool { font-size: 13px; padding: 3px 10px; }
+@media (max-width: 480px) and (orientation: portrait) {
+  #combo { top: calc(max(10px, env(safe-area-inset-top)) + 236px); }
+  #combo b { font-size: 36px; }
+}

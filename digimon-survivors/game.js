@@ -29,6 +29,7 @@
     choiceSubtitle: $('choice-subtitle'), choiceCards: $('choice-cards'),
     pause: $('pause-screen'), pauseBuild: $('pause-build'), pauseDmg: $('pause-dmg'), pauseStats: $('pause-stats'), quitBtn: $('quit-btn'),
     choiceTools: $('choice-tools'), gold: $('gold'), gameoverTitle: $('gameover-title'), continueBtn: $('continue-btn'),
+    combo: $('combo'), buffRow: $('buff-row'),
     dashBtn: $('dash-btn'), ultBtn: $('ult-btn'), questScreen: $('quest-screen'), questList: $('quest-list'),
     shop: $('shop-screen'), shopList: $('shop-list'), shopGold: $('shop-gold'),
     gameover: $('gameover-screen'), gameoverPortrait: $('gameover-portrait'), gameoverStats: $('gameover-stats'),
@@ -100,6 +101,7 @@
     jumeoni: { size: 28, color: '#c8323c', emoji: '💰' },
     bangul: { size: 24, color: '#deb048', emoji: '🔔' },
     jeoseung: { size: 72, color: '#242028', emoji: '💀' },
+    golddokkaebi: { size: 48, color: '#ecba3c', emoji: '💰' },
   };
   const SPRITES = {};
   const spritePath = (key) => `assets/${key}.png`;
@@ -1586,6 +1588,7 @@
     bulgasari: { name: '불가사리', sprite: 'bulgasari', hp: 160, speed: 34, damage: 16, radius: 18, xp: 25, weight: 0.4, minTime: 360, barY: 24 },
     daedokkaebi: { name: '대도깨비', sprite: 'daedokkaebi', hp: 260, speed: 48, damage: 18, radius: 24, xp: 50, boss: true, barY: 34 },
     imugi: { name: '이무기', sprite: 'imugi', hp: 380, speed: 40, damage: 22, radius: 24, xp: 70, boss: true, barY: 34 },
+    golddokkaebi: { name: '황금 도깨비', sprite: 'golddokkaebi', hp: 140, speed: 0, damage: 0, radius: 15, xp: 0, weight: 0, barY: 22, gold: true },
     seokdeung: { name: '석등', sprite: 'seokdeung', hp: 1, speed: 0, damage: 0, radius: 14, xp: 0, weight: 0, barY: 22, prop: true },
     jeoseung: { name: '저승사자', sprite: 'jeoseung', hp: 1500, speed: 72, damage: 40, radius: 28, xp: 300, boss: true, final: true, barY: 42, summon: true },
     heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true },
@@ -1632,9 +1635,11 @@
   // Offered to fill the row once everything else is maxed out.
   const SNACK = { icon: '🍑', title: '천도복숭아', desc: 'HP 30 회복', pick: () => { player.hp = Math.min(player.maxHp, player.hp + 30); } };
 
+  // (audio and feel helpers are defined after `progress` below)
+
   // ---------- Progress & achievements (saved per browser) ----------
   const PROGRESS_KEY = 'yokai-survivors-progress';
-  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {}, mastery: {}, quests: null, questsDone: 0 };
+  const progress = { totalKills: 0, combos: [], achievements: [], played: [], bosses: {}, gold: 0, totalGold: 0, shop: {}, wins: 0, bestStage: 0, difficulty: 'normal', clears: {}, mastery: {}, quests: null, questsDone: 0, settings: { sfx: true, music: true, vib: true }, goldKills: 0 };
   try { Object.assign(progress, JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
   const seen = new Set(progress.combos);
   function saveProgress() {
@@ -1672,6 +1677,146 @@
     for (const u of SHOP) for (let i = 0; i < shopLevel(u.id); i++) u.apply(p);
   }
 
+  // ---------- Sound (synthesised with WebAudio, no files) ----------
+  const settings = progress.settings || (progress.settings = { sfx: true, music: true, vib: true });
+  let ac = null, master = null, musicBus = null;
+  function ensureAudio() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ac = new AC();
+      master = ac.createGain();
+      master.gain.value = 0.55;
+      master.connect(ac.destination);
+      musicBus = ac.createGain();
+      musicBus.gain.value = settings.music ? 0.22 : 0;
+      musicBus.connect(master);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return true;
+  }
+  function tone({ type = 'square', f = 440, f2 = null, dur = 0.1, vol = 0.2, delay = 0, at = null, bus = null, vib = 0 }) {
+    const t = at ?? ac.currentTime + delay;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+    if (vib) {
+      const lfo = ac.createOscillator(), lg = ac.createGain();
+      lfo.frequency.value = 5.5;
+      lg.gain.value = vib;
+      lfo.connect(lg).connect(o.frequency);
+      lfo.start(t);
+      lfo.stop(t + dur + 0.05);
+    }
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(bus || master);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+  let noiseBuf = null;
+  function noise({ dur = 0.08, vol = 0.2, freq = 2000, f2 = null, q = 1, filter = 'bandpass', delay = 0, at = null, bus = null }) {
+    if (!noiseBuf) {
+      noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t = at ?? ac.currentTime + delay;
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuf;
+    const fl = ac.createBiquadFilter();
+    fl.type = filter;
+    fl.frequency.setValueAtTime(freq, t);
+    if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    fl.Q.value = q;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(fl).connect(g).connect(bus || master);
+    src.start(t, Math.random() * 0.5);
+    src.stop(t + dur + 0.02);
+  }
+  const SOUNDS = {
+    hit: () => { noise({ dur: 0.05, vol: 0.12, freq: 1800 }); tone({ type: 'sine', f: 170, f2: 80, dur: 0.06, vol: 0.14 }); },
+    crit: () => { noise({ dur: 0.09, vol: 0.22, freq: 3400, q: 2 }); tone({ type: 'triangle', f: 1100, f2: 320, dur: 0.1, vol: 0.14 }); },
+    kill: () => tone({ type: 'square', f: 480 + Math.random() * 80, f2: 200, dur: 0.07, vol: 0.05 }),
+    coin: (n = 0) => tone({ type: 'triangle', f: 880 * 2 ** (Math.min(n, 12) / 12), dur: 0.07, vol: 0.07 }),
+    levelup: () => [587, 659, 784, 988, 1175].forEach((f, i) => tone({ type: 'triangle', f, dur: 0.18, vol: 0.12, delay: i * 0.06 })),
+    hurt: () => { tone({ type: 'sawtooth', f: 240, f2: 70, dur: 0.2, vol: 0.18 }); noise({ dur: 0.14, vol: 0.14, freq: 500, filter: 'lowpass' }); },
+    dash: () => noise({ dur: 0.2, vol: 0.16, freq: 900, f2: 4500, q: 0.7 }),
+    ult: () => { tone({ type: 'sawtooth', f: 120, f2: 38, dur: 0.8, vol: 0.24 }); noise({ dur: 0.7, vol: 0.26, freq: 900, f2: 200, filter: 'lowpass' }); tone({ type: 'triangle', f: 660, f2: 1760, dur: 0.45, vol: 0.1, delay: 0.04 }); },
+    boom: () => { noise({ dur: 0.4, vol: 0.3, freq: 600, f2: 120, filter: 'lowpass' }); tone({ type: 'sine', f: 95, f2: 32, dur: 0.4, vol: 0.3 }); },
+    gong: () => { tone({ type: 'sine', f: 196, dur: 2.2, vol: 0.22, vib: 1.5 }); tone({ type: 'sine', f: 293, dur: 1.6, vol: 0.08 }); tone({ type: 'sine', f: 523, dur: 0.8, vol: 0.05 }); },
+    boss: () => { tone({ type: 'sawtooth', f: 73, f2: 55, dur: 1.1, vol: 0.2 }); tone({ type: 'sawtooth', f: 110, f2: 82, dur: 1.1, vol: 0.12 }); noise({ dur: 0.9, vol: 0.12, freq: 300, filter: 'lowpass' }); },
+    chest: () => [784, 988, 1175, 1568].forEach((f, i) => tone({ type: 'triangle', f, dur: 0.25, vol: 0.12, delay: i * 0.08 })),
+    select: () => tone({ type: 'triangle', f: 660, f2: 990, dur: 0.08, vol: 0.1 }),
+    combo: () => { tone({ type: 'square', f: 523, dur: 0.08, vol: 0.08 }); tone({ type: 'square', f: 784, dur: 0.12, vol: 0.08, delay: 0.07 }); },
+    shrine: () => [392, 523, 659, 784].forEach((f, i) => tone({ type: 'sine', f, dur: 0.5, vol: 0.1, delay: i * 0.05, vib: 3 })),
+    goblin: () => [1046, 1318, 1046, 1568].forEach((f, i) => tone({ type: 'square', f, dur: 0.07, vol: 0.06, delay: i * 0.07 })),
+    heart: () => { tone({ type: 'sine', f: 70, f2: 50, dur: 0.12, vol: 0.25 }); tone({ type: 'sine', f: 65, f2: 45, dur: 0.12, vol: 0.18, delay: 0.16 }); },
+    death: () => { tone({ type: 'sawtooth', f: 330, f2: 60, dur: 1.2, vol: 0.2 }); tone({ type: 'sine', f: 196, f2: 98, dur: 1.4, vol: 0.15, delay: 0.1 }); },
+  };
+  const SOUND_GAP = { hit: 0.035, kill: 0.03, coin: 0.03, crit: 0.06, boom: 0.12 };
+  const lastSound = {};
+  function sfx(name, ...args) {
+    if (!settings.sfx || !ac || ac.state !== 'running') return;
+    const now = ac.currentTime;
+    if (now - (lastSound[name] || -1) < (SOUND_GAP[name] || 0)) return;
+    lastSound[name] = now;
+    SOUNDS[name](...args);
+  }
+
+  // Gugak-flavoured background loop: janggu-like drums under a pentatonic daegeum-ish line.
+  const PENTA = [293.7, 329.6, 392, 440, 493.9, 587.3, 659.3, 784];
+  const music = { timer: null, step: 0, next: 0, note: 3 };
+  function musicTick() {
+    if (!ac || !settings.music) return;
+    const busy = state === 'playing' || state === 'choice';
+    const boss = enemies && enemies.some((e) => e.type.boss);
+    const spb = 60 / (boss ? 128 : 100) / 2;
+    if (music.next < ac.currentTime) music.next = ac.currentTime + 0.05;
+    while (music.next < ac.currentTime + 0.25) {
+      const t = music.next, k = music.step % 16;
+      if (busy) {
+        if (k === 0 || k === 8 || (boss && k === 12)) { tone({ type: 'sine', f: 90, f2: 45, dur: 0.25, vol: 0.5, at: t, bus: musicBus }); noise({ dur: 0.12, vol: 0.12, freq: 180, filter: 'lowpass', at: t, bus: musicBus }); }
+        if (k === 4 || k === 11) noise({ dur: 0.08, vol: 0.18, freq: 900, q: 3, at: t, bus: musicBus });
+        if (k === 6 || k === 14 || (boss && k % 2 === 1)) noise({ dur: 0.03, vol: 0.12, freq: 4200, q: 4, at: t, bus: musicBus });
+        if (k % 4 === 0 || (k % 2 === 0 && Math.random() < 0.35)) {
+          music.note = clamp(music.note + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)], 0, PENTA.length - 1);
+          tone({ type: 'triangle', f: PENTA[music.note], dur: spb * (k % 8 === 0 ? 3.2 : 1.8), vol: 0.14, at: t, bus: musicBus, vib: 4 });
+        }
+        if (k === 0 && music.step % 32 === 0) tone({ type: 'sine', f: 73.4, dur: spb * 15, vol: 0.12, at: t, bus: musicBus });
+      }
+      music.next += spb;
+      music.step++;
+    }
+  }
+  function startMusic() { if (!music.timer) music.timer = setInterval(musicTick, 60); }
+  function applySettings() {
+    if (musicBus) musicBus.gain.setTargetAtTime(settings.music ? 0.22 : 0, ac.currentTime, 0.1);
+    saveProgress();
+    for (const el of document.querySelectorAll('.settings')) buildSettings(el);
+  }
+  function buildSettings(el) {
+    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동']].map(([k, label]) => {
+      const b = document.createElement('button');
+      b.className = 'tool' + (settings[k] ? ' armed' : '');
+      b.textContent = `${label} ${settings[k] ? '켬' : '끔'}`;
+      b.addEventListener('click', (e) => { e.stopPropagation(); settings[k] = !settings[k]; ensureAudio(); applySettings(); });
+      return b;
+    }));
+  }
+  function buzz(pattern) {
+    if (settings.vib && navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  // Hit-stop: freeze the simulation for a few frames on heavy blows.
+  let hitstop = 0;
+  const stopTime = (sec) => { hitstop = Math.min(0.16, Math.max(hitstop, sec)); };
+
   const BASE_HEROES = () => Object.keys(HEROES).filter((id) => !HEROES[id].unlock);
   // check(player) runs during play; anything about past runs reads `progress`.
   const ACHIEVEMENTS = [
@@ -1707,6 +1852,9 @@
     { id: 'clearHell', icon: '💀', name: '마경 정복', desc: '마경 난이도로 저승사자 퇴치', check: () => progress.clears.hell },
     { id: 'quest5', icon: '📜', name: '의뢰 해결사', desc: '의뢰 5개 완료 (누적)', check: () => progress.questsDone >= 5 },
     { id: 'mastery5', icon: '🥋', name: '일인전승', desc: '협객 하나의 숙련도를 Lv.5까지 올리기', check: () => Object.keys(HEROES).some((id) => masteryLevel(id) >= 5) },
+    { id: 'combo300', icon: '🔥', name: '삼백연격', desc: '한 판에 300연격 달성', check: (p) => p.maxCombo >= 300 },
+    { id: 'goldHunt', icon: '💰', name: '황금 사냥꾼', desc: '황금 도깨비 포획 (누적 3마리)', check: () => (progress.goldKills || 0) >= 3 },
+    { id: 'shrine3', icon: '🏮', name: '제단의 축복', desc: '한 판에 제단 3번 사용', check: (p) => p.shrinesUsed >= 3 },
     { id: 'allHeroes', icon: '🧭', name: '팔도 유람', desc: '해금 없이 고를 수 있는 협객으로 모두 한 번씩 출정', check: () => BASE_HEROES().every((id) => progress.played.includes(id)) },
   ];
   const ACHV_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
@@ -1756,6 +1904,7 @@
 
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover | victory
+  let shrines = [], shrineTimer = 25, goldTimer = 80;
   let player, enemies, projectiles, pickups, particles, floatTexts, fx, shells, zones, mines;
   let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
   let propTimer = 0, stageIdx = 0, stageTime = 0, stageBossOut = false, midOut = false, finalSpawned = false, marchIdx = 0, banked = 0, dmgSrc = 'item', banishMode = false;
@@ -1776,6 +1925,7 @@
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
+      combo: 0, comboT: 0, maxCombo: 0, coinChain: 0, coinAt: -9, buffs: {}, goldKills: 0, shrinesUsed: 0, heartT: 0,
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
       arc: new Set(), meteorT: 8, cleared: 0, trail: [],
       formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
@@ -1800,6 +1950,9 @@
     shells = [];
     zones = [];
     mines = [];
+    shrines = [];
+    shrineTimer = 25;
+    goldTimer = 60 + Math.random() * 40;
     achvTimer = 0;
     modalQueue.length = 0;
     elapsed = 0;
@@ -1832,8 +1985,8 @@
     }
   }
 
-  function addFloatText(x, y, text, color) {
-    if (floatTexts.length < 60) floatTexts.push({ x, y, text, color, life: 0.8 });
+  function addFloatText(x, y, text, color, size = 17, crit = false) {
+    if (floatTexts.length < 70) floatTexts.push({ x, y, text, color, life: 0.8, size: Math.round(size), crit });
   }
 
   function showBanner(text, kind = '', sub = '') {
@@ -1934,7 +2087,152 @@
       player.level++;
       player.xpToNext = Math.floor(player.xpToNext * 1.2 + 5);
       modalQueue.push({ type: 'upgrade' });
+      sfx('levelup');
       burst(player.x, player.y, 14, ['#fff6b0', '#ffffff', '#b8f0e0'], 120, 0.5, 3);
+    }
+  }
+
+  // ---------- 연격 (kill combo) ----------
+  function comboMilestone(n) {
+    sfx('combo');
+    addGold(5 + n / 10);
+    let text = `${n}연격!`;
+    if (n % 150 === 0) {
+      for (const g of pickups) if (g.kind === 'coin' || g.kind === 'coin_gold') g.vel = 300;
+      player.hp = Math.min(player.maxHp, player.hp + 15);
+      text += ' 엽전 흡수 · HP +15';
+    }
+    if (n % 300 === 0) {
+      pickups.push({ kind: 'treasure', x: player.x + 30, y: player.y });
+      text += ' · 보물함!';
+    }
+    addFloatText(player.x, player.y - 60, text, '#ffd76b', 22, true);
+  }
+
+  // ---------- 제단 (shrines): stand in the circle to receive a 30-second blessing ----------
+  const SHRINE_BUFFS = [
+    { id: 'fury', icon: '🔥', name: '분노의 제단', desc: '피해 +40%', rgb: '230, 60, 50' },
+    { id: 'swift', icon: '🍃', name: '질풍의 제단', desc: '이동 속도 +35%', rgb: '90, 200, 120' },
+    { id: 'focus', icon: '⏳', name: '집중의 제단', desc: '무공 대기시간 -30%', rgb: '120, 150, 255' },
+    { id: 'fortune', icon: '💰', name: '재물의 제단', desc: '경험치·은자 ×2', rgb: '240, 190, 60' },
+    { id: 'guard', icon: '🛡️', name: '수호의 제단', desc: '받는 피해 -50%', rgb: '200, 200, 225' },
+  ];
+  const BUFF_BY_ID = Object.fromEntries(SHRINE_BUFFS.map((b) => [b.id, b]));
+  const SHRINE_R = 58, SHRINE_TIME = 2.2, BUFF_TIME = 30;
+  function updateWorldEvents(dt) {
+    for (const k of Object.keys(player.buffs)) if ((player.buffs[k] -= dt) <= 0) delete player.buffs[k];
+    if ((player.comboT -= dt) <= 0) player.combo = 0;
+    if (player.hp < player.maxHp * 0.3 && (player.heartT -= dt) <= 0) { player.heartT = 0.85; sfx('heart'); }
+    // shrines
+    if ((shrineTimer -= dt) <= 0) {
+      shrineTimer = 65 + Math.random() * 30;
+      if (shrines.length < 2) {
+        const a = Math.random() * Math.PI * 2, r = 320 + Math.random() * 220;
+        shrines.push({ x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r, buff: SHRINE_BUFFS[Math.floor(Math.random() * SHRINE_BUFFS.length)], charge: 0, life: 70 });
+      }
+    }
+    for (let i = shrines.length - 1; i >= 0; i--) {
+      const sh = shrines[i];
+      sh.life -= dt;
+      const inside = dist(sh.x, sh.y, player.x, player.y) < SHRINE_R;
+      sh.charge = clamp(sh.charge + (inside ? dt : -dt * 0.6), 0, SHRINE_TIME);
+      if (sh.charge >= SHRINE_TIME) {
+        player.buffs[sh.buff.id] = BUFF_TIME;
+        player.shrinesUsed++;
+        sfx('shrine');
+        buzz(40);
+        burst(sh.x, sh.y, 30, [`rgb(${sh.buff.rgb})`, '#ffffff'], 220, 0.9, 5, true);
+        fx.push({ kind: 'ultwave', x: sh.x, y: sh.y, rgb: sh.buff.rgb, life: 0.6, max: 0.6, small: true });
+        showBanner(sh.buff.name, '', `30초 동안 ${sh.buff.desc}`);
+        shrines.splice(i, 1);
+      } else if (sh.life <= 0) shrines.splice(i, 1);
+    }
+    // golden dokkaebi
+    if (stageTime > 30 && (goldTimer -= dt) <= 0) {
+      goldTimer = 100 + Math.random() * 60;
+      const a = Math.random() * Math.PI * 2, r = Math.max(viewW, viewH) * 0.42;
+      spawnEnemy(ENEMY_TYPES.golddokkaebi, 0, 0, { x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r });
+      const g = enemies[enemies.length - 1];
+      g.escapeT = 14;
+      g.speed = player.speed * 0.82;
+      showBanner('황금 도깨비 출현!', '', '도망가기 전에 잡으면 은자가 쏟아져요');
+      sfx('goblin');
+    }
+  }
+
+  function drawShrines() {
+    for (const sh of shrines) {
+      const k = sh.charge / SHRINE_TIME;
+      const pulse = 0.5 + 0.5 * Math.sin(anim * 3);
+      ctx.save();
+      ctx.translate(sh.x, sh.y);
+      ctx.scale(1, 0.5);
+      ctx.fillStyle = `rgba(${sh.buff.rgb}, ${0.12 + 0.08 * pulse})`;
+      ctx.strokeStyle = `rgba(${sh.buff.rgb}, 0.9)`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, SHRINE_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      if (k > 0) {
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, SHRINE_R - 6, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // stone altar with a flame
+      ctx.fillStyle = '#8c8478';
+      ctx.fillRect(sh.x - 12, sh.y - 14, 24, 16);
+      ctx.fillStyle = '#6c665c';
+      ctx.fillRect(sh.x - 16, sh.y, 32, 6);
+      ctx.fillStyle = `rgba(${sh.buff.rgb}, 0.95)`;
+      ctx.beginPath();
+      ctx.ellipse(sh.x, sh.y - 22 - pulse * 2, 6, 10 + pulse * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(sh.x, sh.y - 20, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 13px "Gowun Batang", serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
+      ctx.strokeText(sh.buff.name, sh.x, sh.y - 40);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(sh.buff.name, sh.x, sh.y - 40);
+    }
+  }
+
+  // Arrows at the screen edge toward off-screen bosses, the golden dokkaebi and shrines.
+  function drawPointers() {
+    const targets = [];
+    for (const e of enemies) if (e.type.boss || e.type.gold) targets.push([e.x, e.y, e.type.gold ? '#ffd23c' : '#b8322a']);
+    for (const sh of shrines) targets.push([sh.x, sh.y, `rgb(${sh.buff.rgb})`]);
+    for (const [tx, ty, col] of targets) {
+      const sx = viewW / 2 + (tx - player.x), sy = viewH / 2 + (ty - player.y);
+      if (sx > 20 && sx < viewW - 20 && sy > 20 && sy < viewH - 20) continue;
+      const a = Math.atan2(sy - viewH / 2, sx - viewW / 2);
+      const m = 34;
+      const k = Math.min((viewW / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (viewH / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+      const px = viewW / 2 + Math.cos(a) * k, py = viewH / 2 + Math.sin(a) * k;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(a);
+      ctx.fillStyle = col;
+      ctx.strokeStyle = '#2a2224';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.7 + 0.3 * Math.sin(anim * 8);
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-8, -10);
+      ctx.lineTo(-4, 0);
+      ctx.lineTo(-8, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -2024,10 +2322,14 @@
     player.invuln = Math.max(player.invuln, 0.32);
     player.dashCd = DASH_CD * (hasArc('gale') ? 0.5 : 1);
     player.dashes++;
+    sfx('dash');
     burst(player.x, player.y + player.radius, 10, ['#d8cbb0', '#ffffff'], 140, 0.4, 4);
   }
   function ultimate(second = false) {
     if (!second && (state !== 'playing' || player.ult < ULT_NEED)) return;
+    sfx('ult');
+    buzz(90);
+    stopTime(0.08);
     if (!second) { player.ult = 0; player.ults++; if (hasArc('twinult')) player.ultAgainAt = elapsed + 0.7; }
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
     const dmg = (40 + player.level * 7) * player.ultMul;
@@ -2157,6 +2459,7 @@
     waveTimer = 30;
     const st = curStage();
     showBanner(st.name, '', st.sub);
+    sfx('gong');
   }
 
   // ---------- Choice modals (hero pick, level-up upgrades, combos) ----------
@@ -2298,6 +2601,7 @@
       }
       card.addEventListener('click', () => {
         if (state !== 'choice' || opt.locked) return;
+        sfx('select');
         if (banishMode) {
           if (!opt.key) return;
           player.banishes--;
@@ -2407,6 +2711,7 @@
       midOut = true;
       spawnEnemy(ENEMY_TYPES[st.mid]);
       showBanner(`${ENEMY_TYPES[st.mid].name} 등장!`, 'boss');
+      sfx('boss');
     }
     if (st.boss && !stageBossOut && stageTime >= STAGE_LEN) {
       stageBossOut = true;
@@ -2414,6 +2719,8 @@
       const b = enemies[enemies.length - 1];
       b.stageBoss = true;
       if (!b.type.final) { b.hp *= 2.5; b.maxHp = b.hp; }
+      sfx('boss');
+      buzz([40, 30, 40]);
       showBanner(`${b.type.final ? '저승사자가 나타났다!' : `장의 주인, ${b.type.name}!`}`, 'boss', '쓰러뜨리면 이 장을 돌파해요');
     }
     const marchAt = MARCH_TIMES[marchIdx] ?? MARCH_TIMES[MARCH_TIMES.length - 1] + 300 * (marchIdx - MARCH_TIMES.length + 1);
@@ -2488,6 +2795,7 @@
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
+    if (player.buffs.fury > 0) amount *= 1.4;
     if (player.berserk) amount *= 1 + player.berserk * (1 - clamp(player.hp / player.maxHp, 0, 1));
     if (player.arc.size) {
       if (hasArc('reverse') && player.hp < player.maxHp / 2) amount *= 1.5;
@@ -2515,12 +2823,18 @@
     const p = e.type.prop ? 0 : e.type.boss || e.elite ? push / 6 : push;
     e.x += (kx / k) * p;
     e.y += (ky / k) * p;
-    if (!quiet || crit) addFloatText(e.x, e.y - e.type.radius, crit ? `${Math.round(amount)}!` : String(Math.round(amount)), crit ? '#ff6a4d' : '#fff');
+    if (!quiet || crit) {
+      const mag = Math.min(8, Math.log10(amount + 1) * 2.4);
+      addFloatText(e.x + (Math.random() - 0.5) * 10, e.y - e.type.radius, crit ? `${Math.round(amount)}!` : String(Math.round(amount)), crit ? '#ff6a4d' : amount >= 150 ? '#ffd76b' : '#fff', crit ? 21 + mag : 13 + mag, crit);
+      sfx(crit ? 'crit' : 'hit');
+      if (crit && (e.type.boss || e.elite)) stopTime(0.035);
+    }
+    if (e.type.gold && Math.random() < 0.25) pickups.push({ kind: 'eunja', value: 2, x: e.x + (Math.random() - 0.5) * 30, y: e.y + 10 });
     if (e.hp <= 0) killEnemy(e, idx);
   }
 
   function addGold(v) {
-    const g = v * player.greed * diff.gold;
+    const g = v * player.greed * diff.gold * (player.buffs?.fortune > 0 ? 2 : 1);
     player.gold += g;
     addFloatText(player.x, player.y - player.radius - 20, `은자 +${Math.round(g)}`, '#cfd6e0');
   }
@@ -2547,6 +2861,11 @@
   function killEnemy(e, idx) {
     if (e.type.prop) { breakLantern(e, idx); return; }
     kills++;
+    sfx('kill');
+    player.combo++;
+    player.comboT = 2.4;
+    player.maxCombo = Math.max(player.maxCombo, player.combo);
+    if (player.combo % 50 === 0) comboMilestone(player.combo);
     player.ult = Math.min(ULT_NEED, player.ult + (hasArc('ghostgate') ? 2 : 1) * (e.type.boss ? 10 : 1));
     if (hasArc('bloodrain') && Math.random() < 0.08) {
       const ex = e.x, ey = e.y;
@@ -2572,7 +2891,26 @@
     if (e.type.split) {
       for (const dx of [-10, 10]) spawnEnemy(ENEMY_TYPES[e.type.split], 0, 0, { x: e.x + dx, y: e.y });
     }
+    if (e.type.gold) {
+      player.goldKills++;
+      progress.goldKills = (progress.goldKills || 0) + 1;
+      saveProgress();
+      pickups.push({ kind: 'jumeoni', value: 40, x: e.x, y: e.y });
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        pickups.push({ kind: 'coin_gold', value: 20, x: e.x + Math.cos(a) * 40, y: e.y + Math.sin(a) * 40 });
+      }
+      if (Math.random() < 0.5) pickups.push({ kind: 'treasure', x: e.x, y: e.y - 30 });
+      burst(e.x, e.y, 40, ['#ffd76b', '#ffffff', '#ffe9a0'], 300, 1, 5, true);
+      showBanner('황금 도깨비 포획!', '', '은자와 엽전이 쏟아져요');
+      sfx('goblin');
+      stopTime(0.1);
+      buzz(60);
+      return;
+    }
     if (e.elite) {
+      stopTime(0.06);
+      buzz(30);
       player.elites++;
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
@@ -2589,6 +2927,9 @@
       player.stageClearAt = elapsed + 1.2;
     }
     if (e.type.boss) {
+      stopTime(0.14);
+      sfx('boom');
+      buzz([60, 40, 90]);
       player.bossKills++;
       pickups.push({ kind: 'jumeoni', value: 20, x: e.x, y: e.y + 20 });
       progress.bosses[e.type.name] = true;
@@ -2659,7 +3000,7 @@
     }
     if (player.moving) {
       const len = Math.hypot(dx, dy);
-      const spd = player.speed * (player.boost > 0 ? 1.4 : 1);
+      const spd = player.speed * (player.boost > 0 ? 1.4 : 1) * (player.buffs.swift > 0 ? 1.35 : 1);
       player.x += (dx / len) * spd * dt;
       player.y += (dy / len) * spd * dt;
       if (dx !== 0) player.facing = Math.sign(dx);
@@ -2694,7 +3035,7 @@
       if (e.flash > 0) e.flash -= dt;
       if (e.hurt > 0) e.hurt -= dt;
       if (frozen) continue;
-      let speed = e.march ? 0 : e.speed;
+      let speed = e.march || e.type.gold ? 0 : e.speed;
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
       if (e.type.move === 'hop') speed *= Math.max(0, Math.sin(elapsed * 6 + e.phase)) * 2.2;
       if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
@@ -2714,6 +3055,20 @@
         e.y += (dx / d) * wiggle;
       }
       if (e.contactCd > 0) e.contactCd -= dt;
+      if (e.type.gold) {
+        // flees from the hero and escapes after a while
+        e.escapeT -= dt;
+        const away = d < 320 ? 1 : 0.45;
+        e.x -= (dx / d) * e.speed * away * dt;
+        e.y -= (dy / d) * e.speed * away * dt;
+        e.x += Math.sin(elapsed * 3 + e.phase) * 40 * dt;
+        if (e.escapeT <= 0 || d > farLimit * 1.4) {
+          e.gone = true;
+          burst(e.x, e.y, 20, ['#ffd76b', '#d8cbb0'], 160, 0.6, 4);
+          showBanner('황금 도깨비가 도망쳤다…', 'boss');
+        }
+        continue;
+      }
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0 && player.dodge && Math.random() < player.dodge) {
         e.contactCd = 0.6;
         player.invuln = 0.25;
@@ -2723,8 +3078,11 @@
         continue;
       }
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
-        const hurt = Math.max(1, Math.round(e.damage * player.armor));
+        const hurt = Math.max(1, Math.round(e.damage * player.armor * (player.buffs.guard > 0 ? 0.5 : 1)));
         player.hp -= hurt;
+        sfx('hurt');
+        buzz(35);
+        stopTime(0.04);
         player.invuln = 0.5;
         shake = Math.max(shake, 4);
         e.contactCd = 0.6;
@@ -2895,8 +3253,14 @@
       for (let k = n; k >= 1; k--) modalQueue.unshift({ type: 'chest', n: k, of: n });
       addGold(10 * n);
       burst(player.x, player.y, 20, ['#ffe066', '#ffffff', '#ffc2dc'], 200, 0.6, 4, true);
+      fx.push({ kind: 'chestbeam', x: player.x, y: player.y, life: 0.9, max: 0.9, big: n > 1 });
+      modalDelay = Math.max(modalDelay, 0.75);
+      sfx('chest');
     } else {
-      gainXp(it.value);
+      gainXp(it.value * (player.buffs.fortune > 0 ? 2 : 1));
+      player.coinChain = elapsed - player.coinAt < 0.4 ? player.coinChain + 1 : 0;
+      player.coinAt = elapsed;
+      sfx('coin', player.coinChain);
       if (hasArc('diamond')) {
         player.hp = Math.min(player.maxHp, player.hp + 0.4);
         player.invuln = Math.max(player.invuln, 0.12);
@@ -2999,7 +3363,7 @@
       const before = [projectiles.length, shells.length, zones.length, mines.length];
       const fxBefore = fx.length;
       dmgSrc = id;
-      WEAPONS[id].update(w, dt);
+      WEAPONS[id].update(w, dt * (player.buffs.focus > 0 ? 1.43 : 1));
       [projectiles, shells, zones, mines].forEach((arr, k) => { for (let i = before[k]; i < arr.length; i++) arr[i].src ??= id; });
       if (w.evolved) {
         const ev = evoTheme(id);
@@ -3018,6 +3382,7 @@
       if (w.flairCd > 0) w.flairCd -= dt;
     }
     dmgSrc = 'item';
+    updateWorldEvents(dt);
     runProcs();
     updateProjectiles(dt);
     runProcs();
@@ -3039,6 +3404,26 @@
     ui.level.textContent = `Lv.${player.level}`;
     ui.formName.textContent = HEROES[player.hero].name;
     ui.kills.textContent = `요괴 ${kills}마리 퇴치`;
+    if (player.combo >= 5) {
+      const txt = `${player.combo}`;
+      if (ui.combo.dataset.n !== txt) {
+        ui.combo.dataset.n = txt;
+        ui.combo.innerHTML = `<b>${txt}</b><span>연격</span>`;
+        ui.combo.classList.remove('bump');
+        void ui.combo.offsetWidth;
+        ui.combo.classList.add('bump');
+      }
+      ui.combo.classList.remove('hidden');
+      ui.combo.style.opacity = clamp(player.comboT / 0.8, 0.25, 1);
+    } else if (!ui.combo.classList.contains('hidden')) {
+      ui.combo.classList.add('hidden');
+      ui.combo.dataset.n = '';
+    }
+    const buffKey = Object.entries(player.buffs).map(([k, t]) => `${k}${Math.ceil(t)}`).join(',');
+    if (ui.buffRow.dataset.k !== buffKey) {
+      ui.buffRow.dataset.k = buffKey;
+      richText(ui.buffRow, Object.entries(player.buffs).map(([k, t]) => `${BUFF_BY_ID[k].icon}${Math.ceil(t)}`).join(' '));
+    }
     ui.gold.textContent = `은자 ${Math.floor(player.gold)}냥`;
     const st = curStage();
     ui.timer.textContent = fmtTime(st.endless ? elapsed : stageTime);
@@ -3283,6 +3668,16 @@
         continue;
       }
       if (f.kind === 'sigil') { drawSigil(f); continue; }
+      if (f.kind === 'chestbeam') {
+        const w = (f.big ? 70 : 46) * (0.6 + 0.4 * a);
+        const g = ctx.createLinearGradient(f.x - w, 0, f.x + w, 0);
+        g.addColorStop(0, 'rgba(255, 215, 90, 0)');
+        g.addColorStop(0.5, `rgba(255, 245, 200, ${0.85 * a})`);
+        g.addColorStop(1, 'rgba(255, 215, 90, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(f.x - w, f.y - 600, w * 2, 620);
+        continue;
+      }
       if (f.kind === 'ultwave') {
         const t = 1 - a;
         const R = (f.small ? 110 : Math.hypot(viewW, viewH) * 0.55) * (0.15 + t * 0.85);
@@ -3644,6 +4039,7 @@
     drawAura();
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawBelow) WEAPONS[id].drawBelow(w);
     drawZones();
+    drawShrines();
     drawMines();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
 
@@ -3707,11 +4103,17 @@
     ctx.lineJoin = 'round';
     ctx.lineWidth = 4;
     ctx.strokeStyle = 'rgba(42, 34, 36, 0.9)';
+    let curSize = 17;
     for (const f of floatTexts) {
+      const age = 0.8 - f.life;
+      const pop = age < 0.1 ? 1 + (0.1 - age) * 6 : 1;
+      const size = Math.round((f.size || 17) * pop);
+      if (size !== curSize) { ctx.font = `bold ${size}px "Gowun Batang", serif`; curSize = size; }
+      const jx = f.crit && age < 0.25 ? Math.sin(age * 90) * 2.5 : 0;
       ctx.globalAlpha = clamp(f.life / 0.3, 0, 1);
-      ctx.strokeText(f.text, f.x, f.y);
+      ctx.strokeText(f.text, f.x + jx, f.y);
       ctx.fillStyle = f.color;
-      ctx.fillText(f.text, f.x, f.y);
+      ctx.fillText(f.text, f.x + jx, f.y);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -3729,6 +4131,15 @@
       ctx.fill();
     }
 
+    if (state !== 'title') drawPointers();
+    if (state !== 'title' && player.hp < player.maxHp * 0.3) {
+      const pulse = 0.55 + 0.45 * Math.sin(anim * 7);
+      const g = ctx.createRadialGradient(viewW / 2, viewH / 2, Math.min(viewW, viewH) * 0.3, viewW / 2, viewH / 2, Math.hypot(viewW, viewH) / 2);
+      g.addColorStop(0, 'rgba(180, 20, 30, 0)');
+      g.addColorStop(1, `rgba(180, 20, 30, ${0.38 * pulse})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, viewW, viewH);
+    }
     if (player.freeze > 0) {
       ctx.fillStyle = `rgba(140, 200, 240, ${0.18 * Math.min(1, player.freeze)})`;
       ctx.fillRect(0, 0, viewW, viewH);
@@ -3896,6 +4307,7 @@
 
   function gameOver(kind = 'dead') {
     const win = kind === true || kind === 'win';
+    if (kind === 'dead') { sfx('death'); buzz([80, 60, 160]); }
     state = win ? 'victory' : 'gameover';
     const h = HEROES[player.hero];
     if (win) addGold(100);
@@ -3905,7 +4317,7 @@
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : '쓰러졌다...';
     ui.continueBtn.classList.toggle('hidden', !win);
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)})`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)})`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
@@ -3988,6 +4400,11 @@
   $('quest-close').addEventListener('click', () => ui.questScreen.classList.add('hidden'));
   ui.dashBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); dash(); });
   $('pause-btn').addEventListener('pointerdown', (e) => { e.stopPropagation(); togglePause(); });
+  // Browsers only allow audio after a user gesture.
+  const unlockAudio = () => { if (ensureAudio()) startMusic(); };
+  window.addEventListener('pointerdown', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+  for (const el of document.querySelectorAll('.settings')) buildSettings(el);
   // Leaving the app (home button, a call, switching tabs) pauses the run.
   document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'playing') togglePause(); });
   if (isTouch) {
@@ -4019,7 +4436,10 @@
     const dt = Math.min((ts - lastTime) / 1000 || 0, 0.05);
     lastTime = ts;
     if (state === 'playing' || state === 'title') anim += dt;
-    if (state === 'playing') update(dt);
+    if (state === 'playing') {
+      if (hitstop > 0) hitstop -= dt;
+      else update(dt);
+    }
     render();
     requestAnimationFrame(frame);
   }
