@@ -1633,7 +1633,7 @@
     heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true, special: 'charge' },
   };
   const BOSSES = [ENEMY_TYPES.daedokkaebi, ENEMY_TYPES.imugi, ENEMY_TYPES.heukyo];
-  const MAX_ENEMIES = 260;
+  const MAX_ENEMIES = 320;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
   const BOSS_START = 60;
@@ -3130,10 +3130,10 @@
 
   // Each chapter steps the yokai up on top of the time ramp: tougher, harder-hitting, faster and more of them.
   const STAGE_SCALE = [
-    { hp: 1, dmg: 1, speed: 1, spawn: 1, elite: 1 },
-    { hp: 1.8, dmg: 1.35, speed: 1.08, spawn: 1.4, elite: 1.6 },
-    { hp: 3, dmg: 1.75, speed: 1.16, spawn: 1.8, elite: 2.2 },
-    { hp: 4.8, dmg: 2.2, speed: 1.24, spawn: 2.2, elite: 3 },
+    { hp: 1.3, dmg: 1.3, speed: 1.1, spawn: 1.4, elite: 1.5 },
+    { hp: 2.6, dmg: 1.9, speed: 1.22, spawn: 2, elite: 2.5 },
+    { hp: 4.5, dmg: 2.6, speed: 1.32, spawn: 2.6, elite: 3.5 },
+    { hp: 7.5, dmg: 3.4, speed: 1.42, spawn: 3.2, elite: 5 },
   ];
   const stageScale = () => STAGE_SCALE[Math.min(stageIdx, STAGE_SCALE.length - 1)];
   // Enemies get tougher, faster and hit harder the longer the run goes.
@@ -3143,8 +3143,8 @@
     const sc = stageScale();
     // Yokai grow tougher, faster and deadlier with time; harder difficulties ramp up much faster.
     const ramp = diff.ramp || 1;
-    // Bosses take the chapter step more gently so they stay beatable inside the 10-minute run.
-    const scHp = type.boss ? Math.sqrt(sc.hp) : sc.hp;
+    // Bosses take the chapter step a little more gently so they stay beatable inside the 10-minute run.
+    const scHp = type.boss ? sc.hp ** 0.75 : sc.hp;
     const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp * scHp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
@@ -3153,7 +3153,7 @@
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
-    if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.045, 0.006 * (diff.elite || 1) * sc.elite * (1 + t / 400))) {
+    if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.07, 0.006 * (diff.elite || 1) * sc.elite * (1 + t / 400))) {
       e.elite = true;
       e.affix = Object.keys(AFFIX)[Math.floor(Math.random() * 4)];
       if (e.affix === 'swift') e.speed *= 1.6;
@@ -3231,7 +3231,7 @@
     }
     spawnTimer -= dt;
     if (spawnTimer <= 0 && enemies.length < MAX_ENEMIES) {
-      spawnTimer = clamp(1.0 - elapsed / 160, 0.25, 1.0);
+      spawnTimer = clamp(0.8 - elapsed / 140, 0.18, 0.8);
       const n = Math.max(1, Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse) * diff.spawn * stageScale().spawn));
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
