@@ -466,3 +466,53 @@ body.touch .tool { padding: 8px 12px; }
   #combo { top: calc(max(10px, env(safe-area-inset-top)) + 236px); }
   #combo b { font-size: 36px; }
 }
+
+/* ---------- Ink-brush banners, boss letterbox, card entrance ---------- */
+#banner { padding: 14px 80px 16px; }
+#banner::before {
+  content: '';
+  position: absolute;
+  inset: -4px -30px;
+  z-index: -1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 140' preserveAspectRatio='none'%3E%3Cpath d='M0,70 L25,55 L50,40 L75,21 L100,4 L125,5 L150,9 L175,5 L200,12 L225,11 L250,16 L275,14 L300,6 L325,8 L350,6 L375,12 L400,11 L425,5 L450,12 L475,8 L500,9 L525,14 L550,7 L575,10 L600,13 L625,16 L650,9 L675,6 L700,4 L725,13 L750,15 L775,12 L800,11 L825,14 L850,10 L875,5 L900,12 L925,28 L950,39 L975,54 L1000,70 L1000,70 L975,83 L950,98 L925,108 L900,131 L875,127 L850,126 L825,130 L800,123 L775,125 L750,121 L725,125 L700,126 L675,124 L650,128 L625,119 L600,121 L575,129 L550,125 L525,127 L500,121 L475,125 L450,123 L425,120 L400,118 L375,122 L350,125 L325,128 L300,119 L275,121 L250,118 L225,123 L200,130 L175,120 L150,129 L125,118 L100,123 L75,111 L50,96 L25,82 L0,70Z' fill='%231c1719'/%3E%3Crect x='100' y='52' width='138' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='334' y='41' width='134' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='293' y='75' width='90' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='548' y='35' width='61' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='499' y='76' width='110' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='324' y='42' width='144' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='480' y='95' width='75' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='763' y='78' width='85' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='739' y='73' width='69' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3Crect x='194' y='35' width='62' height='2' fill='%23f3ead6' opacity='0.18'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  opacity: 0.94;
+  clip-path: inset(0 100% 0 0);
+}
+#banner.show::before { animation: brush-wipe 2.2s ease-out forwards; }
+@keyframes brush-wipe {
+  0% { clip-path: inset(0 100% 0 0); }
+  14% { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+#banner-main { color: #f3ead6; text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5); }
+#banner.boss #banner-main { color: #ff6a50; }
+#banner.ult #banner-main { color: #ffd76b; }
+#banner-sub { color: #e8dcc0; }
+#banner-main::after {
+  content: '';
+  display: inline-block;
+  width: 0.42em; height: 0.42em;
+  margin-left: 0.25em;
+  vertical-align: 0.15em;
+  background: var(--red);
+  border: 2px solid #f3ead6;
+  transform: rotate(8deg);
+}
+#letterbox i {
+  position: absolute; left: 0; right: 0; height: 0;
+  background: #120e10;
+  z-index: 15;
+  transition: height 0.35s ease;
+  pointer-events: none;
+}
+#letterbox i:first-child { top: 0; }
+#letterbox i:last-child { bottom: 0; }
+#letterbox.on i { height: 11vh; }
+#choice-screen:not(.hidden) .card { animation: card-in 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards; }
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(40px) rotateX(70deg) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+#choice-cards { perspective: 900px; }
+.card.combo { animation-name: card-in, combo-glow !important; animation-duration: 0.34s, 1.4s !important; animation-iteration-count: 1, infinite !important; animation-direction: normal, alternate !important; }
+@keyframes combo-glow { from { box-shadow: 0 0 0 2px var(--gold), 0 0 6px rgba(201, 154, 58, 0.5); } to { box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(255, 200, 80, 0.95); } }

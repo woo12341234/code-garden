@@ -29,7 +29,7 @@
     choiceSubtitle: $('choice-subtitle'), choiceCards: $('choice-cards'),
     pause: $('pause-screen'), pauseBuild: $('pause-build'), pauseDmg: $('pause-dmg'), pauseStats: $('pause-stats'), quitBtn: $('quit-btn'),
     choiceTools: $('choice-tools'), gold: $('gold'), gameoverTitle: $('gameover-title'), continueBtn: $('continue-btn'),
-    combo: $('combo'), buffRow: $('buff-row'),
+    combo: $('combo'), buffRow: $('buff-row'), letterbox: $('letterbox'),
     dashBtn: $('dash-btn'), ultBtn: $('ult-btn'), questScreen: $('quest-screen'), questList: $('quest-list'),
     shop: $('shop-screen'), shopList: $('shop-list'), shopGold: $('shop-gold'),
     gameover: $('gameover-screen'), gameoverPortrait: $('gameover-portrait'), gameoverStats: $('gameover-stats'),
@@ -1905,6 +1905,9 @@
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover | victory
   let shrines = [], shrineTimer = 25, goldTimer = 80;
+  const cam = { x: 0, y: 0, zoom: 1, punch: 0 };
+  let cinematic = null; // { t, x, y } — slow motion while the camera visits a boss
+  let decals = [], ambient = [], bombs = [];
   let player, enemies, projectiles, pickups, particles, floatTexts, fx, shells, zones, mines;
   let elapsed = 0, kills = 0, spawnTimer = 0, bossTimer = 0, bossCount = 0, waveTimer = 0;
   let propTimer = 0, stageIdx = 0, stageTime = 0, stageBossOut = false, midOut = false, finalSpawned = false, marchIdx = 0, banked = 0, dmgSrc = 'item', banishMode = false;
@@ -1925,6 +1928,7 @@
       dmgMul: 1, durMul: 1, pierce: 0, chillAura: 0, bossKills: 0, healMul: 1, dotMul: 1, bossMul: 1, realm: 0, boost: 0, atk: 0, atkDir: 0, atkCd: 0,
       gold: 0, greed: 1, curse: 0, revives: 0, rerolls: 1, skips: 1, banishes: 1, banished: new Set(), freeze: 0,
       elites: 0, lanterns: 0, dmgBy: {}, wonRun: false,
+      vx: 0, vy: 0, dustT: 0,
       combo: 0, comboT: 0, maxCombo: 0, coinChain: 0, coinAt: -9, buffs: {}, goldKills: 0, shrinesUsed: 0, heartT: 0,
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
       arc: new Set(), meteorT: 8, cleared: 0, trail: [],
@@ -1974,6 +1978,9 @@
     modalDelay = 0;
     flash = 0;
     ui.portrait.src = spritePath(heroId);
+    cam.x = player.x; cam.y = player.y; cam.zoom = 1; cinematic = null;
+    decals = []; ambient = []; bombs = [];
+    ui.letterbox.classList.remove('on');
   }
 
   // ---------- Effects ----------
@@ -2092,6 +2099,85 @@
     }
   }
 
+  // Elite traits (shown above the elite)
+  const AFFIX = {
+    swift: { name: '질주', color: '#8fe0ff' },
+    armored: { name: '철갑', color: '#d8dce4' },
+    volatile: { name: '폭발', color: '#ff7050' },
+    split: { name: '분열', color: '#c7a0ff' },
+  };
+
+  function drawDecals() {
+    for (const d of decals) {
+      ctx.fillStyle = `rgba(42, 34, 36, ${0.26 * Math.min(1, d.life / 2)})`;
+      for (const [ox, oy, k] of d.blobs) {
+        ctx.beginPath();
+        ctx.ellipse(d.x + ox * d.r, d.y + oy * d.r, d.r * k, d.r * k * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  function drawBombs() {
+    for (const b of bombs) {
+      const k = 1 - b.t / b.max;
+      ctx.fillStyle = `rgba(220, 50, 40, ${0.12 + 0.2 * k})`;
+      ctx.strokeStyle = `rgba(220, 50, 40, ${0.6 + 0.4 * Math.sin(anim * 30)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Chapter-themed drifting particles in screen space (embers, bamboo leaves, ghost lights, ash).
+  const AMBIENT = [
+    { kind: 'ember', rgb: '255, 150, 60', rate: 5 },
+    { kind: 'leaf', rgb: '110, 170, 80', rate: 5 },
+    { kind: 'wisp', rgb: '170, 220, 255', rate: 3 },
+    { kind: 'ash', rgb: '80, 72, 84', rate: 10 },
+    { kind: 'petal', rgb: '220, 60, 80', rate: 5 },
+  ];
+  function updateAmbient(dt) {
+    const a = AMBIENT[Math.min(stageIdx, AMBIENT.length - 1)];
+    if (ambient.length < 60 && Math.random() < a.rate * dt) {
+      const fromTop = a.kind !== 'ember';
+      ambient.push({ kind: a.kind, rgb: a.rgb, x: Math.random() * viewW, y: fromTop ? -10 : viewH + 10, vx: (Math.random() - 0.3) * 30, vy: fromTop ? 25 + Math.random() * 30 : -(30 + Math.random() * 30), life: 9, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 3, size: 2 + Math.random() * 3 });
+    }
+    for (let i = ambient.length - 1; i >= 0; i--) {
+      const p = ambient[i];
+      p.x += (p.vx + Math.sin(p.life * 1.7 + p.rot) * 18) * dt - (player.vx || 0) * dt * 0.15;
+      p.y += p.vy * dt - (player.vy || 0) * dt * 0.15;
+      p.rot += p.spin * dt;
+      if ((p.life -= dt) <= 0 || p.y < -20 || p.y > viewH + 20) ambient.splice(i, 1);
+    }
+  }
+  function drawAmbient() {
+    for (const p of ambient) {
+      const al = Math.min(1, p.life / 2) * (p.kind === 'wisp' ? 0.5 + 0.3 * Math.sin(anim * 4 + p.rot) : 0.7);
+      ctx.fillStyle = `rgba(${p.rgb}, ${al})`;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      if (p.kind === 'leaf' || p.kind === 'petal') {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.size * 2, p.size * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.kind === 'wisp') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${al})`;
+        ctx.fillRect(-1, -1, 2, 2);
+      } else {
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      }
+      ctx.restore();
+    }
+  }
+
   // ---------- 연격 (kill combo) ----------
   function comboMilestone(n) {
     sfx('combo');
@@ -2121,6 +2207,18 @@
   const SHRINE_R = 58, SHRINE_TIME = 2.2, BUFF_TIME = 30;
   function updateWorldEvents(dt) {
     for (const k of Object.keys(player.buffs)) if ((player.buffs[k] -= dt) <= 0) delete player.buffs[k];
+    for (let i = decals.length - 1; i >= 0; i--) if ((decals[i].life -= dt) <= 0) decals.splice(i, 1);
+    updateAmbient(dt);
+    for (let i = bombs.length - 1; i >= 0; i--) {
+      const b = bombs[i];
+      if ((b.t -= dt) > 0) continue;
+      bombs.splice(i, 1);
+      fx.push({ kind: 'ring', x: b.x, y: b.y, r: b.r, life: 0.35, max: 0.35, color: 'blood' });
+      burst(b.x, b.y, 20, ['#ff5a3c', '#ffd060', '#2a2224'], 260, 0.6, 5, true);
+      sfx('boom');
+      shake = Math.max(shake, 6);
+      if (dist(b.x, b.y, player.x, player.y) < b.r + player.radius && hurtPlayer(b.dmg)) return;
+    }
     if ((player.comboT -= dt) <= 0) player.combo = 0;
     if (player.hp < player.maxHp * 0.3 && (player.heartT -= dt) <= 0) { player.heartT = 0.85; sfx('heart'); }
     // shrines
@@ -2211,7 +2309,7 @@
     for (const e of enemies) if (e.type.boss || e.type.gold) targets.push([e.x, e.y, e.type.gold ? '#ffd23c' : '#b8322a']);
     for (const sh of shrines) targets.push([sh.x, sh.y, `rgb(${sh.buff.rgb})`]);
     for (const [tx, ty, col] of targets) {
-      const sx = viewW / 2 + (tx - player.x), sy = viewH / 2 + (ty - player.y);
+      const sx = viewW / 2 + (tx - cam.x) * cam.zoom, sy = viewH / 2 + (ty - cam.y) * cam.zoom;
       if (sx > 20 && sx < viewW - 20 && sy > 20 && sy < viewH - 20) continue;
       const a = Math.atan2(sy - viewH / 2, sx - viewW / 2);
       const m = 34;
@@ -2329,6 +2427,7 @@
     if (!second && (state !== 'playing' || player.ult < ULT_NEED)) return;
     sfx('ult');
     buzz(90);
+    cam.punch = 0.35;
     stopTime(0.08);
     if (!second) { player.ult = 0; player.ults++; if (hasArc('twinult')) player.ultAgainAt = elapsed + 0.7; }
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
@@ -2583,6 +2682,7 @@
     ui.choiceCards.replaceChildren();
     options.forEach((opt, i) => {
       const card = document.createElement('button');
+      card.style.animationDelay = `${Math.min(i, 8) * 55}ms`;
       card.className = `card${opt.big ? ' big' : ''}${opt.hero ? ' hero' : ''}${opt.combo ? ' combo' : ''}${opt.sect ? ' sect' : ''}${opt.locked ? ' locked' : ''}${opt.special ? ' special' : ''}`;
       if (opt.img) {
         card.append(pixelImg(opt.img));
@@ -2653,11 +2753,13 @@
       type, x: 0, y: 0, hp, maxHp: hp,
       speed: type.speed * (1 + Math.min(t / 360, 0.5)) * (1 + c / 2) * diff.speed,
       damage: Math.round(type.damage * (1 + t / 240) * diff.dmg),
-      contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2,
+      contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
     if (!type.boss && !type.prop && !at && t >= 90 && Math.random() < 0.01) {
       e.elite = true;
+      e.affix = Object.keys(AFFIX)[Math.floor(Math.random() * 4)];
+      if (e.affix === 'swift') e.speed *= 1.6;
       e.hp = e.maxHp = hp * 7;
       e.damage = Math.round(e.damage * 1.5);
       e.speed *= 0.9;
@@ -2721,6 +2823,7 @@
       if (!b.type.final) { b.hp *= 2.5; b.maxHp = b.hp; }
       sfx('boss');
       buzz([40, 30, 40]);
+      bossCinematic(b);
       showBanner(`${b.type.final ? '저승사자가 나타났다!' : `장의 주인, ${b.type.name}!`}`, 'boss', '쓰러뜨리면 이 장을 돌파해요');
     }
     const marchAt = MARCH_TIMES[marchIdx] ?? MARCH_TIMES[MARCH_TIMES.length - 1] + 300 * (marchIdx - MARCH_TIMES.length + 1);
@@ -2796,6 +2899,7 @@
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
     if (player.buffs.fury > 0) amount *= 1.4;
+    if (e.affix === 'armored') amount *= 0.5;
     if (player.berserk) amount *= 1 + player.berserk * (1 - clamp(player.hp / player.maxHp, 0, 1));
     if (player.arc.size) {
       if (hasArc('reverse') && player.hp < player.maxHp / 2) amount *= 1.5;
@@ -2876,6 +2980,8 @@
     }
     progress.totalKills++;
     enemies.splice(idx, 1);
+    if (decals.length > 90) decals.shift();
+    decals.push({ x: e.x, y: e.y + e.type.radius * 0.6, r: e.type.radius * (e.type.boss ? 2.2 : 1.1), life: 6, max: 6, blobs: Array.from({ length: 5 }, () => [(Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.7, 0.25 + Math.random() * 0.45]) });
     if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
     if (e.type.boss || e.elite) shake = Math.max(shake, e.type.boss ? 10 : 5);
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
@@ -2908,6 +3014,8 @@
       buzz(60);
       return;
     }
+    if (e.affix === 'volatile') bombs.push({ x: e.x, y: e.y, t: 0.9, max: 0.9, r: 95, dmg: e.damage * 1.4 });
+    if (e.affix === 'split') for (let i = 0; i < 3; i++) spawnEnemy(e.type, 0, 0, { x: e.x + Math.cos(i * 2.1) * 24, y: e.y + Math.sin(i * 2.1) * 24 });
     if (e.elite) {
       stopTime(0.06);
       buzz(30);
@@ -2998,12 +3106,21 @@
         });
       }
     }
-    if (player.moving) {
-      const len = Math.hypot(dx, dy);
+    {
+      // accelerate / brake smoothly instead of snapping to full speed
+      const len = Math.hypot(dx, dy) || 1;
       const spd = player.speed * (player.boost > 0 ? 1.4 : 1) * (player.buffs.swift > 0 ? 1.35 : 1);
-      player.x += (dx / len) * spd * dt;
-      player.y += (dy / len) * spd * dt;
+      const tvx = player.moving ? (dx / len) * spd : 0, tvy = player.moving ? (dy / len) * spd : 0;
+      const k = Math.min(1, dt * (player.moving ? 16 : 12));
+      player.vx += (tvx - player.vx) * k;
+      player.vy += (tvy - player.vy) * k;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
       if (dx !== 0) player.facing = Math.sign(dx);
+      if (player.moving && (player.dustT -= dt) <= 0 && particles.length < PARTICLE_CAP) {
+        player.dustT = 0.13;
+        particles.push({ x: player.x - player.facing * 6, y: player.y + player.radius * 0.95, vx: -player.vx * 0.12, vy: -12, life: 0.4, max: 0.4, size: 4, shape: 'mist', color: '#cdbf9f', rot: 0 });
+      }
     }
     if (player.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.regen * dt);
     if (player.invuln > 0) player.invuln -= dt;
@@ -3016,6 +3133,40 @@
     }
     if (player.atkCd > 0) player.atkCd -= dt;
     if (shake > 0) shake = Math.max(0, shake - dt * 30);
+  }
+
+  // Damage to the hero (contact, explosions...). Returns true when the run ended.
+  function hurtPlayer(raw) {
+    if (player.invuln > 0) return false;
+    const hurt = Math.max(1, Math.round(raw * player.armor * (player.buffs.guard > 0 ? 0.5 : 1)));
+    player.hp -= hurt;
+    sfx('hurt');
+    buzz(35);
+    stopTime(0.04);
+    player.invuln = 0.5;
+    shake = Math.max(shake, 4);
+    addFloatText(player.x, player.y - player.radius - 6, `-${hurt}`, '#e0503f');
+    if (player.hp <= 0 && player.revives > 0) {
+      player.revives--;
+      player.hp = player.maxHp * 0.5;
+      player.invuln = 2.5;
+      player.glow = 1.5;
+      flash = 0.5;
+      ringBlast(player.x, player.y, 260, 40, 60, 'gold');
+      if (player.phoenix) {
+        player.phoenix = false;
+        player.hp = player.maxHp;
+        dmgSrc = 'item';
+        ringBlast(player.x, player.y, 420, 300 + player.level * 20, 80, 'blood');
+        burst(player.x, player.y, 60, ['#ff7828', '#ffd060', '#ffffff', '#e0302a'], 360, 1.2, 6, true);
+        showBanner('불사조 강림!', '', '불꽃 속에서 HP 전부 회복하며 되살아났어요');
+      } else showBanner('환생!', '', 'HP 절반으로 되살아났어요');
+    } else if (player.hp <= 0) {
+      player.hp = 0;
+      gameOver();
+      return true;
+    }
+    return false;
   }
 
   function updateEnemies(dt) {
@@ -3034,6 +3185,7 @@
       } else if (d > farLimit) { placeOnRing(e); continue; }
       if (e.flash > 0) e.flash -= dt;
       if (e.hurt > 0) e.hurt -= dt;
+      if (e.born > 0) e.born -= dt;
       if (frozen) continue;
       let speed = e.march || e.type.gold ? 0 : e.speed;
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
@@ -3078,35 +3230,8 @@
         continue;
       }
       if (d < e.type.radius + player.radius * 0.8 && e.contactCd <= 0 && player.invuln <= 0) {
-        const hurt = Math.max(1, Math.round(e.damage * player.armor * (player.buffs.guard > 0 ? 0.5 : 1)));
-        player.hp -= hurt;
-        sfx('hurt');
-        buzz(35);
-        stopTime(0.04);
-        player.invuln = 0.5;
-        shake = Math.max(shake, 4);
         e.contactCd = 0.6;
-        addFloatText(player.x, player.y - player.radius - 6, `-${hurt}`, '#e0503f');
-        if (player.hp <= 0 && player.revives > 0) {
-          player.revives--;
-          player.hp = player.maxHp * 0.5;
-          player.invuln = 2.5;
-          player.glow = 1.5;
-          flash = 0.5;
-          ringBlast(player.x, player.y, 260, 40, 60, 'gold');
-          if (player.phoenix) {
-            player.phoenix = false;
-            player.hp = player.maxHp;
-            dmgSrc = 'item';
-            ringBlast(player.x, player.y, 420, 300 + player.level * 20, 80, 'blood');
-            burst(player.x, player.y, 60, ['#ff7828', '#ffd060', '#ffffff', '#e0302a'], 360, 1.2, 6, true);
-            showBanner('불사조 강림!', '', '불꽃 속에서 HP 전부 회복하며 되살아났어요');
-          } else showBanner('환생!', '', 'HP 절반으로 되살아났어요');
-        } else if (player.hp <= 0) {
-          player.hp = 0;
-          gameOver();
-          return;
-        }
+        if (hurtPlayer(e.damage)) return;
       }
     }
     if (enemies.some((e) => e.gone)) enemies = enemies.filter((e) => !e.gone);
@@ -3833,12 +3958,12 @@
     const dx = Math.cos(player.atkDir), dy = Math.sin(player.atkDir);
     const side = dx >= 0 ? 1 : -1;
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
-    for (const t of player.trail) drawSprite(player.hero, t.x, t.y - ((SPRITES[player.hero]?.size || 48) / 2 - r), { groundR: r + (SPRITES[player.hero]?.size || 48) / 2 - r, alpha: t.life * 1.6, sx: grow, sy: grow, flash: true });
+    for (const t of player.trail) drawSprite(player.hero, t.x, t.y - ((SPRITES[player.hero]?.size || 48) / 2 - r), { groundR: r + (SPRITES[player.hero]?.size || 48) / 2 - r, alpha: t.life * 1.6, sx: grow, sy: grow, flash: true, flip: player.facing < 0 });
     const reach = style === 'cast' ? 3 : 9;
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
     const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
-    const opts = (k, alpha) => ({ flip: false, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk ? Math.sin(anim * 2.6) * 0.14 : 0), sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
+    const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.07, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
     if (player.atk > 0 && style !== 'cast') {
       for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
     }
@@ -4008,7 +4133,25 @@
     }
     const sq = t.prop || player.freeze > 0 ? 0 : 0.05 * b;
     const hk = e.hurt > 0 && !t.prop ? e.hurt / 0.14 : 0;
-    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: t.alpha });
+    const bk = e.born > 0 ? 1 - e.born / 0.45 : 1;
+    if (bk < 1) {
+      // rising out of a puddle of ink
+      ctx.fillStyle = `rgba(42, 34, 36, ${0.45 * (1 - bk)})`;
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y + r * 0.8, r * 1.5 * (0.5 + bk), r * 0.5 * (0.5 + bk), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (t.alpha ?? 1) * bk, flip: !t.prop && player.x < e.x });
+    if (e.affix && bk >= 1) {
+      ctx.font = 'bold 12px "Gowun Batang", serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(42, 34, 36, 0.9)';
+      const label = AFFIX[e.affix].name;
+      ctx.strokeText(label, e.x, e.y - t.barY - 6);
+      ctx.fillStyle = AFFIX[e.affix].color;
+      ctx.fillText(label, e.x, e.y - t.barY - 6);
+    }
     if (t.boss || e.elite || (!t.prop && e.hp < e.maxHp)) {
       const w = t.boss ? 56 : e.elite ? 40 : 26;
       const x = Math.round(e.x - w / 2), y = Math.round(e.y - t.barY);
@@ -4021,24 +4164,48 @@
     }
   }
 
+  function updateCamera(dt) {
+    let tx = player.x + (player.vx || 0) * 0.18, ty = player.y + (player.vy || 0) * 0.18;
+    let zoom = 1;
+    if (cinematic) {
+      cinematic.t -= dt;
+      tx = cinematic.x; ty = cinematic.y; zoom = 1.12;
+      if (cinematic.t <= 0) { cinematic = null; ui.letterbox.classList.remove('on'); }
+    }
+    if (cam.punch > 0) { cam.punch -= dt; zoom = Math.max(zoom, 1 + cam.punch * 0.25); }
+    const k = state === 'playing' ? Math.min(1, dt * (cinematic ? 3 : 7)) : 1;
+    cam.x += (tx - cam.x) * k;
+    cam.y += (ty - cam.y) * k;
+    cam.zoom += (zoom - cam.zoom) * Math.min(1, dt * 6);
+  }
+  function bossCinematic(e) {
+    cinematic = { t: 1.4, x: e.x, y: e.y };
+    ui.letterbox.classList.add('on');
+    player.invuln = Math.max(player.invuln, 1.6);
+  }
+
   function render() {
     const sk = state === 'playing' ? shake : 0;
-    const camX = Math.round(player.x - viewW / 2 + (Math.random() - 0.5) * sk);
-    const camY = Math.round(player.y - viewH / 2 + (Math.random() - 0.5) * sk);
+    const z = cam.zoom;
+    const camX = Math.round((cam.x - viewW / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
+    const camY = Math.round((cam.y - viewH / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
     ctx.save();
+    ctx.scale(z, z);
     ctx.translate(-camX, -camY);
 
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = bgPattern || '#e9dfc6';
-    ctx.fillRect(camX, camY, viewW, viewH);
+    ctx.fillRect(camX, camY, viewW / z, viewH / z);
     if (state !== 'title' && curStage().tint) {
       ctx.fillStyle = curStage().tint;
-      ctx.fillRect(camX, camY, viewW, viewH);
+      ctx.fillRect(camX, camY, viewW / z, viewH / z);
     }
+    drawDecals();
 
     drawAura();
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawBelow) WEAPONS[id].drawBelow(w);
     drawZones();
+    drawBombs();
     drawShrines();
     drawMines();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
@@ -4131,7 +4298,7 @@
       ctx.fill();
     }
 
-    if (state !== 'title') drawPointers();
+    if (state !== 'title') { drawAmbient(); drawPointers(); }
     if (state !== 'title' && player.hp < player.maxHp * 0.3) {
       const pulse = 0.55 + 0.45 * Math.sin(anim * 7);
       const g = ctx.createRadialGradient(viewW / 2, viewH / 2, Math.min(viewW, viewH) * 0.3, viewW / 2, viewH / 2, Math.hypot(viewW, viewH) / 2);
@@ -4438,8 +4605,9 @@
     if (state === 'playing' || state === 'title') anim += dt;
     if (state === 'playing') {
       if (hitstop > 0) hitstop -= dt;
-      else update(dt);
+      else update(cinematic ? dt * 0.3 : dt);
     }
+    updateCamera(dt);
     render();
     requestAnimationFrame(frame);
   }
