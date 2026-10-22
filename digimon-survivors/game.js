@@ -1633,6 +1633,7 @@
     jeoseung: { name: '저승사자', sprite: 'jeoseung', hp: 1500, speed: 72, damage: 40, radius: 28, xp: 300, boss: true, final: true, barY: 42, summon: true, special: 'souls' },
     heukyo: { name: '흑요장군', sprite: 'heukyo', hp: 330, speed: 52, damage: 20, radius: 24, xp: 60, boss: true, barY: 34, summon: true, special: 'charge' },
   };
+  for (const [k, t] of Object.entries(ENEMY_TYPES)) t.key = k;
   const BOSSES = [ENEMY_TYPES.daedokkaebi, ENEMY_TYPES.imugi, ENEMY_TYPES.heukyo];
   const MAX_ENEMIES = 320;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
@@ -1721,6 +1722,7 @@
 
   // ---------- Sound (synthesised with WebAudio, no files) ----------
   const settings = progress.settings || (progress.settings = { sfx: true, music: true, vib: true });
+  for (const k of ['shake', 'nums', 'flash']) if (settings[k] === undefined) settings[k] = true;
   let ac = null, master = null, musicBus = null;
   function ensureAudio() {
     if (!ac) {
@@ -1843,7 +1845,7 @@
     for (const el of document.querySelectorAll('.settings')) buildSettings(el);
   }
   function buildSettings(el) {
-    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동']].map(([k, label]) => {
+    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동'], ['shake', '화면 흔들림'], ['nums', '피해 숫자'], ['flash', '번쩍임']].map(([k, label]) => {
       const b = document.createElement('button');
       b.className = 'tool' + (settings[k] ? ' armed' : '');
       b.textContent = `${label} ${settings[k] ? '켬' : '끔'}`;
@@ -2617,7 +2619,7 @@
     }
     // golden dokkaebi
     if (stageTime > 30 && (goldTimer -= dt) <= 0) {
-      goldTimer = 100 + Math.random() * 60;
+      goldTimer = player.goldRush ? 35 + Math.random() * 20 : 100 + Math.random() * 60;
       const a = Math.random() * Math.PI * 2, r = Math.max(viewW, viewH) * 0.42;
       spawnEnemy(ENEMY_TYPES.golddokkaebi, 0, 0, { x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r });
       const g = enemies[enemies.length - 1];
@@ -2677,6 +2679,8 @@
   function drawPointers() {
     const targets = [];
     for (const e of enemies) if (e.type.boss || e.type.gold) targets.push([e.x, e.y, e.type.gold ? '#ffd23c' : '#b8322a']);
+    for (const e of enemies) if (e.elite) targets.push([e.x, e.y, '#ff9a30']);
+    for (const it of pickups) if (it.kind === 'treasure' || it.kind === 'naedan') targets.push([it.x, it.y, it.kind === 'naedan' ? '#b070ff' : '#ffe066']);
     for (const sh of shrines) targets.push([sh.x, sh.y, `rgb(${sh.buff.rgb})`]);
     for (const [tx, ty, col] of targets) {
       const sx = viewW / 2 + (tx - cam.x) * cam.zoom, sy = viewH / 2 + (ty - cam.y) * cam.zoom;
@@ -2776,6 +2780,7 @@
     if (keys.has('KeyA') || keys.has('ArrowLeft')) dx -= 1;
     if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1;
     if (stick.active && Math.hypot(stick.dx, stick.dy) > 8) { dx = stick.dx; dy = stick.dy; }
+    if (Math.hypot(pad.dx, pad.dy) > 0.25) { dx = pad.dx; dy = pad.dy; }
     return [dx, dy];
   }
   function dash() {
@@ -2975,6 +2980,16 @@
     return offer;
   }
 
+  function beginRun(id) {
+    resetGame(id);
+    applyHeatToPlayer(player);
+    enterStage(0);
+    modalQueue.unshift({ type: 'arcana' });
+    for (let i = 0; i < player.innChests; i++) pickups.push({ kind: 'treasure', x: player.x + 60 + i * 30, y: player.y + 20 });
+    if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
+    updateHud();
+    if (state !== 'choice') openNextModal();
+  }
   function openNextModal() {
     const m = modalQueue.shift();
     if (!m) return;
@@ -2983,15 +2998,7 @@
     if (m.type === 'hero') {
       showChoice('누구로 요괴를 물리칠까요?', '협객마다 시작 무공과 특성이 달라요', Object.entries(HEROES).sort((x, y) => !heroUnlocked(x[0]) - !heroUnlocked(y[0])).map(([id, H]) => (heroUnlocked(id) ? {
         img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait} · 숙련 Lv.${masteryLevel(id)}`, hero: true, special: !!H.unlock,
-        pick: () => {
-          resetGame(id);
-          applyHeatToPlayer(player);
-          enterStage(0);
-          modalQueue.unshift({ type: 'arcana' });
-          for (let i = 0; i < player.innChests; i++) pickups.push({ kind: 'treasure', x: player.x + 60 + i * 30, y: player.y + 20 });
-          if (!progress.played.includes(id)) { progress.played.push(id); saveProgress(); }
-          updateHud();
-        },
+        pick: () => beginRun(id),
       } : {
         img: id, title: '🔒 ???', desc: ACHV_BY_ID[H.unlock].secret ? `해금 조건: ??? (${ACHV_BY_ID[H.unlock].hint})` : `해금 조건: 업적 「${ACHV_BY_ID[H.unlock].name}」 (${ACHV_BY_ID[H.unlock].desc})`, hero: true, locked: true, special: true,
       })));
@@ -3123,7 +3130,7 @@
     { id: 'twin', icon: '📿', name: '쌍룡검', need: ['slash', 'beam'], desc: '치명타 +12%, 치명 피해 +0.4', apply(p) { p.crit += 0.12; p.critMul += 0.4; } },
     { id: 'tri', icon: '📿', name: '삼재검진', need: ['lightning', 'beam', 'quake'], desc: '모든 피해 +25%, 보스 피해 +25%', apply(p) { p.dmgMul += 0.25; p.bossMul *= 1.25; } },
     { id: 'samadhi', icon: '📿', name: '삼매진화', need: ['orbit', 'firework', 'thorn'], desc: '범위 +25%, 지속 피해 ×1.5', apply(p) { p.area *= 1.25; p.dotMul *= 1.5; } },
-    { id: 'myriad', icon: '📿', name: '만검귀종', need: ['shot', 'fairy', 'slash'], desc: '관통 +2, 발사 수 +1', apply(p) { p.pierce += 2; p.extra++; } },
+    { id: 'myriad', icon: '📿', name: '만검일화', need: ['shot', 'fairy', 'slash'], desc: '관통 +2, 발사 수 +1', apply(p) { p.pierce += 2; p.extra++; } },
     { id: 'wind', icon: '📿', name: '풍뢰신행', need: ['tornado', 'boomerang', 'mine'], desc: '이동 속도 +15%, 대기시간 -10%', apply(p) { p.speed *= 1.15; p.haste *= 0.9; } },
   ];
   const relicName = (r) => r.need.map((id) => weaponName(id)).join('+');
@@ -3205,6 +3212,44 @@
     if (heat >= 9) { p.maxHp = Math.round(p.maxHp * 0.7); p.hp = Math.min(p.hp, p.maxHp); }
   }
 
+  // ---------- 일일 도전: everyone gets the same hero, difficulty and twists for the day ----------
+  const DAILY_MODS = [
+    { name: '정예 행렬', desc: '정예가 세 배로 나와요', run() { diff = { ...diff, elite: diff.elite * 3 }; } },
+    { name: '유리 대포', desc: '주는 피해 +60%, 최대 HP -40%', run(p) { p.dmgMul += 0.6; p.maxHp = Math.round(p.maxHp * 0.6); p.hp = p.maxHp; } },
+    { name: '질풍노도', desc: '나와 요괴 모두 이동 속도 +25%', run(p) { p.speed *= 1.25; diff = { ...diff, speed: diff.speed * 1.25 }; } },
+    { name: '황금비', desc: '은자 ×2, 황금 도깨비가 자주 나와요', run(p) { p.greed *= 2; goldTimer = 20; p.goldRush = true; } },
+    { name: '피의 서약', desc: '회복 불가(회복량 0), 대신 피해 +35%', run(p) { p.healMul = 0; p.regen = 0; p.dmgMul += 0.35; } },
+    { name: '거인족', desc: '요괴 체력 ×1.5, 경험치 +50%', run(p) { diff = { ...diff, hp: diff.hp * 1.5 }; p.xpMul += 0.5; } },
+    { name: '인해전술', desc: '요괴가 1.6배 많이 나와요, 줍는 범위 ×2', run(p) { diff = { ...diff, spawn: diff.spawn * 1.6 }; p.pickupRadius *= 2; } },
+    { name: '무공 폭주', desc: '시작 무공 3단계, 대기시간 -20%', run(p) { grantWeapon(p, HEROES[p.hero].weapon, 2); p.haste *= 0.8; } },
+  ];
+  let daily = null;
+  function dailyInfo() {
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let h = 0;
+    for (const ch of date) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => { h = (h * 1103515245 + 12345) >>> 0; return h / 4294967296; };
+    const heroes = Object.keys(HEROES).filter((id) => !HEROES[id].unlock);
+    const hero = heroes[Math.floor(rnd() * heroes.length)];
+    const i = Math.floor(rnd() * DAILY_MODS.length);
+    let j = Math.floor(rnd() * (DAILY_MODS.length - 1));
+    if (j >= i) j++;
+    return { date, hero, mods: [DAILY_MODS[i], DAILY_MODS[j]] };
+  }
+  function startDaily() {
+    if (state !== 'title' && state !== 'gameover' && state !== 'victory') return;
+    const info = dailyInfo();
+    startGame(true);
+    daily = info;
+    diff = DIFFICULTIES.find((d) => d.id === 'hard');
+    heat = 0;
+    diff = { ...diff, name: '일일 도전' };
+    beginRun(info.hero);
+    for (const m of info.mods) m.run(player);
+    showBanner('일일 도전', '', info.mods.map((m) => m.name).join(' · '));
+  }
+
   // ---------- 점수 · 품계 ----------
   const DIFF_SCORE = { easy: 0.5, normal: 1, hard: 1.6, hell: 2.4, cheonma: 3.5 };
   const SCORE_RANKS = [
@@ -3222,8 +3267,15 @@
     if (best) progress.bestScore = score;
     progress.records = [...(progress.records || []), { score, hero: player.hero, diff: diff.name, win: !!win }]
       .sort((a, b) => b.score - a.score).slice(0, 5);
+    progress.history = [{ score, hero: player.hero, diff: diff.name, daily: !!daily, result: win ? '퇴치' : '패배', stage: curStage().name.split(' · ')[0], time: fmtTime(elapsed) }, ...(progress.history || [])].slice(0, 10);
+    if (daily) {
+      const d = progress.daily && progress.daily.date === daily.date ? progress.daily : { date: daily.date, best: 0, tries: 0 };
+      d.tries++;
+      d.best = Math.max(d.best, score);
+      progress.daily = d;
+    }
     let unlocked = 0;
-    if (win && diff.id !== 'easy' && heat >= (progress.heat || 0) && heat < HEAT_MAX) {
+    if (!daily && win && diff.id !== 'easy' && heat >= (progress.heat || 0) && heat < HEAT_MAX) {
       progress.heat = heat + 1;
       unlocked = progress.heat;
     }
@@ -3462,7 +3514,7 @@
     e.y += (ky / k) * p;
     if (!quiet || crit) {
       const mag = Math.min(8, Math.log10(amount + 1) * 2.4);
-      addFloatText(e.x + (Math.random() - 0.5) * 10, e.y - e.type.radius, crit ? `${Math.round(amount)}!` : String(Math.round(amount)), crit ? '#ff6a4d' : amount >= 150 ? '#ffd76b' : '#fff', crit ? 21 + mag : 13 + mag, crit);
+      if (settings.nums) addFloatText(e.x + (Math.random() - 0.5) * 10, e.y - e.type.radius, crit ? `${Math.round(amount)}!` : String(Math.round(amount)), crit ? '#ff6a4d' : amount >= 150 ? '#ffd76b' : '#fff', crit ? 21 + mag : 13 + mag, crit);
       sfx(crit ? 'crit' : 'hit');
       if (crit && (e.type.boss || e.elite)) stopTime(0.035);
     }
@@ -3512,6 +3564,7 @@
       });
     }
     progress.totalKills++;
+    if (e.type.key) { const b = progress.bestiary || (progress.bestiary = {}); b[e.type.key] = (b[e.type.key] || 0) + 1; }
     enemies.splice(idx, 1);
     if (decals.length > 90) decals.shift();
     decals.push({ x: e.x, y: e.y + e.type.radius * 0.6, r: e.type.radius * (e.type.boss ? 2.2 : 1.1), life: 6, max: 6, blobs: Array.from({ length: 5 }, () => [(Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.7, 0.25 + Math.random() * 0.45]) });
@@ -3576,6 +3629,7 @@
       sfx('boom');
       buzz([60, 40, 90]);
       player.bossKills++;
+      for (const g of pickups) if (g.kind === 'coin' || g.kind === 'coin_gold') g.vel = 300;
       pickups.push({ kind: 'jumeoni', value: 20, x: e.x, y: e.y + 20 });
       dropGem(e.x, e.y - 22);
       progress.bosses[e.type.name] = true;
@@ -3966,7 +4020,22 @@
     }
   }
 
+  // Too many coins lying around? Fold the far-away ones into one big coin (keeps the frame rate up).
+  let mergeT = 0;
+  function mergeCoins(dt) {
+    if ((mergeT -= dt) > 0 || pickups.length < 220) return;
+    mergeT = 1;
+    let sum = 0, sx = 0, sy = 0, n = 0;
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const it = pickups[i];
+      if ((it.kind !== 'coin' && it.kind !== 'coin_gold') || it.vel || dist(it.x, it.y, player.x, player.y) < 650) continue;
+      sum += it.value; sx += it.x; sy += it.y; n++;
+      pickups.splice(i, 1);
+    }
+    if (n) pickups.push({ kind: 'coin_gold', value: sum, x: sx / n, y: sy / n });
+  }
   function updatePickups(dt) {
+    mergeCoins(dt);
     for (let i = pickups.length - 1; i >= 0; i--) {
       const it = pickups[i];
       const d = dist(player.x, player.y, it.x, it.y);
@@ -4847,7 +4916,7 @@
   }
 
   function render() {
-    const sk = state === 'playing' ? shake : 0;
+    const sk = state === 'playing' && settings.shake ? shake : 0;
     const z = cam.zoom;
     const camX = Math.round((cam.x - viewW / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
     const camY = Math.round((cam.y - viewH / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
@@ -4978,7 +5047,7 @@
       ctx.fillRect(0, 0, viewW, viewH);
     }
     if (flash > 0) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, flash * 1.6)})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(settings.flash ? 1 : 0.12, flash * 1.6)})`;
       ctx.fillRect(0, 0, viewW, viewH);
     }
   }
@@ -5016,6 +5085,31 @@
       row.append(recipe, result);
       return row;
     }));
+    const bestiary = progress.bestiary || {};
+    $('beast-list').replaceChildren(...Object.entries(ENEMY_TYPES).filter(([, t]) => !t.prop && t.scale === undefined).map(([k, t]) => {
+      const n = bestiary[k] || 0;
+      const el = document.createElement('div');
+      el.className = 'beast' + (n ? '' : ' locked') + (t.boss ? ' special' : '');
+      const img = pixelImg(t.sprite);
+      const cap = document.createElement('small');
+      cap.textContent = n ? `${t.name} · ${n.toLocaleString()}` : '???';
+      el.title = n ? `${t.name}: 체력 ${t.hp} · 속도 ${t.speed} · 공격 ${t.damage}${t.special ? ' · 특수 공격' : t.ai ? ' · 특수 행동' : ''}` : '아직 쓰러뜨리지 못한 요괴';
+      el.append(img, cap);
+      return el;
+    }));
+    $('beast-count').textContent = `${Object.keys(bestiary).filter((k) => ENEMY_TYPES[k] && !ENEMY_TYPES[k].prop).length}/${Object.values(ENEMY_TYPES).filter((t) => !t.prop && t.scale === undefined).length}`;
+    $('run-list').replaceChildren(...(progress.history || []).map((r) => {
+      const el = document.createElement('div');
+      el.className = 'book-row';
+      const a = document.createElement('span');
+      a.textContent = `[${r.diff}] ${HEROES[r.hero]?.name || r.hero} · ${r.stage} · ${r.time}`;
+      const b = document.createElement('span');
+      b.className = 'result';
+      b.textContent = `${r.result} · ${r.score.toLocaleString()}점 ${rankName(r.score)}`;
+      el.append(a, b);
+      return el;
+    }));
+    if (!(progress.history || []).length) $('run-list').textContent = '아직 기록이 없어요';
     ui.heroList.replaceChildren(...Object.keys(HEROES).map((id) => {
       const img = pixelImg(id);
       img.title = heroUnlocked(id) ? `${HEROES[id].name} · ${HEROES[id].role}` : '???';
@@ -5027,6 +5121,9 @@
     ui.bookCount.textContent = `${seen.size} / ${Object.keys(COMBOS).length}`;
     const heroes = Object.keys(HEROES).filter(heroUnlocked).length;
     ui.titleStats.textContent = `${progress.sectName ? `[${progress.sectName}] ` : ''}명성 ${progress.fame || 0} · 최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥${progress.bestScore ? ` · 최고 점수 ${progress.bestScore.toLocaleString()}점 ${rankName(progress.bestScore)}` : ''}${progress.heat ? ` · 업화 ${progress.heat}` : ''}`;
+    const di = dailyInfo();
+    const db = progress.daily && progress.daily.date === di.date ? progress.daily : null;
+    $('daily-info').textContent = `오늘의 일일 도전 (${di.date}): ${HEROES[di.hero].name} · 고수 · ${di.mods.map((m) => `${m.name}(${m.desc})`).join(' · ')}${db ? ` · 오늘 최고 ${db.best.toLocaleString()}점 (${db.tries}회)` : ''}`;
   }
 
   function openAchievements() {
@@ -5123,6 +5220,24 @@
       return el;
     }));
     ui.pauseDmg.replaceChildren(...damageReport());
+    // 합성 길잡이: what each owned technique still needs to evolve (recipes you've found before are spelled out).
+    $('pause-guide').replaceChildren(...Object.keys(player.weapons).filter((id) => COMBOS[id] && !player.weapons[id].evolved).map((id) => {
+      const c = COMBOS[id], w = player.weapons[id];
+      const el = document.createElement('div');
+      el.className = 'book-row' + (comboReady(id) ? '' : ' unseen');
+      const need = [`${weaponName(id)} Lv.${w.level}/${WEAPONS[id].max}`];
+      if (c.partner) need.push(`${weaponName(c.partner)} Lv.${player.weapons[c.partner]?.level || 0}/${WEAPONS[c.partner].max}`);
+      else need.push(`${PASSIVE_BY_ID[c.passive].title} ${player.picks[c.passive] ? '✓' : '필요'}`);
+      const known = seen.has(id) || comboReady(id);
+      const a = document.createElement('span');
+      a.textContent = known ? need.join(' + ') : `${weaponName(id)} Lv.${w.level}/${WEAPONS[id].max} + ???`;
+      const b = document.createElement('span');
+      b.className = 'result';
+      richText(b, comboReady(id) ? `${c.icon} ${c.name} 준비됨!` : known ? `${c.icon} ${c.name}` : '???');
+      el.append(a, b);
+      return el;
+    }));
+    if (!$('pause-guide').children.length) $('pause-guide').textContent = '아직 합성할 수 있는 무공이 없어요';
     ui.pauseStats.textContent = `[${diff.name}] ${REALMS[player.realm].name} · ${rankOf(player.realm)} · 피해 ×${player.dmgMul.toFixed(2)} · 치명타 ${Math.round(player.crit * 100)}% · 대기시간 ×${player.haste.toFixed(2)} · 받는 피해 ×${player.armor.toFixed(2)} · 은자 ${Math.floor(player.gold)}냥${player.revives ? ` · 환생 ${player.revives}` : ''}`;
     ui.quitBtn.textContent = '로비로 나가기';
     ui.quitBtn.dataset.confirm = '';
@@ -5140,8 +5255,9 @@
   }
 
   const isTouch = window.matchMedia('(hover: none)').matches || 'ontouchstart' in window;
-  function startGame() {
+  function startGame(isDaily = false) {
     if (state !== 'title' && state !== 'gameover' && state !== 'victory') return;
+    if (isDaily !== true) daily = null;
     // Phones: go full screen when a run starts (ignored where unsupported, e.g. already installed as an app).
     if (isTouch && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     resetGame();
@@ -5150,6 +5266,7 @@
     updateHud();
     state = 'playing';
     heat = 0;
+    if (isDaily === true) return;
     modalQueue.push({ type: 'difficulty' }, { type: 'hero' });
     openNextModal();
   }
@@ -5245,7 +5362,8 @@
   canvas.addEventListener('pointerup', endStick);
   canvas.addEventListener('pointercancel', endStick);
   $('start-btn').addEventListener('click', startGame);
-  $('restart-btn').addEventListener('click', startGame);
+  $('restart-btn').addEventListener('click', () => (daily ? startDaily() : startGame()));
+  $('daily-btn').addEventListener('click', startDaily);
   for (const id of ['achv-btn', 'achv-btn-2']) $(id).addEventListener('click', openAchievements);
   $('achv-close').addEventListener('click', () => ui.achv.classList.add('hidden'));
   $('shop-btn').addEventListener('click', openShop);
@@ -5299,11 +5417,49 @@
   ui.continueBtn.addEventListener('click', continueRun);
   $('lobby-btn').addEventListener('click', () => { if (state === 'gameover' || state === 'victory') toLobby(); });
 
+  // ---------- Gamepad ----------
+  // Left stick / d-pad moves, A dashes (or picks), Y·RB fires the ultimate, Start pauses.
+  const pad = { dx: 0, dy: 0, prev: [], sel: 0 };
+  function focusCard(i) {
+    const cards = [...ui.choiceCards.children].filter((c) => !c.classList.contains('locked'));
+    if (!cards.length) return;
+    pad.sel = (i + cards.length) % cards.length;
+    for (const c of ui.choiceCards.children) c.classList.remove('pad-focus');
+    cards[pad.sel].classList.add('pad-focus');
+    cards[pad.sel].scrollIntoView({ block: 'nearest' });
+  }
+  function pollPad() {
+    const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(Boolean);
+    if (!gp) { pad.dx = pad.dy = 0; return; }
+    const b = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    const hit = (i) => b(i) && !pad.prev[i];
+    pad.dx = Math.abs(gp.axes[0]) > 0.2 ? gp.axes[0] : (b(15) ? 1 : 0) - (b(14) ? 1 : 0);
+    pad.dy = Math.abs(gp.axes[1]) > 0.2 ? gp.axes[1] : (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
+    if (state === 'choice') {
+      if (!ui.choiceCards.querySelector('.pad-focus')) focusCard(0);
+      if (hit(15) || hit(13)) focusCard(pad.sel + 1);
+      if (hit(14) || hit(12)) focusCard(pad.sel - 1);
+      if (hit(0)) { const c = ui.choiceCards.querySelector('.pad-focus'); if (c) c.click(); }
+      if (hit(2)) { const t = ui.choiceTools.children[0]; if (t) t.click(); }
+    } else if (state === 'playing') {
+      if (hit(0) || hit(4) || hit(6)) dash();
+      if (hit(3) || hit(5) || hit(7)) ultimate();
+    } else if ((state === 'title' || state === 'gameover' || state === 'victory') && hit(0)) {
+      const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden') || !ui.sectScreen.classList.contains('hidden');
+      if (!overlayOpen) startGame();
+    }
+    if (hit(9) && (state === 'playing' || state === 'paused')) togglePause();
+    if (hit(1) && state === 'paused') togglePause();
+    pad.prev = gp.buttons.map((x) => x.pressed);
+  }
+  window.addEventListener('gamepadconnected', () => showToast('🎮 게임패드 연결됨', '스틱 이동 · A 경공 · Y/RB 필살기 · Start 일시정지'));
+
   // ---------- Main loop ----------
   let lastTime = 0;
   function frame(ts) {
     const dt = Math.min((ts - lastTime) / 1000 || 0, 0.05);
     lastTime = ts;
+    pollPad();
     if (state === 'playing' || state === 'title') anim += dt;
     if (state === 'playing') {
       if (hitstop > 0) hitstop -= dt;

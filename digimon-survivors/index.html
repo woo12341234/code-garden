@@ -59,6 +59,11 @@
       <div id="book-list"></div>
       <h3>협객</h3>
       <div id="hero-list"></div>
+      <h3>요괴 도감 <span id="beast-count"></span></h3>
+      <p class="hint">쓰러뜨린 요괴만 기록돼요. 그림에 마우스를 올리면 능력치가 보여요.</p>
+      <div id="beast-list"></div>
+      <h3>최근 기록</h3>
+      <div id="run-list"></div>
     </div>
   </div>
 
@@ -70,14 +75,16 @@
     <p class="subtitle">협객을 골라 밤마다 몰려오는 요괴를 물리치세요</p>
     <p id="title-stats" class="hint"></p>
     <p class="teaser">무공을 극한까지 단련하면, 비급에 없던 무언가가 깨어난다고 하는데…</p>
-    <p id="controls-hint" class="hint">WASD·방향키 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
+    <p id="controls-hint" class="hint">WASD·방향키·게임패드 또는 화면 드래그로 이동 · 공격은 자동 · Space 경공 대시 · Q 필살기 · Esc 일시정지</p>
     <div class="btn-row">
       <button id="start-btn" class="btn">출정</button>
+      <button id="daily-btn" class="btn ghost">일일 도전</button>
       <button id="sect-btn" class="btn ghost">문파</button>
       <button id="shop-btn" class="btn ghost">수련장</button>
       <button id="quest-btn" class="btn ghost">의뢰</button>
       <button id="achv-btn" class="btn ghost">업적</button>
     </div>
+    <p id="daily-info" class="hint"></p>
     <div class="settings tool-row"></div>
   </div>
 
@@ -120,6 +127,8 @@
       <p id="pause-stats" class="hint"></p>
       <h3>무공 · 심법</h3>
       <div id="pause-build"></div>
+      <h3>합성 길잡이</h3>
+      <div id="pause-guide"></div>
       <h3>무공별 피해</h3>
       <div id="pause-dmg" class="dmg-list"></div>
       <h3>설정</h3>

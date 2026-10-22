@@ -528,3 +528,16 @@ body.touch .tool { padding: 8px 12px; }
 }
 
 #gameover-stats { white-space: pre-line; }
+
+/* gamepad focus on choice cards */
+.card.pad-focus { outline: 3px solid var(--red); outline-offset: 3px; transform: translateY(-4px); }
+
+/* 요괴 도감 */
+#beast-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.beast { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border: 1px solid rgba(80, 50, 80, 0.25); border-radius: 6px; background: rgba(255, 255, 255, 0.35); }
+.beast img { width: 48px; height: 48px; image-rendering: pixelated; }
+.beast small { font-size: 11px; text-align: center; line-height: 1.2; }
+.beast.special { border-color: var(--red); }
+.beast.locked img { filter: brightness(0) opacity(0.35); }
+#pause-guide { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+#daily-info { max-width: 720px; }
