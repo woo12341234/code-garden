@@ -83,3 +83,6 @@
 🔒	lock
 🏆	trophy
 🧨	firecracker
+💎	gem
+📿	beads
+🏅	medal

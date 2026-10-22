@@ -876,6 +876,30 @@ def _(g):
 
 
 # ---------- dedicated technique glyphs ----------
+@icon('gem', '💎')
+def _(g):
+    g.poly([(8, 1.5), (14, 6), (8, 14.8), (2, 6)], PURPLE)
+    g.poly([(8, 1.5), (14, 6), (8, 6.4), (2, 6)], mix(PURPLE, WHITE, 0.45))
+    g.line(5.2, 3.6, 4, 6, WHITE, 0.9)
+    g.line(8, 6.4, 8, 13.6, mul(PURPLE, 0.7), 0.9)
+
+
+@icon('beads', '📿')
+def _(g):
+    for i in range(12):
+        a = math.radians(i * 30 - 90)
+        g.disc(8 + math.cos(a) * 5.2, 7.2 + math.sin(a) * 5.2, 1.5, BROWN if i % 3 else GOLD)
+    g.poly([(7, 12.4), (9, 12.4), (9.6, 15.4), (6.4, 15.4)], BLOOD)
+
+
+@icon('medal', '🏅')
+def _(g):
+    g.poly([(4, 1), (7, 1), (9, 6), (6, 6)], BLOOD)
+    g.poly([(9, 1), (12, 1), (10, 6), (7, 6)], SKY)
+    g.disc(8, 10.4, 4.6, GOLD)
+    g.star(8, 10.4, 3.2, 1.4, 5, mix(GOLD, WHITE, 0.6))
+
+
 WGLYPH = {}
 
 
@@ -1121,6 +1145,17 @@ if __name__ == '__main__':
         g.outline()
         export(name, badge(g.px))
     print(len(ICONS), 'icons')
+    # the 내단 pickup on the ground uses the bare gem glyph
+    g = Glyph()
+    ICONS['gem'][1](g)
+    g.outline()
+    h, w = len(g.px), len(g.px[0])
+    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    for y in range(h):
+        for x in range(w):
+            if g.px[y][x] is not None:
+                img.putpixel((x, y), g.px[y][x])
+    img.resize((w * EXPORT_SCALE, h * EXPORT_SCALE), Image.NEAREST).save(os.path.join(OUT_DIR, '..', 'naedan.png'))
     for wid in list(WGLYPH) + list(REUSE):
         for evolved in (False, True):
             g = Glyph()

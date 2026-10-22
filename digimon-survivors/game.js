@@ -101,6 +101,7 @@
     seokdeung: { size: 40, color: '#b0aa9c', emoji: '🏮' },
     eunja: { size: 24, color: '#ced4de', emoji: '🪙' },
     jumeoni: { size: 28, color: '#c8323c', emoji: '💰' },
+    naedan: { size: 26, color: '#a050e0', emoji: '💎' },
     bangul: { size: 24, color: '#deb048', emoji: '🔔' },
     jeoseung: { size: 72, color: '#242028', emoji: '💀' },
     golddokkaebi: { size: 48, color: '#ecba3c', emoji: '💰' },
@@ -127,7 +128,7 @@
   }
 
   // Pixel-art badges (assets/icons) that stand in for emoji anywhere in the UI.
-  const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "👊": "fist", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker"};
+  const ICON_FILES = {"🗡️": "sword", "🔥": "fire", "⭕": "chakram", "⚡": "bolt", "☯️": "taiji", "🌀": "swirl", "💫": "qi", "🎇": "firework", "🕊️": "crane", "☠️": "poison_skull", "🔪": "slash", "🧊": "icecube", "🌪️": "tornado", "📯": "talisman", "🌸": "sakura", "🏵️": "plumfall", "🖐️": "palm", "🛕": "vajra", "🥢": "staff", "🍶": "bottle", "📍": "needles", "🧪": "flask", "⚔️": "crossed", "👑": "crown", "🥶": "icepalm", "🌨️": "snowcloud", "😈": "demon", "🩸": "blood", "🪷": "lotus", "🏔️": "mountain", "☁️": "cloud", "🔯": "formation", "🪶": "feather", "👊": "fist", "🦊": "fox", "🌕": "moon", "🌩️": "thunder", "🔱": "trident", "⛰️": "rockmount", "✨": "sparkles", "🐉": "dragon", "🐲": "dragon_red", "🦢": "swan", "❄️": "snowflake", "🕸️": "web", "💮": "whiteflower", "🙏": "pray", "🌧️": "rain", "👹": "oni", "💗": "heart", "⏳": "hourglass", "🍃": "leaf", "🧲": "magnet", "🍵": "tea", "🎯": "target", "📜": "scroll", "🛡️": "shield", "👥": "clones", "🧧": "luckbag", "🕯️": "candle", "🏹": "bow", "🍑": "peach", "💰": "money", "🔄": "reroll", "⏭️": "skip", "🚫": "banish", "💀": "skull", "🏯": "castle", "🌙": "crescent", "🌒": "darkmoon", "🌅": "sunrise", "📖": "book", "📚": "books", "🎒": "bundle", "🎁": "chest", "🏮": "lantern", "☀️": "sun", "🌈": "rainbow", "⚰️": "coffin", "🌟": "star", "🥋": "gi", "🧭": "compass", "🔒": "lock", "🏆": "trophy", "🧨": "firecracker", "💎": "gem", "📿": "beads", "🏅": "medal"};
   const EMOJI_RE = /\[\[[a-z_]+\]\]|\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
   function iconImg(emoji, cls = 'pi') {
     const token = /^\[\[([a-z_]+)\]\]$/.exec(emoji);
@@ -1980,7 +1981,7 @@
       vx: 0, vy: 0, dustT: 0, bonusCult: 0, cardCount: 3, disciples: 0, discipleList: [], innChests: 0, stageGiftBonus: 0,
       combo: 0, comboT: 0, maxCombo: 0, coinChain: 0, coinAt: -9, buffs: {}, goldKills: 0, shrinesUsed: 0, heartT: 0,
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
-      arc: new Set(), meteorT: 8, cleared: 0, trail: [],
+      arc: new Set(), meteorT: 8, cleared: 0, trail: [], relics: new Set(), gems: [], bossSeen: {},
       formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
@@ -2954,7 +2955,7 @@
       if (w ? w.level >= W.max : owned >= (player.maxWeapons || MAX_WEAPONS)) continue;
       const n = w ? w.level + 1 : 1;
       (W.sect ? sectCards : cards).push({
-        icon: weaponIcon(id), title: `${W.sect ? `[${SECTS[W.sect]}] ` : ''}${weaponName(id)} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc,
+        icon: weaponIcon(id), title: `${W.sect ? `[${SECTS[W.sect]}] ` : ''}${weaponName(id)} ${w ? '강화' : '획득'}`, desc: w ? W.up : W.desc + relicHint(id),
         stars: '★'.repeat(n) + '☆'.repeat(W.max - n), sect: !!W.sect, key: id,
         pick: () => grantWeapon(player, id),
       });
@@ -2984,6 +2985,7 @@
         img: id, title: `${H.name} · ${H.role}`, desc: `${H.allSects ? '[모든 문파] ' : H.sect ? `[${SECTS[H.sect]}] ` : ''}${[H.weapon, H.extra].filter(Boolean).map((w) => WEAPONS[w].name()).join('·')} · ${H.trait} · 숙련 Lv.${masteryLevel(id)}`, hero: true, special: !!H.unlock,
         pick: () => {
           resetGame(id);
+          applyHeatToPlayer(player);
           enterStage(0);
           modalQueue.unshift({ type: 'arcana' });
           for (let i = 0; i < player.innChests; i++) pickups.push({ kind: 'treasure', x: player.x + 60 + i * 30, y: player.y + 20 });
@@ -3000,8 +3002,15 @@
     } else if (m.type === 'difficulty') {
       showChoice('난이도', '요괴의 세기를 골라주세요 (어려울수록 은자를 더 줘요)', DIFFICULTIES.map((d) => ({
         icon: d.icon, title: d.name + (progress.clears[d.id] ? ' ✓' : ''), desc: d.desc + (d.id === progress.difficulty ? ' · 지난번 선택' : ''), sect: d.id === progress.difficulty,
-        pick: () => { diff = d; progress.difficulty = d.id; saveProgress(); },
+        pick: () => { diff = d; heat = 0; progress.difficulty = d.id; saveProgress(); if (progress.heat > 0) modalQueue.unshift({ type: 'heat' }); },
       })));
+    } else if (m.type === 'heat') {
+      showChoice('업화', '강호 이상에서 퇴치를 완료하면 다음 단계가 열려요 (최고 9단계)', Array.from({ length: progress.heat + 1 }, (_, h) => ({
+        icon: '🔥', title: h ? `업화 ${h}단계` : '업화 없음', desc: heatDesc(h), sect: h === progress.heat,
+        pick: () => setHeat(h),
+      })));
+    } else if (m.type === 'gem') {
+      showChoice(`내단 (${player.gems.length + 1}/${GEM_SLOTS})`, '요괴의 내단을 흡수해 보석 자리에 박아요', gemOffers());
     } else if (m.type === 'nextStage') {
       // chapters roll on automatically
       state = 'playing';
@@ -3051,6 +3060,7 @@
   }
 
   function closeChoice() {
+    if (player) queueMicrotask(checkRelics);
     ui.choice.classList.add('hidden');
     state = 'playing';
     banishMode = false;
@@ -3101,6 +3111,126 @@
   }
 
   // ---------- Spawning ----------
+  // ---------- 유물: owning certain techniques together wakes a relic ----------
+  const RELICS = [
+    { id: 'storm', icon: '📿', name: '뇌우의 방울', need: ['lightning', 'tornado'], desc: '모든 무공 대기시간 -12%', apply(p) { p.haste *= 0.88; } },
+    { id: 'moon', icon: '📿', name: '월하쌍인', need: ['shot', 'boomerang'], desc: '발사 수 +1', apply(p) { p.extra++; } },
+    { id: 'guard', icon: '📿', name: '호신강기', need: ['orbit', 'aura'], desc: '받는 피해 -15%', apply(p) { p.armor *= 0.85; } },
+    { id: 'heaven', icon: '📿', name: '파천검결', need: ['quake', 'beam'], desc: '모든 피해 +15%', apply(p) { p.dmgMul += 0.15; } },
+    { id: 'powder', icon: '📿', name: '벽력화약고', need: ['firework', 'mine'], desc: '범위 +20%', apply(p) { p.area *= 1.2; } },
+    { id: 'crane', icon: '📿', name: '독학', need: ['fairy', 'thorn'], desc: '지속 피해 ×1.4, 지속시간 +20%', apply(p) { p.dotMul *= 1.4; p.durMul += 0.2; } },
+    { id: 'frost', icon: '📿', name: '한빙결계', need: ['icicle', 'aura'], desc: '가까운 요괴가 느려져요, 초당 HP 1 회복', apply(p) { p.chillAura = Math.max(p.chillAura, 95); p.regen += 1; } },
+    { id: 'twin', icon: '📿', name: '쌍룡검', need: ['slash', 'beam'], desc: '치명타 +12%, 치명 피해 +0.4', apply(p) { p.crit += 0.12; p.critMul += 0.4; } },
+    { id: 'tri', icon: '📿', name: '삼재검진', need: ['lightning', 'beam', 'quake'], desc: '모든 피해 +25%, 보스 피해 +25%', apply(p) { p.dmgMul += 0.25; p.bossMul *= 1.25; } },
+    { id: 'samadhi', icon: '📿', name: '삼매진화', need: ['orbit', 'firework', 'thorn'], desc: '범위 +25%, 지속 피해 ×1.5', apply(p) { p.area *= 1.25; p.dotMul *= 1.5; } },
+    { id: 'myriad', icon: '📿', name: '만검귀종', need: ['shot', 'fairy', 'slash'], desc: '관통 +2, 발사 수 +1', apply(p) { p.pierce += 2; p.extra++; } },
+    { id: 'wind', icon: '📿', name: '풍뢰신행', need: ['tornado', 'boomerang', 'mine'], desc: '이동 속도 +15%, 대기시간 -10%', apply(p) { p.speed *= 1.15; p.haste *= 0.9; } },
+  ];
+  const relicName = (r) => r.need.map((id) => weaponName(id)).join('+');
+  function checkRelics() {
+    for (const r of RELICS) {
+      if (player.relics.has(r.id) || !r.need.every((id) => player.weapons[id])) continue;
+      player.relics.add(r.id);
+      r.apply(player);
+      showToast(`📿 유물 발동: ${r.name}`, `${relicName(r)} → ${r.desc}`);
+      burst(player.x, player.y, 26, ['#ffd76b', '#ffffff', '#c89040'], 240, 0.7, 5, true);
+      fx.push({ kind: 'ultwave', x: player.x, y: player.y, rgb: '255, 210, 110', life: 0.6, max: 0.6, small: true });
+      sfx('chest');
+    }
+  }
+  // Shown on a new-technique card when taking it would complete a relic.
+  function relicHint(id) {
+    const r = RELICS.find((x) => !player.relics.has(x.id) && x.need.includes(id) && x.need.every((n) => n === id || player.weapons[n]));
+    return r ? ` · 📿 유물 「${r.name}」 발동!` : '';
+  }
+
+  // ---------- 내단: yokai cores dropped by bosses/elites, socketed into 3 slots ----------
+  const GEM_SLOTS = 3;
+  const GEMS = [
+    { id: 'ruby', name: '혈옥', desc: '모든 피해 +14%', apply(p) { p.dmgMul += 0.14; } },
+    { id: 'sapphire', name: '청옥', desc: '모든 무공 대기시간 -10%', apply(p) { p.haste *= 0.9; } },
+    { id: 'topaz', name: '황옥', desc: '치명타 +10%, 치명 피해 +0.3', apply(p) { p.crit += 0.1; p.critMul += 0.3; } },
+    { id: 'pearl', name: '백옥', desc: '최대 HP +35, HP 35 회복', apply(p) { p.maxHp += 35; p.hp = Math.min(p.maxHp, p.hp + 35); } },
+    { id: 'obsidian', name: '흑요석', desc: '받는 피해 -12%', apply(p) { p.armor *= 0.88; } },
+    { id: 'jade', name: '비취', desc: '초당 HP 1.5 회복', apply(p) { p.regen += 1.5; } },
+    { id: 'amber', name: '호박', desc: '경험치 +25%', apply(p) { p.xpMul += 0.25; } },
+    { id: 'amethyst', name: '자수정', desc: '범위 +18%', apply(p) { p.area *= 1.18; } },
+    { id: 'moonstone', name: '월장석', desc: '이동 속도 +12%', apply(p) { p.speed *= 1.12; } },
+    { id: 'diamond', name: '금강석', desc: '보스·정예 피해 +35%', apply(p) { p.bossMul *= 1.35; } },
+    { id: 'coral', name: '산호', desc: '발사 수 +1, 모든 피해 -5%', apply(p) { p.extra++; p.dmgMul -= 0.05; } },
+    { id: 'catseye', name: '묘안석', desc: '줍는 범위 +40%, 은자 +30%', apply(p) { p.pickupRadius *= 1.4; p.greed *= 1.3; } },
+    { id: 'blood', name: '혈정', desc: '요괴를 쓰러뜨릴 때마다 HP 0.5 회복', apply(p) { p.killHeal += 0.5; } },
+    { id: 'thunder', name: '뇌정석', desc: '필살기 게이지 +40% 빨리', apply(p) { p.ultGain = (p.ultGain || 1) * 1.4; } },
+  ];
+  function gemOffers() {
+    const owned = new Set(player.gems);
+    return shuffled(GEMS.filter((g) => !owned.has(g.id))).slice(0, 3).map((g) => ({
+      icon: '💎', title: `내단: ${g.name}`, desc: g.desc, combo: true,
+      pick: () => { player.gems.push(g.id); g.apply(player); },
+    }));
+  }
+  function dropGem(x, y) {
+    if (player.gems.length + pickups.filter((it) => it.kind === 'naedan').length >= GEM_SLOTS) {
+      pickups.push({ kind: 'jumeoni', value: 30, x, y });
+      return;
+    }
+    pickups.push({ kind: 'naedan', x, y });
+  }
+
+  // ---------- 업화 (1~9): stacking extra difficulty unlocked by clearing ----------
+  const HEAT_MAX = 9;
+  const HEAT_RULES = [
+    [3, '회복량 절반'],
+    [5, '요괴 속도 +10%'],
+    [7, '보스 공격 패턴 +1'],
+    [9, '시작 최대 HP -30%'],
+  ];
+  let heat = 0;
+  function heatDesc(h) {
+    if (!h) return '업화 없이 도전해요';
+    const rules = HEAT_RULES.filter(([lv]) => h >= lv).map(([, t]) => t);
+    return `요괴 체력 +${Math.round(18 * h)}% · 공격 +${12 * h}% · 출현 +${8 * h}% · 정예 +${30 * h}%${rules.length ? ` · ${rules.join(' · ')}` : ''} · 점수 ×${(1 + 0.25 * h).toFixed(2)} · 은자 ×${(1 + 0.15 * h).toFixed(2)}`;
+  }
+  function setHeat(h) {
+    const base = DIFFICULTIES.find((d) => d.id === diff.id);
+    heat = h;
+    diff = h ? {
+      ...base, name: `${base.name}·업화${h}`,
+      hp: base.hp * (1 + 0.18 * h), dmg: base.dmg * (1 + 0.12 * h), spawn: base.spawn * (1 + 0.08 * h),
+      elite: base.elite * (1 + 0.3 * h), gold: base.gold * (1 + 0.15 * h), speed: base.speed * (h >= 5 ? 1.1 : 1),
+    } : base;
+  }
+  function applyHeatToPlayer(p) {
+    if (heat >= 3) p.healMul *= 0.5;
+    if (heat >= 9) { p.maxHp = Math.round(p.maxHp * 0.7); p.hp = Math.min(p.hp, p.maxHp); }
+  }
+
+  // ---------- 점수 · 품계 ----------
+  const DIFF_SCORE = { easy: 0.5, normal: 1, hard: 1.6, hell: 2.4, cheonma: 3.5 };
+  const SCORE_RANKS = [
+    [0, '구품'], [2500, '팔품'], [6000, '칠품'], [11000, '육품'], [18000, '오품'],
+    [28000, '사품'], [42000, '삼품'], [65000, '이품'], [100000, '일품'],
+  ];
+  const rankName = (score) => SCORE_RANKS.filter(([min]) => score >= min).pop()[1];
+  function runScore(win) {
+    const raw = kills * 2 + elapsed * 3 + stageIdx * 800 + (win ? 3000 : 0) + player.bossKills * 400 + player.elites * 80 + player.maxCombo * 2;
+    return Math.round(raw * (DIFF_SCORE[diff.id] || 1) * (1 + 0.25 * heat));
+  }
+  function recordScore(win) {
+    const score = runScore(win);
+    const best = score > (progress.bestScore || 0);
+    if (best) progress.bestScore = score;
+    progress.records = [...(progress.records || []), { score, hero: player.hero, diff: diff.name, win: !!win }]
+      .sort((a, b) => b.score - a.score).slice(0, 5);
+    let unlocked = 0;
+    if (win && diff.id !== 'easy' && heat >= (progress.heat || 0) && heat < HEAT_MAX) {
+      progress.heat = heat + 1;
+      unlocked = progress.heat;
+    }
+    saveProgress();
+    return { score, best, unlocked };
+  }
+
   // ---------- Difficulty (난이도) ----------
   const DIFFICULTIES = [
     { id: 'easy', icon: '🍃', name: '입문', desc: '요괴 체력·공격력 ×0.6, 조금 덜 나와요. 은자 ×0.7', hp: 0.6, dmg: 0.6, spawn: 0.8, speed: 0.92, gold: 0.7, ramp: 0.8, elite: 0.6 },
@@ -3160,6 +3290,10 @@
       e.hp = e.maxHp = hp * 7;
       e.damage = Math.round(e.damage * 1.5);
       e.speed *= 0.9;
+    }
+    if (type.special) {
+      const seenN = player.bossSeen[type.sprite] = (player.bossSeen[type.sprite] || 0) + 1;
+      e.tier = Math.min(3, stageIdx + seenN - 1 + (heat >= 7 ? 1 : 0));
     }
     if (at) {
       e.x = at.x;
@@ -3222,7 +3356,7 @@
       sfx('boss');
       buzz([40, 30, 40]);
       bossCinematic(b);
-      showBanner(`${b.type.final ? '저승사자가 나타났다!' : `장의 주인, ${b.type.name}!`}`, 'boss', '쓰러뜨리면 이 장을 돌파해요');
+      showBanner(`${b.type.final ? '저승사자가 나타났다!' : `장의 주인, ${b.type.name}!`}`, 'boss', b.tier ? `패턴 강화 ${b.tier}단계 · 쓰러뜨리면 이 장을 돌파해요` : '쓰러뜨리면 이 장을 돌파해요');
     }
     const marchAt = MARCH_TIMES[marchIdx] ?? MARCH_TIMES[MARCH_TIMES.length - 1] + 300 * (marchIdx - MARCH_TIMES.length + 1);
     if (elapsed >= marchAt) {
@@ -3369,7 +3503,7 @@
     player.comboT = 2.4;
     player.maxCombo = Math.max(player.maxCombo, player.combo);
     if (player.combo % 50 === 0) comboMilestone(player.combo);
-    player.ult = Math.min(ULT_NEED, player.ult + (hasArc('ghostgate') ? 2 : 1) * (e.type.boss ? 10 : 1));
+    player.ult = Math.min(ULT_NEED, player.ult + (hasArc('ghostgate') ? 2 : 1) * (player.ultGain || 1) * (e.type.boss ? 10 : 1));
     if (hasArc('bloodrain') && Math.random() < 0.08) {
       const ex = e.x, ey = e.y;
       pendingProcs.push(() => {
@@ -3421,6 +3555,7 @@
       player.elites++;
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
+      if (Math.random() < 0.12) dropGem(e.x, e.y - 18);
     }
     if (e.type.duelist) {
       fx.push({ kind: 'ultwave', x: e.x, y: e.y, rgb: '255, 215, 90', life: 0.6, max: 0.6, small: true });
@@ -3442,6 +3577,7 @@
       buzz([60, 40, 90]);
       player.bossKills++;
       pickups.push({ kind: 'jumeoni', value: 20, x: e.x, y: e.y + 20 });
+      dropGem(e.x, e.y - 22);
       progress.bosses[e.type.name] = true;
       saveProgress();
       pickups.push({ kind: 'treasure', x: e.x + 16, y: e.y + 6 });
@@ -3557,6 +3693,9 @@
         else if (e.act === 'slam') { for (let i = 0; i < 18; i++) shoot(e.x, e.y, (i / 18) * Math.PI * 2, 210, e.damage * 0.6, '255, 170, 60', 11); shake = Math.max(shake, 6); sfx('boom'); }
         else if (e.act === 'spit') for (let i = -3; i <= 3; i++) shoot(e.x, e.y, a + i * 0.16, 270, e.damage * 0.55, '150, 230, 90');
         else if (e.act === 'souls') for (let k = 0; k < 3; k++) for (let i = 0; i < 10; i++) shoot(e.x, e.y, (i / 10) * Math.PI * 2 + k * 0.3, 150 + k * 50, e.damage * 0.5, '200, 220, 255', 10);
+        else if (e.act === 'ring') for (let k = 0; k < 2; k++) for (let i = 0; i < 16; i++) shoot(e.x, e.y, (i / 16) * Math.PI * 2 + k * Math.PI / 16, 170 + k * 70, e.damage * 0.5, '255, 90, 200', 10);
+        else if (e.act === 'aimed') for (let i = -2; i <= 2; i++) shoot(e.x, e.y, a + i * 0.12, 340, e.damage * 0.6, '255, 60, 60');
+        else if (e.act === 'rain') for (let i = 0; i < 5; i++) bombs.push({ x: player.x + (Math.random() - 0.5) * 220, y: player.y + (Math.random() - 0.5) * 220, t: 1.1, max: 1.1, r: 70, dmg: e.damage * 0.9 });
       }
       return 0;
     }
@@ -3590,8 +3729,12 @@
         e.born = 0.45;
       }
     } else if (t.special) {
-      e.aiT = (t.special === 'souls' ? 3.2 : 4.2) / Math.min(1.8, diff.ramp || 1);
-      e.act = t.special === 'charge' ? 'dash' : t.special;
+      // Each return (and each later chapter) teaches the boss one more pattern and shortens its rest.
+      const tier = e.tier || 0;
+      const moves = [t.special, ...['aimed', 'ring', 'rain'].slice(0, tier)];
+      const mv = moves[Math.floor(Math.random() * moves.length)];
+      e.aiT = (t.special === 'souls' ? 3.2 : 4.2) / Math.min(1.8, diff.ramp || 1) * (1 - 0.12 * tier);
+      e.act = mv === 'charge' ? 'dash' : mv;
       e.tele = 0.75;
       return 0;
     } else e.aiT = 2;
@@ -3866,6 +4009,11 @@
       flash = 0.2;
       fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.6, max: 0.6, color: 'ice' });
       addFloatText(player.x, head, '정지!', '#8cc8f0');
+    } else if (it.kind === 'naedan') {
+      modalQueue.unshift({ type: 'gem' });
+      modalDelay = Math.max(modalDelay, 0.5);
+      burst(player.x, player.y, 18, ['#c890ff', '#ffffff', '#8a50e0'], 200, 0.6, 4, true);
+      sfx('chest');
     } else if (it.kind === 'treasure') {
       player.chests++;
       // Like other survivors games, a lucky chest holds 3 or 5 gifts.
@@ -4878,7 +5026,7 @@
     ui.achvCount.textContent = `${done} / ${ACHIEVEMENTS.length}`;
     ui.bookCount.textContent = `${seen.size} / ${Object.keys(COMBOS).length}`;
     const heroes = Object.keys(HEROES).filter(heroUnlocked).length;
-    ui.titleStats.textContent = `${progress.sectName ? `[${progress.sectName}] ` : ''}명성 ${progress.fame || 0} · 최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥`;
+    ui.titleStats.textContent = `${progress.sectName ? `[${progress.sectName}] ` : ''}명성 ${progress.fame || 0} · 최고 ${progress.bestStage >= STAGES.length ? '전 장 돌파' : `${progress.bestStage}장 돌파`} · 업적 ${done}/${ACHIEVEMENTS.length} · 비급 ${seen.size}/${Object.keys(COMBOS).length} · 협객 ${heroes}/${Object.keys(HEROES).length} · 은자 ${progress.gold}냥${progress.bestScore ? ` · 최고 점수 ${progress.bestScore.toLocaleString()}점 ${rankName(progress.bestScore)}` : ''}${progress.heat ? ` · 업화 ${progress.heat}` : ''}`;
   }
 
   function openAchievements() {
@@ -4954,6 +5102,20 @@
       richText(el, `${ARC_BY_ID[id].icon} ${ARC_BY_ID[id].name}`);
       el.title = ARC_BY_ID[id].desc;
       return el;
+    }), ...[...player.relics].map((id) => {
+      const r = RELICS.find((x) => x.id === id);
+      const el = document.createElement('span');
+      el.className = 'chip arc';
+      richText(el, `📿 ${r.name}`);
+      el.title = `${relicName(r)} → ${r.desc}`;
+      return el;
+    }), ...player.gems.map((id) => {
+      const g = GEMS.find((x) => x.id === id);
+      const el = document.createElement('span');
+      el.className = 'chip arc';
+      richText(el, `💎 ${g.name}`);
+      el.title = g.desc;
+      return el;
     }), ...PASSIVES.filter((u) => player.picks[u.id]).map((u) => {
       const el = document.createElement('span');
       el.className = 'chip passive';
@@ -4987,6 +5149,7 @@
     ui.hud.classList.remove('hidden');
     updateHud();
     state = 'playing';
+    heat = 0;
     modalQueue.push({ type: 'difficulty' }, { type: 'hero' });
     openNextModal();
   }
@@ -5001,10 +5164,11 @@
     checkQuests();
     const mxp = gainMastery(win);
     const fame = gainFame(win);
+    const sc = recordScore(win);
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : kind === 'timeup' ? '시간 종료' : '쓰러졌다...';
     ui.continueBtn.classList.add('hidden'); // runs are capped at 10 minutes, no endless continue
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}\n점수 ${sc.score.toLocaleString()} · ${rankName(sc.score)}${sc.best ? ' · 최고 기록!' : ` (최고 ${progress.bestScore.toLocaleString()})`}${sc.unlocked ? ` · 업화 ${sc.unlocked}단계 해금!` : ''}${player.relics.size ? ` · 유물 ${player.relics.size}개` : ''}${player.gems.length ? ` · 내단 ${player.gems.map((g) => GEMS.find((x) => x.id === g).name).join('·')}` : ''}`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
