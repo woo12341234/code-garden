@@ -2275,7 +2275,7 @@
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
       arc: new Set(), meteorT: 8, cleared: 0, trail: [], relics: new Set(), gems: [], bossSeen: {}, items: {}, itemTicks: [], pulls: 0, pity: 0, altarCost: 40,
       formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
-      level: 1, xp: 0, xpToNext: 10, picks: {},
+      level: 1, xp: 0, xpToNext: diff.xpBase ?? 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
       weapons: {},
     };
@@ -2437,11 +2437,11 @@
   }
 
   function gainXp(amount) {
-    player.xp += amount * player.xpMul;
+    player.xp += amount * player.xpMul * (diff.xp ?? 1);
     while (player.xp >= player.xpToNext) {
       player.xp -= player.xpToNext;
       player.level++;
-      player.xpToNext = Math.floor(player.xpToNext * 1.2 + 5);
+      player.xpToNext = Math.floor(player.xpToNext * (diff.xpGrow ?? 1.2) + (diff.xpAdd ?? 5));
       modalQueue.push({ type: 'upgrade' });
       sfx('levelup');
       burst(player.x, player.y, 14, ['#fff6b0', '#ffffff', '#b8f0e0'], 120, 0.5, 3);
@@ -3914,11 +3914,11 @@
   // ---------- Difficulty (난이도) ----------
   // Higher tiers send fewer, slower yokai that are much tougher and hit harder.
   const DIFFICULTIES = [
-    { id: 'easy', icon: '🍃', name: '입문', desc: '처음이라면. 요괴 체력·공격력 ×0.8. 은자 ×0.7', hp: 0.8, dmg: 0.8, spawn: 1, speed: 1.05, gold: 0.7, ramp: 1, elite: 0.8 },
-    { id: 'normal', icon: '⚔️', name: '강호', desc: '체력 ×1.4, 공격력 ×1.35. 기본 속도·출현', hp: 1.4, dmg: 1.35, spawn: 1, speed: 1, gold: 1, ramp: 1.25, elite: 1.3 },
-    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×2.6, 공격력 ×2. 대신 요괴가 조금 느리고(×0.9) 덜 나와요(×0.85). 은자 ×1.6', hp: 2.6, dmg: 2, spawn: 0.85, speed: 0.9, gold: 1.6, ramp: 1.8, elite: 2 },
-    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×4.2, 공격력 ×2.8. 요괴 속도 ×0.82, 출현 ×0.72. 정예가 자주 나와요. 은자 ×2.8', hp: 4.2, dmg: 2.8, spawn: 0.72, speed: 0.82, gold: 2.8, ramp: 2.4, elite: 3 },
-    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×6, 공격력 ×3.6. 요괴는 느리지만(×0.74) 적게(×0.6) 나오는 대신 한 마리 한 마리가 괴물이에요. 은자 ×4.5', hp: 6, dmg: 3.6, spawn: 0.6, speed: 0.74, gold: 4.5, ramp: 3.2, elite: 4.5 },
+    { id: 'easy', icon: '🍃', name: '입문', desc: '처음이라면. 요괴 체력·공격력 ×0.8. 성장 빠름. 은자 ×0.7', hp: 0.8, dmg: 0.8, spawn: 1, speed: 1.05, gold: 0.7, ramp: 1, elite: 0.8, xp: 1, xpBase: 12, xpGrow: 1.2, xpAdd: 6 },
+    { id: 'normal', icon: '⚔️', name: '강호', desc: '체력 ×1.4, 공격력 ×1.35. 기본 속도·출현, 성장 보통', hp: 1.4, dmg: 1.35, spawn: 1, speed: 1, gold: 1, ramp: 1.25, elite: 1.3, xp: 0.85, xpBase: 20, xpGrow: 1.2, xpAdd: 8 },
+    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×2.6, 공격력 ×2. 대신 요괴가 조금 느리고(×0.9) 덜 나와요(×0.85). 성장 느림. 은자 ×1.6', hp: 2.6, dmg: 2, spawn: 0.85, speed: 0.9, gold: 1.6, ramp: 1.8, elite: 2, xp: 0.8, xpBase: 26, xpGrow: 1.2, xpAdd: 10 },
+    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×4.2, 공격력 ×2.8. 요괴 속도 ×0.82, 출현 ×0.72. 정예가 자주 나와요. 성장 많이 느림. 은자 ×2.8', hp: 4.2, dmg: 2.8, spawn: 0.72, speed: 0.82, gold: 2.8, ramp: 2.4, elite: 3, xp: 0.72, xpBase: 30, xpGrow: 1.205, xpAdd: 12 },
+    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×6, 공격력 ×3.6. 요괴는 느리지만(×0.74) 적게(×0.6) 나오는 대신 한 마리 한 마리가 괴물이에요. 성장 아주 느림. 은자 ×4.5', hp: 6, dmg: 3.6, spawn: 0.6, speed: 0.74, gold: 4.5, ramp: 3.2, elite: 4.5, xp: 0.65, xpBase: 36, xpGrow: 1.21, xpAdd: 14 },
   ];
   let diff = DIFFICULTIES[1];
 
