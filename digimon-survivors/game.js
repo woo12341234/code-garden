@@ -229,7 +229,7 @@
     ctx.translate(Math.round(x), Math.round(y + ground));
     if (TILT < 1 && (o.groundR !== undefined || o.upright)) {
       const d = depthScale(y);
-      if (o.groundR !== undefined && s.img && !lowFx && (o.alpha ?? 1) > 0.3) {
+      if (o.groundR !== undefined && s.img && !lowFx && !o.noShadow && (o.alpha ?? 1) > 0.3) {
         // long cast shadow lying on the ground, falling away from a low light at the bottom-left
         const sil = silhouette(key, s);
         ctx.save();
@@ -3182,6 +3182,10 @@
     const dmg = (40 + player.level * 7) * player.ultMul;
     const L = Math.hypot(viewW, viewHW) * 0.6;
     dmgSrc = 'ult';
+    impactFrame(0.07);
+    focusLines(player.x, player.y, 0.55);
+    wordCd = 0;
+    sfxWord('big', player.x, player.y - 70, true);
     flash = Math.max(flash, 0.3);
     shake = Math.max(shake, 12);
     fx.push({ kind: 'ultwave', x: player.x, y: player.y, rgb, life: 0.9, max: 0.9 });
@@ -4142,6 +4146,54 @@
     player.atkCd = 0.28;
   }
 
+  // ---------- Webtoon impact kit: onomatopoeia, focus lines, impact frames, clean cuts ----------
+  const SFX_WORDS = { cut: ['촤악!', '서걱!', '슈칵!', '촤학!'], hit: ['퍽!', '파팟!', '쾅!'], big: ['콰앙!!', '쾅!!', '콰과광!!'] };
+  let wordCd = 0, impactT = 0, focusFx = null;
+  function sfxWord(kind, x, y, big = false) {
+    if (wordCd > 0 || fx.length > 180) return;
+    wordCd = big ? 0.15 : 0.35;
+    const list = SFX_WORDS[kind];
+    fx.push({ kind: 'word', text: list[Math.floor(Math.random() * list.length)], x: x + (Math.random() - 0.5) * 20, y, rot: (Math.random() - 0.5) * 0.5, big, life: big ? 0.8 : 0.55, max: big ? 0.8 : 0.55 });
+  }
+  // radial speed lines converging on a world point, drawn in screen space
+  function focusLines(x, y, dur = 0.4, dark = true) { focusFx = { x, y, t: dur, max: dur, dark, seed: Math.random() * 1000 }; }
+  // a one- or two-frame inverted "impact frame"
+  function impactFrame(sec = 0.07) { if (settings.flash) impactT = Math.max(impactT, sec); }
+  const toScreen = (x, y) => [viewW / 2 + (x - cam.x) * cam.zoom, viewH / 2 + (y - cam.y) * cam.zoom * TILT];
+  function drawFocusAndImpact(dt) {
+    wordCd = Math.max(0, wordCd - dt);
+    if (focusFx) {
+      const f = focusFx;
+      f.t -= dt;
+      if (f.t <= 0) focusFx = null;
+      else {
+        const [cx, cy] = toScreen(f.x, f.y);
+        const a = Math.min(1, f.t / f.max * 1.6);
+        const R = Math.hypot(viewW, viewH);
+        const rnd = seededRandom(Math.floor(f.seed + f.t * 30));
+        ctx.fillStyle = f.dark ? `rgba(16, 12, 18, ${0.55 * a})` : `rgba(255, 255, 255, ${0.6 * a})`;
+        for (let i = 0; i < (lowFx ? 36 : 70); i++) {
+          const ang = rnd() * Math.PI * 2, w = 0.004 + rnd() * 0.012;
+          const r0 = R * (0.18 + rnd() * 0.16);
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+          ctx.lineTo(cx + Math.cos(ang - w) * R, cy + Math.sin(ang - w) * R);
+          ctx.lineTo(cx + Math.cos(ang + w) * R, cy + Math.sin(ang + w) * R);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    if (impactT > 0) {
+      impactT -= dt;
+      ctx.save();
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, viewW, viewH);
+      ctx.restore();
+    }
+  }
+
   function damageEnemy(e, idx, amount, kx, ky, push = 6, quiet = false) {
     const crit = Math.random() < player.crit;
     amount *= player.dmgMul * (e.type.boss ? player.bossMul : 1) * (quiet ? player.dotMul : 1);
@@ -4162,6 +4214,9 @@
       }
     }
     if (crit) amount *= player.critMul;
+    e.lastCrit = crit;
+    e.lastHitA = Math.atan2(ky, kx);
+    if (!quiet && !e.type.prop && (crit && (e.type.boss || e.elite) || amount > 400)) sfxWord('hit', e.x, e.y - e.type.radius * 2.2, amount > 400);
     player.dmgBy[dmgSrc] = (player.dmgBy[dmgSrc] || 0) + Math.min(amount, Math.max(0, e.hp));
     e.hp -= amount;
     e.flash = 0.1;
@@ -4231,7 +4286,11 @@
     enemies.splice(idx, 1);
     if (decals.length > (lowFx ? 25 : 90)) decals.shift();
     decals.push({ x: e.x, y: e.y + e.type.radius * 0.6, r: e.type.radius * (e.type.boss ? 2.2 : 1.1), life: 6, max: 6, blobs: Array.from({ length: 5 }, () => [(Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.7, 0.25 + Math.random() * 0.45]) });
-    if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
+    const cut = !e.type.boss && (e.lastCrit || Math.random() < 0.3);
+    if (cut && fx.length < 200) {
+      fx.push({ kind: 'slice', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), ang: (e.lastHitA ?? 0) + Math.PI / 2 + (Math.random() - 0.5) * 0.8, flip: e.faceL, life: 0.5, max: 0.5 });
+      if (e.elite || Math.random() < 0.08) sfxWord('cut', e.x, e.y - e.type.radius * 2.4, e.elite);
+    } else if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
     if (e.type.boss || e.elite) shake = Math.max(shake, e.type.boss ? 10 : 5);
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
     const xpv = e.xp ?? e.type.xp;
@@ -4273,6 +4332,7 @@
     if (e.elite) {
       stopTime(0.06);
       buzz(30);
+      focusLines(e.x, e.y, 0.3);
       player.elites++;
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
@@ -4295,6 +4355,9 @@
     }
     if (e.type.boss) {
       stopTime(0.14);
+      focusLines(e.x, e.y, 0.6);
+      impactFrame(0.09);
+      sfxWord('big', e.x, e.y - e.type.radius * 2.6, true);
       sfx('boom');
       buzz([60, 40, 90]);
       player.bossKills++;
@@ -5348,6 +5411,20 @@
       }
       if (f.kind === 'spark') {
         const s = (f.crit ? 15 : 10) * (0.6 + (1 - a) * 0.8);
+        beginUpright(f.x, f.y);
+        if (f.crit) {
+          // a single bright sword-light streak across the target
+          const L = 46 * (0.4 + (1 - a) * 0.9);
+          ctx.save();
+          ctx.translate(f.x, f.y);
+          ctx.rotate(f.rot);
+          ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+          ctx.beginPath();
+          ctx.moveTo(-L, 0); ctx.lineTo(0, -2.5 * a - 1); ctx.lineTo(L, 0); ctx.lineTo(0, 2.5 * a + 1);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
         ctx.save();
         ctx.translate(f.x, f.y);
         ctx.rotate(f.rot);
@@ -5357,6 +5434,65 @@
         ctx.fillStyle = `rgba(255, 230, 140, ${a})`;
         ctx.fillRect(-3, -3, 6, 6);
         ctx.restore();
+        ctx.restore();
+        continue;
+      }
+      if (f.kind === 'word') {
+        // brush onomatopoeia that pops, holds, then drifts up
+        const k = 1 - a;
+        const pop = k < 0.15 ? 1.6 - k * 4 : 1;
+        beginUpright(f.x, f.y);
+        ctx.translate(f.x, f.y - k * 18);
+        ctx.rotate(f.rot);
+        ctx.scale(pop, pop);
+        ctx.globalAlpha = Math.min(1, a * 2.5);
+        ctx.font = `${f.big ? 52 : 34}px "Nanum Brush Script", "Gowun Batang", serif`;
+        ctx.textAlign = 'center';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = f.big ? 10 : 7;
+        ctx.strokeStyle = '#140f16';
+        ctx.strokeText(f.text, 0, 0);
+        ctx.lineWidth = f.big ? 4 : 3;
+        ctx.strokeStyle = f.big ? '#e5484d' : '#f2c66d';
+        ctx.strokeText(f.text, 0, 0);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(f.text, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+        continue;
+      }
+      if (f.kind === 'slice') {
+        // cut clean in two: halves slide apart along the cut, a white line flashes through
+        const k = 1 - a;
+        const S = SPRITES[f.sprite]?.size || 48;
+        const nx = Math.cos(f.ang + Math.PI / 2), ny = Math.sin(f.ang + Math.PI / 2);
+        const sep = 6 + Math.sqrt(k) * 30;
+        for (const sd of [1, -1]) {
+          // the upper piece is flung up and spins, the lower one slumps; the cut moves with each piece
+          const up = sd * ny < 0;
+          const ox = nx * sep * sd, oy = ny * sep * sd + (up ? -Math.sin(k * Math.PI) * 26 : k * 10);
+          ctx.save();
+          ctx.beginPath();
+          const cx = f.x + ox, cy = f.y - S * 0.3 + oy;
+          const ux = Math.cos(f.ang) * 200, uy = Math.sin(f.ang) * 200;
+          ctx.moveTo(cx - ux, cy - uy);
+          ctx.lineTo(cx + ux, cy + uy);
+          ctx.lineTo(cx + ux + nx * 200 * sd, cy + uy + ny * 200 * sd);
+          ctx.lineTo(cx - ux + nx * 200 * sd, cy - uy + ny * 200 * sd);
+          ctx.closePath();
+          ctx.clip();
+          drawSprite(f.sprite, f.x + ox, f.y + oy, { sx: f.sc, sy: f.sc, groundR: f.r, flip: f.flip, flash: k < 0.12, alpha: Math.min(1, a * 1.6), rot: sd * k * (up ? 0.5 : 0.15), noShadow: true });
+          ctx.restore();
+        }
+        if (k < 0.45) {
+          const cy = f.y - S * 0.3, L = S * (0.7 + k);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${1 - k / 0.45})`;
+          ctx.lineWidth = 6 * (1 - k / 0.45) + 1.5;
+          ctx.beginPath();
+          ctx.moveTo(f.x - Math.cos(f.ang) * L, cy - Math.sin(f.ang) * L);
+          ctx.lineTo(f.x + Math.cos(f.ang) * L, cy + Math.sin(f.ang) * L);
+          ctx.stroke();
+        }
         continue;
       }
       if (f.kind === 'spin') {
@@ -5640,6 +5776,7 @@
     const sq = t.prop || player.freeze > 0 ? 0 : 0.018 * Math.sin(anim * 6 + e.phase);
     const hk = e.hurt > 0 && !t.prop ? e.hurt / 0.14 : 0;
     const bk = e.born > 0 ? 1 - e.born / 0.45 : 1;
+    if (!t.boss && !t.prop) lift -= hk * 6; // hit pop: lifted off the ground for a beat
     if (bk < 1) {
       // rising out of a puddle of ink
       ctx.fillStyle = `rgba(42, 34, 36, ${0.45 * (1 - bk)})`;
@@ -5705,6 +5842,7 @@
   }
   function bossCinematic(e) {
     cinematic = { t: 1.4, x: e.x, y: e.y };
+    focusLines(e.x, e.y, 1.1);
     ui.letterbox.classList.add('on');
     player.invuln = Math.max(player.invuln, 1.6);
   }
@@ -5881,6 +6019,8 @@
       ctx.fillStyle = near;
       ctx.fillRect(0, viewH * 0.8, viewW, viewH * 0.2);
     }
+
+    drawFocusAndImpact(1 / 60);
 
     if (stick.active) {
       const len = Math.hypot(stick.dx, stick.dy);
