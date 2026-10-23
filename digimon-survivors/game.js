@@ -6,7 +6,7 @@
   const ctx = canvas.getContext('2d');
   let viewW = 0, viewH = 0, dpr = 1, worldScale = 1;
   // 2.5D: the ground plane is tilted away from the camera (squashed vertically); people and props stand upright.
-  let TILT = 0.72, viewHW = 0; // viewHW = how much world height fits on screen
+  let TILT = 0.6, viewHW = 0; // viewHW = how much world height fits on screen
   const IS_MOBILE = window.matchMedia('(hover: none)').matches || 'ontouchstart' in window;
 
   function resize() {
@@ -195,6 +195,20 @@
     return img;
   }
 
+  // Black cut-outs of each sprite, made once, used for cast shadows.
+  const silCache = {};
+  function silhouette(key, s) {
+    if (silCache[key]) return silCache[key];
+    const c = document.createElement('canvas');
+    c.width = s.img.width;
+    c.height = s.img.height;
+    const g = c.getContext('2d');
+    g.drawImage(s.img, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#1a1420';
+    g.fillRect(0, 0, c.width, c.height);
+    return (silCache[key] = c);
+  }
   // Undo the ground tilt around (x, y) so whatever is drawn next stands upright. Pair with ctx.restore().
   function beginUpright(x, y) {
     ctx.save();
@@ -203,7 +217,7 @@
     ctx.translate(-x, -y);
   }
   // Things lower on screen are closer to the camera, so they're drawn a little bigger.
-  const depthScale = (y) => (TILT < 1 ? clamp(1 + (y - cam.y) * 0.00028, 0.86, 1.16) : 1);
+  const depthScale = (y) => (TILT < 1 ? clamp(1 + (y - cam.y) * 0.00058, 0.76, 1.26) : 1);
   // groundR anchors squash/stretch at the creature's feet instead of its center.
   // Creatures, pickups and props stand upright; spinning projectiles lie flat on the tilted ground.
   function drawSprite(key, x, y, o = {}) {
@@ -215,6 +229,18 @@
     ctx.translate(Math.round(x), Math.round(y + ground));
     if (TILT < 1 && (o.groundR !== undefined || o.upright)) {
       const d = depthScale(y);
+      if (o.groundR !== undefined && s.img && !lowFx && (o.alpha ?? 1) > 0.3) {
+        // long cast shadow lying on the ground, falling away from a low light at the bottom-left
+        const sil = silhouette(key, s);
+        ctx.save();
+        ctx.scale(d, d);
+        ctx.transform(1, 0, -0.55, -0.42, 0, 0);
+        ctx.globalAlpha = 0.34 * (o.alpha ?? 1);
+        const sx = (o.flip ? -1 : 1) * (o.sx || 1), sy = o.sy || 1;
+        ctx.scale(sx, sy);
+        ctx.drawImage(sil, -size / 2, -size / 2 - ground, size, size);
+        ctx.restore();
+      }
       ctx.scale(d, d / TILT);
     }
     if (o.rot) ctx.rotate(o.rot);
@@ -2000,7 +2026,7 @@
   for (const k of ['shake', 'nums', 'flash']) if (settings[k] === undefined) settings[k] = true;
   if (settings.lowfx === undefined) settings.lowfx = false;
   if (settings.tilt === undefined) settings.tilt = true;
-  TILT = settings.tilt ? 0.72 : 1;
+  TILT = settings.tilt ? 0.6 : 1;
   resize();
   let lowFx = settings.lowfx;
   let ac = null, master = null, musicBus = null;
@@ -2127,7 +2153,7 @@
   function startMusic() { if (!music.timer) music.timer = setInterval(musicTick, 60); }
   function applySettings() {
     lowFx = settings.lowfx;
-    TILT = settings.tilt ? 0.72 : 1;
+    TILT = settings.tilt ? 0.6 : 1;
     resize();
     PARTICLE_CAP = lowFx ? 200 : IS_MOBILE ? 380 : 700;
     if (musicBus) musicBus.gain.setTargetAtTime(settings.music ? 0.22 : 0, ac.currentTime, 0.1);
@@ -4366,7 +4392,7 @@
       }
       if (dx !== 0) player.facing = Math.sign(dx);
       if (player.moving && (player.dustT -= dt) <= 0 && particles.length < PARTICLE_CAP) {
-        player.dustT = 0.13;
+        player.dustT = 0.3;
         particles.push({ x: player.x - player.facing * 6, y: player.y + player.radius * 0.95, vx: -player.vx * 0.12, vy: -12, life: 0.4, max: 0.4, size: 4, shape: 'mist', color: '#cdbf9f', rot: 0 });
       }
     }
@@ -4596,7 +4622,7 @@
         if (e.gone) continue;
       }
       if (e.type.move === 'float') speed *= 0.6 + 0.4 * Math.sin(elapsed * 3 + e.phase);
-      if (e.type.move === 'hop') speed *= Math.max(0, Math.sin(elapsed * 6 + e.phase)) * 2.2;
+      if (e.type.move === 'hop') speed *= 0.45 + Math.max(0, Math.sin(elapsed * 4 + e.phase)) * 1.1;
       if (aura && d < aura.radius * player.area + e.type.radius) speed *= 1 - aura.slow;
       for (const z of zones) if (dist(z.x, z.y, e.x, e.y) < z.r + e.type.radius) speed *= 1 - (z.hold || 0.3);
       if (e.chill > 0) { e.chill -= dt; speed *= 0.5; }
@@ -4630,7 +4656,7 @@
         e.damage = Math.round((e.baseDmg ??= e.damage) * e.grow);
       }
       if (e.type.move === 'zigzag') {
-        const wiggle = Math.sin(elapsed * 8 + e.phase) * speed * 0.7 * dt;
+        const wiggle = Math.sin(elapsed * 5 + e.phase) * speed * 0.35 * dt;
         e.x += (-dy / d) * wiggle;
         e.y += (dx / d) * wiggle;
       }
@@ -4704,7 +4730,7 @@
         const d2 = dx * dx + dy * dy;
         if (d2 >= min * min || d2 === 0) continue;
         const d = Math.sqrt(d2);
-        const push = (min - d) / 2;
+        const push = (min - d) * 0.18; // soft separation: no jitter
         a.x -= (dx / d) * push;
         a.y -= (dy / d) * push;
         b.x += (dx / d) * push;
@@ -5423,10 +5449,10 @@
     }
     drawShadow(player.x, player.y + r * 0.9, r * 1.2);
     const grow = 1 + player.realm * 0.035;
-    const speed = player.moving ? 14 : 4;
-    const amp = player.moving ? 0.07 : 0.035;
+    const speed = player.moving ? 9 : 2.4;
+    const amp = player.moving ? 0.025 : 0.015;
     const b = Math.sin(anim * speed);
-    const hop = player.moving ? Math.abs(Math.sin(anim * speed / 2)) * 3 : 0;
+    const hop = player.moving ? Math.abs(Math.sin(anim * speed / 2)) * 1.2 : 0;
     const blink = player.invuln > 0 && player.glow <= 0 && Math.floor(anim * 20) % 2 === 0;
     // Attack motion: wind up, lunge toward the target, then recover.
     const at = player.atk > 0 ? 1 - player.atk / ATK_TIME : 0;
@@ -5439,7 +5465,7 @@
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
     const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
-    const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk || player.buffs.drunk > 0 ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.07, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
+    const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk || player.buffs.drunk > 0 ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.04, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
     if (player.atk > 0 && style !== 'cast') {
       for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
     }
@@ -5601,6 +5627,9 @@
     let lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
     if (e.act === 'leap' && e.dashT > 0) lift -= Math.sin((1 - e.dashT / 0.42) * Math.PI) * 70;
     const sc = (t.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1);
+    // turn around only once the hero is clearly on the other side (no flicker when lined up)
+    if (player.x < e.x - 10) e.faceL = true;
+    else if (player.x > e.x + 10) e.faceL = false;
     if (e.elite) {
       ctx.strokeStyle = `rgba(222, 176, 72, ${0.6 + 0.3 * Math.sin(anim * 6)})`;
       ctx.lineWidth = 3;
@@ -5608,7 +5637,7 @@
       ctx.ellipse(e.x, e.y + r * 0.9, r * 1.5, r * 0.6, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    const sq = t.prop || player.freeze > 0 ? 0 : 0.05 * b;
+    const sq = t.prop || player.freeze > 0 ? 0 : 0.018 * Math.sin(anim * 6 + e.phase);
     const hk = e.hurt > 0 && !t.prop ? e.hurt / 0.14 : 0;
     const bk = e.born > 0 ? 1 - e.born / 0.45 : 1;
     if (bk < 1) {
@@ -5618,7 +5647,7 @@
       ctx.ellipse(e.x, e.y + r * 0.8, r * 1.5 * (0.5 + bk), r * 0.5 * (0.5 + bk), 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (e.alpha ?? t.alpha ?? 1) * bk, flip: !t.prop && player.x < e.x });
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (e.alpha ?? t.alpha ?? 1) * bk, flip: !t.prop && e.faceL });
     if ((e.tele > 0 && !t.duelist) || e.fuse > 0) {
       const warn = e.fuse > 0;
       ctx.strokeStyle = `rgba(255, 70, 50, ${0.5 + 0.5 * Math.sin(anim * 40)})`;
@@ -5661,7 +5690,7 @@
   }
 
   function updateCamera(dt) {
-    let tx = player.x + (player.vx || 0) * 0.18, ty = player.y + (player.vy || 0) * 0.18;
+    let tx = player.x + (player.vx || 0) * 0.18, ty = player.y + (player.vy || 0) * 0.18 - (TILT < 1 ? viewHW * 0.07 : 0);
     let zoom = 1;
     if (cinematic) {
       cinematic.t -= dt;
@@ -5841,14 +5870,14 @@
       ctx.fillRect(0, 0, viewW, viewH);
     }
     if (TILT < 1) {
-      const haze = ctx.createLinearGradient(0, 0, 0, viewH * 0.34);
-      haze.addColorStop(0, `rgba(${stageIdx >= 3 && state !== 'title' ? '70, 56, 84' : '214, 222, 226'}, 0.55)`);
+      const haze = ctx.createLinearGradient(0, 0, 0, viewH * 0.42);
+      haze.addColorStop(0, `rgba(${stageIdx >= 3 && state !== 'title' ? '70, 56, 84' : '214, 222, 226'}, 0.72)`);
       haze.addColorStop(1, 'rgba(214, 222, 226, 0)');
       ctx.fillStyle = haze;
-      ctx.fillRect(0, 0, viewW, viewH * 0.34);
+      ctx.fillRect(0, 0, viewW, viewH * 0.42);
       const near = ctx.createLinearGradient(0, viewH * 0.8, 0, viewH);
       near.addColorStop(0, 'rgba(40, 30, 30, 0)');
-      near.addColorStop(1, 'rgba(40, 30, 30, 0.16)');
+      near.addColorStop(1, 'rgba(20, 14, 18, 0.26)');
       ctx.fillStyle = near;
       ctx.fillRect(0, viewH * 0.8, viewW, viewH * 0.2);
     }
