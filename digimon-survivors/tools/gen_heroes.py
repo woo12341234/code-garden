@@ -30,38 +30,39 @@ K = 2
 class H(Sprite):
     def __init__(self, n=32, k=None):
         self.K = K if k is None else k
+        self.ox = self.oy = 0  # logical offset applied to every drawing call
         super().__init__(n * self.K)
         self.protect = set()  # pixels the shading pass must leave alone (eyes etc.)
 
     def put(self, x, y, c):
         for dy in range(self.K):
             for dx in range(self.K):
-                Sprite.put(self, int(x) * self.K + dx, int(y) * self.K + dy, c)
+                Sprite.put(self, int(x + self.ox) * self.K + dx, int(y + self.oy) * self.K + dy, c)
 
     def dot(self, x, y, c):
         """One fine-grid pixel at fractional 32-grid coordinates (x, y), protected from shading."""
-        fx, fy = int(x * self.K), int(y * self.K)
+        fx, fy = int((x + self.ox) * self.K), int((y + self.oy) * self.K)
         Sprite.put(self, fx, fy, c)
         self.protect.add((fx, fy))
 
     def at(self, x, y):
         """Colour at a 32-grid cell (None if empty)."""
-        return self.px[int(y) * self.K][int(x) * self.K]
+        return self.px[int(y + self.oy) * self.K][int(x + self.ox) * self.K]
 
     def erase_disc(self, cx, cy, r):
         for y in range(self.h):
             for x in range(self.w):
-                if math.hypot((x + 0.5) / self.K - cx, (y + 0.5) / self.K - cy) <= r:
+                if math.hypot((x + 0.5) / self.K - cx - self.ox, (y + 0.5) / self.K - cy - self.oy) <= r:
                     self.px[y][x] = None
 
     def poly(self, pts, color):
-        Sprite.poly(self, [(px * self.K, py * self.K) for px, py in pts], color)
+        Sprite.poly(self, [((px + self.ox) * self.K, (py + self.oy) * self.K) for px, py in pts], color)
 
     def ellipse(self, cx, cy, rx, ry, base, shade=True, hl=True, ymax=None):
-        Sprite.ellipse(self, cx * self.K, cy * self.K, rx * self.K, ry * self.K, base, shade=shade, hl=hl, ymax=None if ymax is None else ymax * self.K)
+        Sprite.ellipse(self, (cx + self.ox) * self.K, (cy + self.oy) * self.K, rx * self.K, ry * self.K, base, shade=shade, hl=hl, ymax=None if ymax is None else (ymax + self.oy) * self.K)
 
     def line(self, x0, y0, x1, y1, c, w=1.2):
-        x0, y0, x1, y1, w = x0 * self.K, y0 * self.K, x1 * self.K, y1 * self.K, max(1.0, w * self.K * 0.9)
+        x0, y0, x1, y1, w = (x0 + self.ox) * self.K, (y0 + self.oy) * self.K, (x1 + self.ox) * self.K, (y1 + self.oy) * self.K, max(1.0, w * self.K * 0.9)
         dx, dy = x1 - x0, y1 - y0
         L = dx * dx + dy * dy or 1
         for y in range(self.h):
@@ -81,7 +82,7 @@ class H(Sprite):
         self.put(x, y, c)
         for dy in range(self.K):
             for dx in range(self.K):
-                self.protect.add((int(x) * self.K + dx, int(y) * self.K + dy))
+                self.protect.add((int(x + self.ox) * self.K + dx, int(y + self.oy) * self.K + dy))
 
     def inner_lines(self):
         """Line art between parts: where two clearly different colours meet, the darker side

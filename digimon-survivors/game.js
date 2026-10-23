@@ -152,11 +152,15 @@
     });
   }
 
-  // Each hero has 3 more looks unlocked by realm: _t1 (일류), _t2 (초절정), _t3 (현경).
+  // Each hero has more looks unlocked by realm: _t1 (일류), _t2 (초절정), _t3 (현경), _t4 (생사경: the master of
+  // the school). The master art sits on a 32-cell canvas (room for halo and wings), so it's drawn 32/24 bigger.
   for (const [key, def] of Object.entries(SPRITE_DEFS)) {
-    if (def.crisp && !key.includes('_t')) for (let t = 1; t <= 3; t++) SPRITE_DEFS[`${key}_t${t}`] = { ...def };
+    if (def.crisp && !key.includes('_t')) {
+      for (let t = 1; t <= 3; t++) SPRITE_DEFS[`${key}_t${t}`] = { ...def };
+      SPRITE_DEFS[`${key}_t4`] = { ...def, size: Math.round(def.size * 32 / 24) };
+    }
   }
-  const heroTier = (realm) => (realm >= 6 ? 3 : realm >= 4 ? 2 : realm >= 2 ? 1 : 0);
+  const heroTier = (realm) => (realm >= 7 ? 4 : realm >= 6 ? 3 : realm >= 4 ? 2 : realm >= 2 ? 1 : 0);
   const heroLook = (p) => {
     const t = heroTier(p.realm || 0);
     return t && SPRITE_DEFS[`${p.hero}_t${t}`] ? `${p.hero}_t${t}` : p.hero;
@@ -2451,8 +2455,16 @@
     player.realm++;
     if (heroTier(player.realm) !== oldTier) {
       ui.portrait.src = spritePath(heroLook(player));
-      setTimeout(() => showToast('✨ 모습이 바뀌었다!', ['', '금테 두른 무복과 견갑', '흉갑과 망토, 기운이 서린 병기', '황금빛 의복과 몸을 감싼 오라'][heroTier(player.realm)]), 900);
-      focusLines(player.x, player.y, 0.5, false);
+      const tier = heroTier(player.realm);
+      if (tier === 4) {
+        // the master's regalia: a proper entrance
+        impactFrame(0.08);
+        focusLines(player.x, player.y, 0.9, false);
+        setTimeout(() => showBanner(`${rankOf(player.realm)}의 위엄`, 'ult', '정점에 선 자의 모습으로 거듭났다'), 1500);
+      } else {
+        setTimeout(() => showToast('✨ 모습이 바뀌었다!', ['', '금테 두른 무복과 견갑', '흉갑과 망토, 기운이 서린 병기', '황금빛 의복과 몸을 감싼 오라'][tier]), 900);
+        focusLines(player.x, player.y, 0.5, false);
+      }
     }
     player.dmgMul += 0.06;
     if (hasArc('ten')) for (const [id, w] of Object.entries(player.weapons)) if (w.level < WEAPONS[id].max) grantWeapon(player, id);

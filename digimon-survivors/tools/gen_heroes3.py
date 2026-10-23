@@ -4,6 +4,8 @@
 and an oversized signature hat/hair/weapon so every hero reads instantly at a glance.
 Run after gen_heroes.py / gen_heroes2.py (same output names). Requires Pillow.
 """
+import math
+
 from gen_sprites import Sprite, rgba, mul, mix, WHITE, INK, RED, GOLD, STEEL
 from gen_heroes import H
 
@@ -16,8 +18,9 @@ WOOD = rgba(120, 80, 50)
 
 
 class C(H):
-    def __init__(self):
-        super().__init__(24, k=1)
+    def __init__(self, n=24):
+        super().__init__(n, k=1)
+        self.ox = self.oy = (n - 24) // 2  # bigger canvases keep the 24-cell figure centred
         self.raw = True  # export as crisp low-res pixels (no Scale2x)
 
     def outline(self):
@@ -270,14 +273,135 @@ def tier_body(s, o):
             s.mark(x, int(y), GOLD)
 
 
+# ---------------------------------------------------------------- tier 4: the master of the school
+MASTER = {
+    'cheongpung': dict(halo='swords', halo_c=rgba(236, 246, 255), crown='imperial', crown_c=GOLD, robe=rgba(240, 244, 236), aura=(220, 245, 255)),
+    'unhak': dict(halo='taiji', halo_c=rgba(240, 240, 250), crown='taoist', crown_c=rgba(60, 60, 70), robe=rgba(236, 240, 252), aura=(200, 220, 255)),
+    'yeoubi': dict(wings='tails9', wings_c=rgba(250, 236, 214), crown='fox', crown_c=GOLD, aura=(255, 170, 120)),
+    'cheolsan': dict(halo='sun', halo_c=rgba(255, 210, 90), robe=rgba(236, 176, 60), aura=(255, 220, 120)),
+    'dallae': dict(halo='spirit', halo_c=rgba(140, 220, 255), crown='beads', crown_c=GOLD, aura=(160, 220, 255)),
+    'yawol': dict(wings='shadow', wings_c=rgba(30, 24, 40), crown='mask', crown_c=rgba(200, 30, 40), aura=(230, 40, 60)),
+    'songhwa': dict(halo='lotus', halo_c=rgba(150, 230, 150), crown='jade', crown_c=rgba(120, 225, 175), aura=(150, 240, 170)),
+    'muyeong': dict(halo='swords', halo_c=rgba(230, 60, 70), robe=rgba(70, 70, 80), aura=(230, 50, 60)),
+    'geumbi': dict(halo='talisman', halo_c=rgba(250, 220, 100), crown='imperial', crown_c=GOLD, aura=(255, 210, 90)),
+    'seola': dict(wings='ice', wings_c=rgba(200, 240, 255), crown='ice', crown_c=rgba(220, 246, 255), aura=(190, 236, 255)),
+    'cheonma': dict(wings='shadow', wings_c=rgba(40, 10, 16), crown='horned', crown_c=rgba(200, 26, 40), robe=rgba(24, 18, 26), aura=(230, 20, 40)),
+    'sansin': dict(halo='sun', halo_c=rgba(220, 250, 200), crown='taoist', crown_c=rgba(120, 200, 140), aura=(210, 255, 210)),
+    'baekmae': dict(halo='plum', halo_c=rgba(255, 140, 180), crown='jade', crown_c=rgba(255, 170, 200), robe=rgba(246, 240, 244), aura=(255, 160, 200)),
+    'palgeol': dict(halo='ring', halo_c=rgba(120, 220, 120), crown='none', aura=(150, 240, 130)),
+    'dangyu': dict(wings='poison', wings_c=rgba(90, 200, 90), crown='mask', crown_c=rgba(40, 120, 60), aura=(130, 255, 110)),
+    'namgung': dict(halo='swords', halo_c=rgba(255, 230, 140), crown='imperial', crown_c=GOLD, aura=(255, 225, 120)),
+    'maengju': dict(halo='sun', halo_c=rgba(255, 236, 150), crown='imperial', crown_c=GOLD, aura=(255, 236, 150)),
+    'aemi': dict(halo='lotus', halo_c=rgba(220, 190, 255), crown='jade', crown_c=rgba(230, 210, 255), robe=rgba(244, 238, 252), aura=(220, 190, 255)),
+    'gonryun': dict(halo='swords', halo_c=rgba(200, 240, 255), wings='cloud', wings_c=rgba(240, 250, 255), aura=(200, 240, 255)),
+    'jegal': dict(halo='bagua', halo_c=rgba(120, 220, 180), crown='feather', crown_c=rgba(250, 250, 240), aura=(130, 230, 190)),
+    'dokgo': dict(halo='swords', halo_c=rgba(240, 240, 250), crown='none', robe=rgba(232, 232, 240), aura=(240, 240, 255)),
+    'hyeolrang': dict(halo='ring', halo_c=rgba(220, 30, 40), crown='skull', crown_c=rgba(236, 230, 214), aura=(230, 30, 40)),
+    'hyeonmu': dict(halo='spirit', halo_c=rgba(180, 130, 255), crown='horned', crown_c=rgba(120, 80, 170), aura=(180, 130, 255)),
+    'jusun': dict(wings='cloud', wings_c=rgba(250, 246, 236), crown='none', aura=(255, 210, 150)),
+    'hwaryeon': dict(wings='fire', wings_c=rgba(255, 120, 40), crown='feather', crown_c=rgba(255, 200, 60), aura=(255, 150, 60)),
+    'dueok': dict(halo='ring', halo_c=rgba(255, 200, 60), crown='imperial', crown_c=GOLD, aura=(255, 210, 80)),
+    'nameless': dict(halo='swords', halo_c=rgba(250, 250, 255), wings='shadow', wings_c=rgba(20, 20, 26), aura=(255, 255, 255)),
+}
+
+
+def master_back(s, m):
+    """Halo / wings behind the figure."""
+    c = m.get('halo_c', GOLD)
+    h = m.get('halo')
+    if h in ('ring', 'sun', 'taiji', 'lotus', 'spirit', 'bagua', 'talisman', 'plum'):
+        s.blob(12, 6.5, 8.6, 8.2, c)
+        s.erase_disc(12, 6.5, 7.2)  # hollow ring
+        if h == 'sun':
+            for i in range(12):
+                a = i * math.pi / 6
+                s.line(12 + math.cos(a) * 8.6, 6.5 + math.sin(a) * 8.2, 12 + math.cos(a) * 10.6, 6.5 + math.sin(a) * 10, c, 1)
+        if h == 'taiji':
+            s.blob(12, 6.5, 2.6, 2.6, WHITE)
+            s.blob(12, 5.2, 1.3, 1.3, INK)
+        if h in ('lotus', 'plum', 'talisman', 'spirit', 'bagua'):
+            for i in range(8):
+                a = i * math.pi / 4
+                x, y = 12 + math.cos(a) * 8, 6.5 + math.sin(a) * 7.6
+                if h == 'talisman':
+                    s.rect(x - 0.6, y - 1.2, x + 0.6, y + 1.2, rgba(250, 220, 100))
+                else:
+                    s.blob(x, y, 1.1, 1.1, mix(c, WHITE, 0.4))
+    elif h == 'swords':
+        for i in range(7):
+            a = math.pi + i * math.pi / 6  # fan of blades behind the head and shoulders
+            x0, y0 = 12 + math.cos(a) * 4, 8 + math.sin(a) * 4
+            x1, y1 = 12 + math.cos(a) * 11, 8 + math.sin(a) * 10.5
+            s.line(x0, y0, x1, y1, c, 1)
+            s.mark(int(x1), int(y1), WHITE)
+    w = m.get('wings')
+    wc = m.get('wings_c', WHITE)
+    if w in ('fire', 'ice', 'shadow', 'poison', 'cloud'):
+        for side in (-1, 1):
+            pts = [(12 + side * 4, 12), (12 + side * 11.6, 4), (12 + side * 11, 10), (12 + side * 12, 13), (12 + side * 9.6, 15), (12 + side * 10.6, 19), (12 + side * 5, 17)]
+            s.poly(pts, wc)
+            s.poly([(12 + side * 5, 13), (12 + side * 9.6, 8), (12 + side * 8.6, 14), (12 + side * 5.4, 16)], mix(wc, WHITE, 0.3) if w != 'shadow' else mul(wc, 1.8))
+    if w == 'tails9':
+        for i in range(5):
+            x, y = 1.6 + i * 0.6, 6 + i * 3.4
+            s.poly([(9, 18), (x + 2.4, y + 2.4), (x, y), (x + 1.2, y - 2), (7.6, 14)], wc)
+        for i in range(4):
+            x, y = 22 - i * 0.6, 8 + i * 3.4
+            s.poly([(15, 18), (x - 2.4, y + 2.4), (x, y), (x - 1.2, y - 2), (16.4, 14)], wc)
+
+
+def master_crown(s, m):
+    k, c = m.get('crown'), m.get('crown_c', GOLD)
+    if k == 'imperial':
+        s.poly([(8, 3.4), (16, 3.4), (16.8, -1.4), (14.6, 1), (12, -2), (9.4, 1), (7.2, -1.4)], c)
+        s.mark(12, 0, RED)
+        s.mark(9, 1, rgba(120, 225, 175))
+        s.mark(15, 1, rgba(120, 225, 175))
+    elif k == 'taoist':
+        s.rect(9.6, -1, 14.4, 2.6, c)
+        s.line(5, 1.6, 19, 1.6, c, 1)
+        s.mark(12, 0, GOLD)
+    elif k == 'horned':
+        s.poly([(8, 3.4), (16, 3.4), (15, 1), (9, 1)], c)
+        s.poly([(8.4, 2), (3, -3), (9.8, 0.6)], mul(c, 0.7))
+        s.poly([(15.6, 2), (21, -3), (14.2, 0.6)], mul(c, 0.7))
+        s.mark(12, 2, rgba(255, 220, 90))
+    elif k == 'fox':
+        s.poly([(9, 3), (15, 3), (14.4, 0.6), (12, 1.6), (9.6, 0.6)], c)
+    elif k == 'ice':
+        for x, h in ((8, 2.6), (10, 4.4), (12, 6), (14, 4.4), (16, 2.6)):
+            s.poly([(x - 1, 3.4), (x + 1, 3.4), (x, 3.4 - h)], c)
+    elif k == 'beads':
+        s.line(7, 3, 17, 3, c, 1)
+        for x in (7, 9, 15, 17):
+            s.line(x, 3, x, 7, rgba(200, 40, 50), 1)
+    elif k == 'mask':
+        s.rect(8.2, 8.8, 15.8, 11, c)
+    elif k == 'jade':
+        s.line(8, 1.4, 16, 0.4, GOLD, 1)
+        s.blob(12, 0.6, 1.4, 1.2, c)
+    elif k == 'feather':
+        for i, x in enumerate((9, 12, 15)):
+            s.poly([(x - 0.8, 3), (x + 0.8, 3), (x + (i - 1) * 2, -3)], c)
+    elif k == 'skull':
+        s.blob(12, 2.4, 3.4, 2.4, c)
+        s.mark(10, 2, INK)
+        s.mark(13, 2, INK)
+
+
 def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, eye_kind=None, eye_c=rgba(60, 40, 40),
          hat_kind=None, hat_c=None, cape=None, wpn_c=None, extra=None, sleeve=None, trousers=None, wide=0):
-    s = C()
+    m = MASTER.get(name, {}) if TIER >= 4 else {}
+    s = C(32 if m else 24)  # masters get room for halos and wings
+    if m.get('robe'):
+        robe = m['robe']
     o = {'robe': robe, 'inner': inner, 'sash': sash}
     if TIER >= 2 and not cape:
         cape = (mul(sash, 0.85), mul(robe, 0.55))  # earns a cape in its school colour
     if cape and TIER >= 3:
-        cape = (cape[0], GOLD)  # gold-lined at the peak
+        # gold-lined at the peak; a master's lining takes its own aura colour
+        a = MASTER.get(name, {}).get('aura') if TIER >= 4 else None
+        cape = (cape[0], rgba(*a) if a else GOLD)
     if TIER >= 2 and wpn_c is None:
         wpn_c = rgba(236, 246, 255)
     if TIER >= 3:
@@ -288,6 +412,8 @@ def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, ey
         o['sleeve'] = sleeve
     if trousers:
         o['trousers'] = trousers
+    if m:
+        master_back(s, m)
     back_hair(s, hair_st, hair_c)
     if extra and 'behind' in extra:
         extra['behind'](s)
@@ -301,6 +427,8 @@ def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, ey
         hat(s, hat_kind, hat_c)
     if hat_kind == 'hood':
         eyes(s, ek, eye_c)  # eyes peer out from under the hood
+    if m and m.get('crown') not in (None, 'none'):
+        master_crown(s, m)
     if extra and 'front' in extra:
         extra['front'](s)
     s.shade(0)
@@ -312,7 +440,14 @@ def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, ey
     if TIER >= 2:
         glow = mix(sash, WHITE, 0.35)
         aura(s, (glow[0], glow[1], glow[2], 150 if TIER == 2 else 90))
-    if TIER >= 3:
+    if TIER >= 4:
+        a = m.get('aura', (255, 214, 100))
+        aura(s, (a[0], a[1], a[2], 220))
+        aura(s, (a[0], a[1], a[2], 90))
+        for x, y in ((1, 5), (30, 7), (2, 15), (30, 17), (3, 25), (29, 26)):
+            if s.px[y][x] is None:
+                s.px[y][x] = (min(255, a[0] + 40), min(255, a[1] + 40), min(255, a[2] + 40), 240)
+    elif TIER >= 3:
         aura(s, (255, 214, 100, 200))
         for x, y in ((1, 4), (22, 6), (2, 13), (22, 15), (3, 20)):
             if s.px[y][x] is None:
@@ -396,7 +531,7 @@ CAST = [
 ]
 
 if __name__ == '__main__':
-    for t in range(4):
+    for t in range(5):
         TIER = t
         for mk in CAST:
             mk()
