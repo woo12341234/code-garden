@@ -79,20 +79,23 @@ class Sprite:
         self.ellipse(self.w - cx, cy, rx, ry, base, **kw)
 
     def outline(self):
+        """Selective outline: ink on the shadow side (right/bottom), a darkened tint of the
+        neighbouring colour on the lit side (top/left), so silhouettes read crisp but not heavy."""
         out = [row[:] for row in self.px]
         for y in range(self.h):
             for x in range(self.w):
                 if self.px[y][x] is not None:
                     continue
-                best = None
+                best, side = None, None
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     nx, ny = x + dx, y + dy
                     if 0 <= nx < self.w and 0 <= ny < self.h and self.px[ny][nx] is not None:
                         c = self.px[ny][nx]
                         if best is None or sum(c[:3]) < sum(best[:3]):
-                            best = c
+                            best, side = c, (dx, dy)
                 if best is not None:
-                    out[y][x] = INK
+                    lit = side in ((1, 0), (0, 1))  # the shape lies right/below: this is its top/left edge
+                    out[y][x] = mix(mul(best, 0.35), INK, 0.45) if lit else INK
         self.px = out
 
     def eyes(self, x, y, h=3, w=2, shine=True, color=EYE):
@@ -135,18 +138,37 @@ class Sprite:
             moved[y + dy][x + dx] = self.px[y][x]
         self.px = moved
 
+    def scale2x(self):
+        """EPX / Scale2x: doubles the grid and rounds off staircase diagonals, keeping hard pixel edges."""
+        w, h, px = self.w, self.h, self.px
+        get = lambda x, y: px[y][x] if 0 <= x < w and 0 <= y < h else None
+        out = [[None] * (w * 2) for _ in range(h * 2)]
+        for y in range(h):
+            for x in range(w):
+                P = px[y][x]
+                A, B, C, D = get(x, y - 1), get(x + 1, y), get(x - 1, y), get(x, y + 1)
+                out[2 * y][2 * x] = A if (C == A and C != D and A != B) else P
+                out[2 * y][2 * x + 1] = B if (A == B and A != C and B != D) else P
+                out[2 * y + 1][2 * x] = C if (D == C and D != B and C != A) else P
+                out[2 * y + 1][2 * x + 1] = D if (B == D and B != A and D != C) else P
+        return out
+
     def save(self, name):
         self.center()
-        img = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0))
+        k = getattr(self, 'K', 1)
+        # sprites drawn on the fine grid are already detailed; the coarse ones get Scale2x
+        hd = self.px if k > 1 else self.scale2x()
+        k = max(k, 2)
+        H2, W2 = len(hd), len(hd[0])
+        img = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
         p = img.load()
-        for y in range(self.h):
-            for x in range(self.w):
-                if self.px[y][x] is not None:
-                    p[x, y] = self.px[y][x]
-        img = img.resize((self.w * EXPORT_SCALE, self.h * EXPORT_SCALE), Image.NEAREST)
+        for y in range(H2):
+            for x in range(W2):
+                if hd[y][x] is not None:
+                    p[x, y] = hd[y][x]
+        img = img.resize((W2 * EXPORT_SCALE // k, H2 * EXPORT_SCALE // k), Image.NEAREST)
         img.save(os.path.join(OUT_DIR, name))
         print('saved', name)
-
 
 def _inside(pts, x, y):
     inside = False

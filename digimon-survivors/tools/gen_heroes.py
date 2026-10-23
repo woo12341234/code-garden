@@ -22,15 +22,46 @@ FLAME_BLUE = rgba(110, 190, 255)
 PAPER = rgba(240, 214, 100)
 
 
+# Drawing happens on a K-times finer grid: generators keep using 32-cell coordinates, but curves,
+# thin lines, shading and outlines come out K times more detailed (crisper forms, less "clay").
+K = 2
+
+
 class H(Sprite):
-    def __init__(self):
-        super().__init__(32)
+    def __init__(self, n=32):
+        super().__init__(n * K)
+        self.K = K
         self.protect = set()  # pixels the shading pass must leave alone (eyes etc.)
 
     def put(self, x, y, c):
-        super().put(int(x), int(y), c)
+        for dy in range(K):
+            for dx in range(K):
+                Sprite.put(self, int(x) * K + dx, int(y) * K + dy, c)
+
+    def dot(self, x, y, c):
+        """One fine-grid pixel at fractional 32-grid coordinates (x, y), protected from shading."""
+        fx, fy = int(x * K), int(y * K)
+        Sprite.put(self, fx, fy, c)
+        self.protect.add((fx, fy))
+
+    def at(self, x, y):
+        """Colour at a 32-grid cell (None if empty)."""
+        return self.px[int(y) * K][int(x) * K]
+
+    def erase_disc(self, cx, cy, r):
+        for y in range(self.h):
+            for x in range(self.w):
+                if math.hypot((x + 0.5) / K - cx, (y + 0.5) / K - cy) <= r:
+                    self.px[y][x] = None
+
+    def poly(self, pts, color):
+        Sprite.poly(self, [(px * K, py * K) for px, py in pts], color)
+
+    def ellipse(self, cx, cy, rx, ry, base, shade=True, hl=True, ymax=None):
+        Sprite.ellipse(self, cx * K, cy * K, rx * K, ry * K, base, shade=shade, hl=hl, ymax=None if ymax is None else ymax * K)
 
     def line(self, x0, y0, x1, y1, c, w=1.2):
+        x0, y0, x1, y1, w = x0 * K, y0 * K, x1 * K, y1 * K, max(1.0, w * K * 0.9)
         dx, dy = x1 - x0, y1 - y0
         L = dx * dx + dy * dy or 1
         for y in range(self.h):
@@ -48,12 +79,38 @@ class H(Sprite):
 
     def mark(self, x, y, c):
         self.put(x, y, c)
-        self.protect.add((int(x), int(y)))
+        for dy in range(K):
+            for dx in range(K):
+                self.protect.add((int(x) * K + dx, int(y) * K + dy))
+
+    def inner_lines(self):
+        """Line art between parts: where two clearly different colours meet, the darker side
+        gets a darker contour pixel, so arms, robes, faces and weapons read as separate shapes."""
+        lum = lambda c: c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11
+        out = [row[:] for row in self.px]
+        for y in range(self.h):
+            for x in range(self.w):
+                c = self.px[y][x]
+                if c is None or (x, y) in self.protect:
+                    continue
+                for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if not (0 <= nx < self.w and 0 <= ny < self.h):
+                        continue
+                    d = self.px[ny][nx]
+                    if d is None:
+                        continue
+                    diff = abs(c[0] - d[0]) + abs(c[1] - d[1]) + abs(c[2] - d[2])
+                    if diff > 120 and lum(c) < lum(d):
+                        out[y][x] = mix(mul(c, 0.55), INK, 0.35)
+                        break
+        self.px = out
 
     def shade(self, y0=14):
         """Cel shading: light from the upper left, a dark band along each row's right edge."""
+        self.inner_lines()
         out = [row[:] for row in self.px]
-        for y in range(y0, self.h):
+        for y in range(y0 * K, self.h):
             row = self.px[y]
             x = 0
             while x < self.w:
@@ -65,8 +122,8 @@ class H(Sprite):
                     x += 1
                 end = x - 1
                 n = end - start + 1
-                if n >= 4:
-                    for k in range(1 if n < 7 else 2):
+                if n >= 4 * K:
+                    for k in range(K if n < 7 * K else 2 * K):
                         if (end - k, y) not in self.protect:
                             out[y][end - k] = mul(row[end - k], 0.74)
                     if (start, y) not in self.protect:
@@ -85,7 +142,7 @@ class H(Sprite):
                 if c is None or (x, y) in self.protect:
                     continue
                 right = x + 1 >= self.w or self.px[y][x + 1] is None
-                top = self.px[y - 1][x] is None and y < 12
+                top = self.px[y - 1][x] is None and y < 12 * K
                 if right or top:
                     out[y][x] = mix(c, color, amount if right else amount * 0.6)
         self.px = out
@@ -148,23 +205,24 @@ def head(s, skin=SKIN, eye=rgba(60, 40, 40), mouth=True, brow=BLACK):
     s.poly([(12.4, 9), (19.6, 9), (18.6, 11.6), (16, 13), (13.4, 11.6)], skin)
     for y in (10, 11):
         s.mark(19 if y == 10 else 18, y, mul(skin, 0.84))
-    # sharp eyes: heavy upper lash line, iris below, brows slanting down to the centre
-    for x in (12, 13, 14):
-        s.mark(x, 9, INK)
-        s.mark(31 - x, 9, INK)
-    s.mark(13, 10, eye)
-    s.mark(18, 10, eye)
-    s.mark(14, 10, mul(skin, 0.8))
-    s.mark(17, 10, mul(skin, 0.8))
-    s.mark(14, 8, mul(skin, 0.75))
-    s.mark(17, 8, mul(skin, 0.75))
-    s.mark(13, 8, brow)
-    s.mark(18, 8, brow)
-    s.mark(16, 11, mul(skin, 0.86))
+    # sharp eyes drawn on the fine grid: thin upper lash with a flick, iris + catch-light, slanted brows
+    for side in (-1, 1):
+        cx = 16 + side * 2.5  # eye centre (32-grid)
+        for i in range(-3, 3):
+            s.dot(cx + i * 0.5, 9.5, INK)
+        s.dot(cx + side * 1.5, 9.0, INK)  # outer flick
+        s.dot(cx, 10.0, eye)
+        s.dot(cx - side * 0.5, 10.0, eye)
+        s.dot(cx, 10.5, mul(eye, 0.6))
+        s.dot(cx - side * 0.5, 10.5, mul(eye, 0.6))
+        s.dot(cx, 10.0, mix(eye, WHITE, 0.75)) if side < 0 else s.dot(cx - side * 0.5, 10.0, mix(eye, WHITE, 0.75))
+        for i in range(0, 4):
+            s.dot(cx - side * 1.0 + side * i * 0.5, 8.0 - (0.5 if i >= 2 else 0) + (0.5 if i == 0 else 0), brow)
+    s.dot(16.0, 11.0, mul(skin, 0.8))  # nose
     if mouth:
-        s.mark(15, 12, mul(skin, 0.72))
-        s.mark(16, 12, mul(skin, 0.72))
-
+        s.dot(15.5, 12.0, mul(skin, 0.68))
+        s.dot(16.0, 12.0, mul(skin, 0.68))
+        s.dot(16.5, 12.0, mul(skin, 0.75))
 
 def hair_cap(s, color, bangs=True):
     s.blob(16, 5.8, 4.3, 3.2, color, ymax=6.6)
@@ -194,7 +252,7 @@ def topknot(s, color):
 
 def headband(s, color):
     for x in range(11, 21):
-        if s.px[6][x] is not None:
+        if s.at(x, 6) is not None:
             s.put(x, 6, color)
     s.poly([(11.6, 5.6), (8, 7), (3.4, 6.4), (6, 8), (2.4, 10), (8.4, 8.6), (11.8, 7.2)], color)
 
@@ -242,10 +300,14 @@ def staff(s, x0, y0, x1, y1, color, w=1.4):
 
 
 def eyes_glow(s, color):
-    for x in (13, 18):
-        s.mark(x, 10, color)
-    s.mark(14, 10, color)
-    s.mark(17, 10, color)
+    # narrow glowing slits on the fine grid, hot white core
+    for side in (-1, 1):
+        cx = 16 + side * 2.5
+        for i in range(-3, 3):
+            s.dot(cx + i * 0.5, 10.0, color)
+        s.dot(cx + side * 1.5, 9.5, color)
+        s.dot(cx, 10.0, mix(color, WHITE, 0.6))
+        s.dot(cx - side * 0.5, 10.0, mix(color, WHITE, 0.6))
 
 
 # ---------- heroes ----------
@@ -375,10 +437,7 @@ def yawol():
     eyes_glow(s, rgba(255, 70, 70))
     s.shade()
     s.blob(27.4, 13.4, 3.4, 3.4, STEEL)
-    for y in range(32):
-        for x in range(32):
-            if math.hypot(x + 0.5 - 27.4, y + 0.5 - 13.4) <= 1.8:
-                s.px[y][x] = None
+    s.erase_disc(27.4, 13.4, 1.8)
     s.put(25, 10, WHITE)
     s.finish('yawol.png')
 

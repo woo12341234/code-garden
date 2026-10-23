@@ -15,8 +15,7 @@ GLOW_R = rgba(255, 60, 50)
 
 class Y(H):
     def __init__(self, n):
-        Sprite.__init__(self, n)
-        self.protect = set()
+        H.__init__(self, n)
 
     def finish(self, name, rim=(255, 210, 200, 255)):
         self.shade(0)

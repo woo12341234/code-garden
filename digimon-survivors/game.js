@@ -249,7 +249,9 @@
     if (o.flash) ctx.filter = 'brightness(2.2)';
     const top = -size / 2 - ground;
     if (s.img) {
-      ctx.imageSmoothingEnabled = s.img.width > size * dpr * 2;
+      // Sprites are drawn from finer source art: when shrinking, filter so thin lines don't drop out unevenly.
+      ctx.imageSmoothingEnabled = s.img.width > size * dpr * worldScale * 1.15;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(s.img, -size / 2, top, size, size);
     } else {
       ctx.fillStyle = s.color;
