@@ -14,7 +14,8 @@
     dpr = Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.5 : 2);
     // small screens see a little more of the battlefield: the whole world is drawn slightly smaller
     const short = Math.min(window.innerWidth, window.innerHeight);
-    worldScale = short < 560 ? Math.max(0.74, short / 560) : 1;
+    // pulled-back camera: a wider field of view on every screen (phones a touch less, they're small already)
+    worldScale = (short < 560 ? Math.max(0.74, short / 560) : 1) * (IS_MOBILE ? 0.9 : 0.84);
     viewW = window.innerWidth / worldScale;
     viewH = window.innerHeight / worldScale;
     viewHW = viewH / TILT;
@@ -49,24 +50,24 @@
   // Each key loads assets/<key>.png. If the file is missing, a colored circle + emoji is drawn instead.
   // size = on-screen size in CSS px (our pixel art is drawn at exactly 2x its grid size).
   const SPRITE_DEFS = {
-    cheongpung: { size: 72, crisp: true, color: '#34767f', emoji: '🗡️' },
-    unhak: { size: 72, crisp: true, color: '#e4e2d6', emoji: '📜' },
-    yeoubi: { size: 72, crisp: true, color: '#c4303c', emoji: '🦊' },
-    cheolsan: { size: 72, crisp: true, color: '#c47a34', emoji: '📿' },
-    dallae: { size: 72, crisp: true, color: '#be342e', emoji: '🔔' },
-    yawol: { size: 72, crisp: true, color: '#34324e', emoji: '🥷' },
-    songhwa: { size: 72, crisp: true, color: '#608c56', emoji: '🌿' },
-    muyeong: { size: 72, crisp: true, color: '#6e707c', emoji: '⚔️' },
-    geumbi: { size: 72, crisp: true, color: '#deba50', emoji: '🧧' },
-    seola: { size: 72, crisp: true, color: '#ecf4fa', emoji: '❄️' },
-    cheonma: { size: 72, crisp: true, color: '#781824', emoji: '😈' },
-    sansin: { size: 72, crisp: true, color: '#f0eee4', emoji: '🏔️' },
+    cheongpung: { size: 60, crisp: true, color: '#34767f', emoji: '🗡️' },
+    unhak: { size: 60, crisp: true, color: '#e4e2d6', emoji: '📜' },
+    yeoubi: { size: 60, crisp: true, color: '#c4303c', emoji: '🦊' },
+    cheolsan: { size: 60, crisp: true, color: '#c47a34', emoji: '📿' },
+    dallae: { size: 60, crisp: true, color: '#be342e', emoji: '🔔' },
+    yawol: { size: 60, crisp: true, color: '#34324e', emoji: '🥷' },
+    songhwa: { size: 60, crisp: true, color: '#608c56', emoji: '🌿' },
+    muyeong: { size: 60, crisp: true, color: '#6e707c', emoji: '⚔️' },
+    geumbi: { size: 60, crisp: true, color: '#deba50', emoji: '🧧' },
+    seola: { size: 60, crisp: true, color: '#ecf4fa', emoji: '❄️' },
+    cheonma: { size: 60, crisp: true, color: '#781824', emoji: '😈' },
+    sansin: { size: 60, crisp: true, color: '#f0eee4', emoji: '🏔️' },
     icicle: { size: 20, color: '#bee6ff' },
-    baekmae: { size: 72, crisp: true, color: '#463c46', emoji: '🌸' },
-    palgeol: { size: 72, crisp: true, color: '#967d5f', emoji: '🥢' },
-    dangyu: { size: 72, crisp: true, color: '#28503c', emoji: '📍' },
-    namgung: { size: 72, crisp: true, color: '#284696', emoji: '👑' },
-    maengju: { size: 72, crisp: true, color: '#f5f2e8', emoji: '🐉' },
+    baekmae: { size: 60, crisp: true, color: '#463c46', emoji: '🌸' },
+    palgeol: { size: 60, crisp: true, color: '#967d5f', emoji: '🥢' },
+    dangyu: { size: 60, crisp: true, color: '#28503c', emoji: '📍' },
+    namgung: { size: 60, crisp: true, color: '#284696', emoji: '👑' },
+    maengju: { size: 60, crisp: true, color: '#f5f2e8', emoji: '🐉' },
     petal: { size: 20, color: '#fa9fbe' },
     needle: { size: 24, color: '#c8cdd4' },
     bottle: { size: 24, color: '#d69646', emoji: '🍶' },
@@ -82,16 +83,16 @@
     gangsi: { size: 48, color: '#a0c4b0', emoji: '🧟' },
     eodukssini: { size: 48, color: '#282434', emoji: '🌑' },
     bulgasari: { size: 48, color: '#78706e', emoji: '🦏' },
-    aemi: { size: 72, crisp: true, color: '#b096d2', emoji: '🗡️' },
-    gonryun: { size: 72, crisp: true, color: '#6ea0d2', emoji: '🏔️' },
-    jegal: { size: 72, crisp: true, color: '#46786e', emoji: '🪶' },
-    dokgo: { size: 72, crisp: true, color: '#24222c', emoji: '🗡️' },
-    hyeolrang: { size: 72, crisp: true, color: '#828290', emoji: '🐺' },
-    hyeonmu: { size: 72, crisp: true, color: '#462c60', emoji: '👻' },
-    jusun: { size: 72, crisp: true, color: '#aa7846', emoji: '🍶' },
-    hwaryeon: { size: 72, crisp: true, color: '#d23228', emoji: '🔥' },
-    dueok: { size: 72, crisp: true, color: '#466ebe', emoji: '👹' },
-    nameless: { size: 72, crisp: true, color: '#5c5a62', emoji: '🗡️' },
+    aemi: { size: 60, crisp: true, color: '#b096d2', emoji: '🗡️' },
+    gonryun: { size: 60, crisp: true, color: '#6ea0d2', emoji: '🏔️' },
+    jegal: { size: 60, crisp: true, color: '#46786e', emoji: '🪶' },
+    dokgo: { size: 60, crisp: true, color: '#24222c', emoji: '🗡️' },
+    hyeolrang: { size: 60, crisp: true, color: '#828290', emoji: '🐺' },
+    hyeonmu: { size: 60, crisp: true, color: '#462c60', emoji: '👻' },
+    jusun: { size: 60, crisp: true, color: '#aa7846', emoji: '🍶' },
+    hwaryeon: { size: 60, crisp: true, color: '#d23228', emoji: '🔥' },
+    dueok: { size: 60, crisp: true, color: '#466ebe', emoji: '👹' },
+    nameless: { size: 60, crisp: true, color: '#5c5a62', emoji: '🗡️' },
     daedokkaebi: { size: 64, color: '#4870be', emoji: '👹' },
     imugi: { size: 64, color: '#468c64', emoji: '🐍' },
     heukyo: { size: 64, color: '#3e3a4c', emoji: '⚔️' },
@@ -5282,15 +5283,25 @@
   // Sword-light trail behind a flying technique, coloured by its school, with an additive glow.
   function drawTrail(p) {
     const vx = p.vx || 0, vy = p.vy || 0, sp = Math.hypot(vx, vy);
-    if (sp < 40 || lowFx) return;
+    if (sp < 40) return;
     const rgb = p.evo?.rgb || p.rgb || COMBO_FX[p.src]?.[0] || '255, 240, 210';
-    const L = Math.min(70, sp * 0.09), ux = vx / sp, uy = vy / sp;
-    const w = (p.radius || 8) * 0.9;
+    const L = Math.min(90, sp * 0.12), ux = vx / sp, uy = vy / sp;
+    const w = (p.radius || 8) * 1.25;
+    // a dark soft shadow first, so bright techniques stand out on any ground
+    ctx.save();
+    ctx.strokeStyle = 'rgba(16, 10, 20, 0.28)';
+    ctx.lineWidth = w * 1.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x - ux * L * 0.6, p.y - uy * L * 0.6);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const g = ctx.createLinearGradient(p.x - ux * L, p.y - uy * L, p.x, p.y);
     g.addColorStop(0, `rgba(${rgb}, 0)`);
-    g.addColorStop(1, `rgba(${rgb}, 0.55)`);
+    g.addColorStop(1, `rgba(${rgb}, 0.85)`);
     ctx.strokeStyle = g;
     ctx.lineWidth = w;
     ctx.lineCap = 'round';
@@ -5298,8 +5309,8 @@
     ctx.moveTo(p.x - ux * L, p.y - uy * L);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.lineWidth = Math.max(1, w * 0.25);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = Math.max(1.5, w * 0.3);
     ctx.beginPath();
     ctx.moveTo(p.x - ux * L * 0.55, p.y - uy * L * 0.55);
     ctx.lineTo(p.x, p.y);
@@ -5318,7 +5329,7 @@
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(rot);
-    const L = 9, W = 3.2;
+    const L = 12, W = 4.2;
     ctx.fillStyle = p.evo ? `rgb(${p.evo.rgb})` : '#c81e45';
     ctx.beginPath();
     ctx.moveTo(-L, 0); ctx.quadraticCurveTo(0, -W, L, 0); ctx.quadraticCurveTo(0, W, -L, 0);
@@ -6087,8 +6098,8 @@
         drawSprite(p.sprite, p.x, p.y, { rot, sx: 1.35, sy: 1.35 });
         continue;
       }
-      if (p.ghost) { drawSprite(p.sprite, p.x, p.y, { alpha: 0.7, sx: 0.7, sy: 0.7, upright: true }); continue; }
-      drawSprite(p.sprite, p.x, p.y, { rot });
+      if (p.ghost) { drawSprite(p.sprite, p.x, p.y, { alpha: 0.75, sx: 0.85, sy: 0.85, upright: true }); continue; }
+      drawSprite(p.sprite, p.x, p.y, { rot, sx: 1.3, sy: 1.3 });
     }
     drawShells();
     drawFx();
