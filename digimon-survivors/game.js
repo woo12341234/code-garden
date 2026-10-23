@@ -3957,12 +3957,17 @@
     const ramp = diff.ramp || 1;
     // Bosses take the chapter step a little more gently so they stay beatable inside the 10-minute run.
     const scHp = (type.boss ? sc.hp ** 0.75 * (heat >= 5 ? 1.3 : 1) : sc.hp);
-    const hp = type.prop ? 1 : type.hp * (1 + ramp * (tr / 120 + (tr / 300) ** 2)) * (1 + c) * diff.hp * scHp;
+    const toughness = (1 + ramp * (tr / 120 + (tr / 300) ** 2)) * scHp;
+    const hp = type.prop ? 1 : type.hp * toughness * (1 + c) * diff.hp;
+    // Tougher yokai drop bigger coins. The difficulty's own HP bonus phases in over the first
+    // 10 minutes, so early growth stays slow on hard modes but the late game catches up.
+    const late = Math.min(1, t / 600);
+    const xp = Math.max(1, Math.round(type.xp * toughness ** 0.55 * (diff.hp / 1.4) ** (0.55 * late)));
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
       speed: type.speed * (1 + Math.min(t / 480, 0.35)) * (1 + c / 2) * diff.speed * sc.speed,
       damage: Math.round(type.damage * (1 + (ramp * tr) / 240) * diff.dmg * sc.dmg),
-      contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
+      contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45, xp,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
     if (!type.boss && !type.prop && !type.gold && !at && t >= 90 && Math.random() < Math.min(0.07, 0.006 * (diff.elite || 1) * sc.elite * (1 + t / 400))) {
@@ -4203,7 +4208,8 @@
     if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
     if (e.type.boss || e.elite) shake = Math.max(shake, e.type.boss ? 10 : 5);
     burst(e.x, e.y, e.type.boss ? 24 : 8, ['#ffffff', '#fff0b3', '#ffd1e0'], e.type.boss ? 200 : 110, 0.4, 4);
-    pickups.push({ kind: e.type.xp >= 20 ? 'coin_gold' : 'coin', value: e.type.xp, x: e.x, y: e.y });
+    const xpv = e.xp ?? e.type.xp;
+    pickups.push({ kind: xpv >= 20 ? 'coin_gold' : 'coin', value: xpv, x: e.x, y: e.y });
     if (player.killHeal) player.hp = Math.min(player.maxHp, player.hp + player.killHeal);
     if (player.necro && Math.random() < player.necro && projectiles.length < 300) {
       const a = Math.random() * Math.PI * 2;
