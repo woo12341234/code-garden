@@ -765,3 +765,8 @@ input#sect-name { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1p
 }
 /* the lobby lets the painted battlefield show through */
 #start-screen { background: radial-gradient(ellipse at 50% 35%, rgba(30, 22, 34, 0.45), rgba(10, 8, 14, 0.8)); }
+/* tall heroes: the HUD portrait zooms in on the head and shoulders */
+#portrait-box { display: block; position: relative; }
+#portrait { position: absolute; width: 230%; height: 230%; left: -65%; top: -4%; max-width: none; }
+.card.hero img { width: 104px; height: 104px; margin: -10px 0 -6px; }
+@media (max-width: 560px) { .card.hero img { width: 84px; height: 84px; } }
