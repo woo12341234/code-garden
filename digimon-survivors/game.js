@@ -1671,7 +1671,7 @@
   };
   for (const [k, t] of Object.entries(ENEMY_TYPES)) t.key = k;
   const BOSSES = [ENEMY_TYPES.daedokkaebi, ENEMY_TYPES.imugi, ENEMY_TYPES.heukyo];
-  const MAX_ENEMIES = 320;
+  const MAX_ENEMIES = 240;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
   const BOSS_START = 60;
@@ -3283,7 +3283,7 @@
   const HEAT_MAX = 9;
   const HEAT_RULES = [
     [3, '회복량 절반'],
-    [5, '요괴 속도 +10%'],
+    [5, '보스 체력 +30%'],
     [7, '보스 공격 패턴 +1'],
     [9, '시작 최대 HP -30%'],
   ];
@@ -3291,15 +3291,15 @@
   function heatDesc(h) {
     if (!h) return '업화 없이 도전해요';
     const rules = HEAT_RULES.filter(([lv]) => h >= lv).map(([, t]) => t);
-    return `요괴 체력 +${Math.round(18 * h)}% · 공격 +${12 * h}% · 출현 +${8 * h}% · 정예 +${30 * h}%${rules.length ? ` · ${rules.join(' · ')}` : ''} · 점수 ×${(1 + 0.25 * h).toFixed(2)} · 은자 ×${(1 + 0.15 * h).toFixed(2)}`;
+    return `요괴 체력 +${22 * h}% · 공격 +${12 * h}% · 정예 +${30 * h}%${rules.length ? ` · ${rules.join(' · ')}` : ''} · 점수 ×${(1 + 0.25 * h).toFixed(2)} · 은자 ×${(1 + 0.15 * h).toFixed(2)}`;
   }
   function setHeat(h) {
     const base = DIFFICULTIES.find((d) => d.id === diff.id);
     heat = h;
     diff = h ? {
       ...base, name: `${base.name}·업화${h}`,
-      hp: base.hp * (1 + 0.18 * h), dmg: base.dmg * (1 + 0.12 * h), spawn: base.spawn * (1 + 0.08 * h),
-      elite: base.elite * (1 + 0.3 * h), gold: base.gold * (1 + 0.15 * h), speed: base.speed * (h >= 5 ? 1.1 : 1),
+      hp: base.hp * (1 + 0.22 * h), dmg: base.dmg * (1 + 0.12 * h),
+      elite: base.elite * (1 + 0.3 * h), gold: base.gold * (1 + 0.15 * h),
     } : base;
   }
   function applyHeatToPlayer(p) {
@@ -3453,7 +3453,7 @@
     if (stageTime < 62 || (player.raided || (player.raided = {}))[stageIdx]) return;
     player.raided[stageIdx] = true;
     const rd = RAIDS[Math.min(stageIdx, RAIDS.length - 1)];
-    const n = 12 + stageIdx * 5;
+    const n = Math.round((12 + stageIdx * 4) * Math.min(1, diff.spawn + 0.15));
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       spawnEnemy(ENEMY_TYPES[rd.members[i % rd.members.length]], 0, 0, { x: player.x + Math.cos(a) * 360, y: player.y + Math.sin(a) * 360 });
@@ -3619,12 +3619,13 @@
   }
 
   // ---------- Difficulty (난이도) ----------
+  // Higher tiers send fewer, slower yokai that are much tougher and hit harder.
   const DIFFICULTIES = [
-    { id: 'easy', icon: '🍃', name: '입문', desc: '처음이라면. 요괴 체력·공격력 ×0.8. 은자 ×0.7', hp: 0.8, dmg: 0.8, spawn: 1, speed: 0.98, gold: 0.7, ramp: 1, elite: 0.8 },
-    { id: 'normal', icon: '⚔️', name: '강호', desc: '체력 ×1.4, 공격력 ×1.35, 더 많이 몰려와요', hp: 1.4, dmg: 1.35, spawn: 1.25, speed: 1.05, gold: 1, ramp: 1.25, elite: 1.3 },
-    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×2.3, 공격력 ×2, 시간이 갈수록 훨씬 빨리 강해져요. 은자 ×1.6', hp: 2.3, dmg: 2, spawn: 1.6, speed: 1.15, gold: 1.6, ramp: 1.8, elite: 2 },
-    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×3.6, 공격력 ×2.8, 훨씬 많고 빨라요. 정예가 자주 나와요. 은자 ×2.8', hp: 3.6, dmg: 2.8, spawn: 2.1, speed: 1.25, gold: 2.8, ramp: 2.4, elite: 3 },
-    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×5, 공격력 ×3.6, 쉴 틈 없이 몰려오고 1분마다 미친 듯이 강해져요. 은자 ×4.5', hp: 5, dmg: 3.6, spawn: 2.7, speed: 1.35, gold: 4.5, ramp: 3.2, elite: 4.5 },
+    { id: 'easy', icon: '🍃', name: '입문', desc: '처음이라면. 요괴 체력·공격력 ×0.8. 은자 ×0.7', hp: 0.8, dmg: 0.8, spawn: 1, speed: 1.05, gold: 0.7, ramp: 1, elite: 0.8 },
+    { id: 'normal', icon: '⚔️', name: '강호', desc: '체력 ×1.4, 공격력 ×1.35. 기본 속도·출현', hp: 1.4, dmg: 1.35, spawn: 1, speed: 1, gold: 1, ramp: 1.25, elite: 1.3 },
+    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×2.6, 공격력 ×2. 대신 요괴가 조금 느리고(×0.9) 덜 나와요(×0.85). 은자 ×1.6', hp: 2.6, dmg: 2, spawn: 0.85, speed: 0.9, gold: 1.6, ramp: 1.8, elite: 2 },
+    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×4.2, 공격력 ×2.8. 요괴 속도 ×0.82, 출현 ×0.72. 정예가 자주 나와요. 은자 ×2.8', hp: 4.2, dmg: 2.8, spawn: 0.72, speed: 0.82, gold: 2.8, ramp: 2.4, elite: 3 },
+    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×6, 공격력 ×3.6. 요괴는 느리지만(×0.74) 적게(×0.6) 나오는 대신 한 마리 한 마리가 괴물이에요. 은자 ×4.5', hp: 6, dmg: 3.6, spawn: 0.6, speed: 0.74, gold: 4.5, ramp: 3.2, elite: 4.5 },
   ];
   let diff = DIFFICULTIES[1];
 
@@ -3647,10 +3648,10 @@
 
   // Each chapter steps the yokai up on top of the time ramp: tougher, harder-hitting, faster and more of them.
   const STAGE_SCALE = [
-    { hp: 1.3, dmg: 1.3, speed: 1.1, spawn: 1.4, elite: 1.5 },
-    { hp: 2.6, dmg: 1.9, speed: 1.22, spawn: 2, elite: 2.5 },
-    { hp: 4.5, dmg: 2.6, speed: 1.32, spawn: 2.6, elite: 3.5 },
-    { hp: 7.5, dmg: 3.4, speed: 1.42, spawn: 3.2, elite: 5 },
+    { hp: 1.3, dmg: 1.3, speed: 1, spawn: 1, elite: 1.5 },
+    { hp: 2.8, dmg: 1.9, speed: 1.05, spawn: 1.2, elite: 2.5 },
+    { hp: 5, dmg: 2.6, speed: 1.1, spawn: 1.4, elite: 3.5 },
+    { hp: 8.5, dmg: 3.4, speed: 1.14, spawn: 1.6, elite: 5 },
   ];
   const stageScale = () => STAGE_SCALE[Math.min(stageIdx, STAGE_SCALE.length - 1)];
   // Enemies get tougher, faster and hit harder the longer the run goes.
@@ -3661,11 +3662,11 @@
     // Yokai grow tougher, faster and deadlier with time; harder difficulties ramp up much faster.
     const ramp = diff.ramp || 1;
     // Bosses take the chapter step a little more gently so they stay beatable inside the 10-minute run.
-    const scHp = type.boss ? sc.hp ** 0.75 : sc.hp;
+    const scHp = (type.boss ? sc.hp ** 0.75 * (heat >= 5 ? 1.3 : 1) : sc.hp);
     const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp * scHp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
-      speed: type.speed * (1 + Math.min((t / 360) * ramp, 0.5 + 0.3 * ramp)) * (1 + c / 2) * diff.speed * sc.speed,
+      speed: type.speed * (1 + Math.min(t / 480, 0.35)) * (1 + c / 2) * diff.speed * sc.speed,
       damage: Math.round(type.damage * (1 + (ramp * t) / 240) * diff.dmg * sc.dmg),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
@@ -3752,8 +3753,10 @@
     }
     spawnTimer -= dt;
     if (spawnTimer <= 0 && enemies.length < MAX_ENEMIES) {
-      spawnTimer = clamp(0.8 - elapsed / 140, 0.18, 0.8);
-      const n = Math.max(1, Math.round((1 + Math.floor(elapsed / 60)) * (1 + player.curse) * diff.spawn * stageScale().spawn));
+      spawnTimer = clamp(1.1 - elapsed / 220, 0.4, 1.1);
+      // fractional batch sizes round randomly, so lower spawn rates still matter early on
+      const want = (1 + Math.floor(elapsed / 90)) * (1 + player.curse) * diff.spawn * stageScale().spawn;
+      const n = Math.floor(want) + (Math.random() < want % 1 ? 1 : 0);
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
     if (st.endless && elapsed >= BOSS_START) {
