@@ -772,9 +772,23 @@
     ctx.fillStyle = p.color;
     if (!p.shape) {
       if (p.star) {
-        ctx.fillRect(p.x - s * 1.5, p.y - s / 2, s * 3, s);
-        ctx.fillRect(p.x - s / 2, p.y - s * 1.5, s, s * 3);
-      } else ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+        // a thin four-point glint
+        const L = s * 2.6;
+        ctx.fillRect(p.x - L, p.y - 0.75, L * 2, 1.5);
+        ctx.fillRect(p.x - 0.75, p.y - L, 1.5, L * 2);
+        ctx.fillRect(p.x - s * 0.4, p.y - s * 0.4, s * 0.8, s * 0.8);
+      } else {
+        // a spark streak stretched along its flight
+        const vx = p.vx || 0, vy = p.vy || 0, sp = Math.hypot(vx, vy) || 1;
+        const L = Math.min(22, sp * 0.045 * k + s);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(1, s * 0.55);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - (vx / sp) * L, p.y - (vy / sp) * L);
+        ctx.stroke();
+      }
       return;
     }
     ctx.save();
@@ -2360,7 +2374,13 @@
   }
 
   // ---------- Effects ----------
+  // Pastel candy colours read as childish; bursts use deeper, sharper equivalents.
+  const FX_PALETTE = {
+    '#ffd1e0': '#ff4d6d', '#fff0b3': '#ffd35a', '#ffc2dc': '#ff5c7a', '#b8f0e0': '#4fe3c1', '#fff6b0': '#ffd35a',
+    '#ffe9a0': '#ffc23a', '#ffe066': '#ffb81f', '#bfe6ff': '#7fd0ff', '#8cc8f0': '#4aa8ff', '#ff8fb4': '#ff4d6d',
+  };
   function burst(x, y, n, colors, speed = 150, life = 0.5, size = 4, star = false) {
+    colors = colors.map((c) => FX_PALETTE[c] || c);
     if (lowFx) n = Math.ceil(n / 2);
     for (let i = 0; i < n && particles.length < PARTICLE_CAP; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -5142,24 +5162,37 @@
     ctx.fill();
   }
 
+  // 금빛 결계: a thin golden ward of rotating rune strokes with a faint inner haze (no candy disc).
   function drawAura() {
     const w = player.weapons.aura;
     if (!w) return;
-    ctx.fillStyle = 'rgba(240, 200, 90, 0.16)';
-    ctx.strokeStyle = 'rgba(200, 150, 50, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
     const radius = w.radius * player.area;
+    ctx.save();
+    const g = ctx.createRadialGradient(player.x, player.y, radius * 0.55, player.x, player.y, radius);
+    g.addColorStop(0, 'rgba(255, 200, 80, 0)');
+    g.addColorStop(1, 'rgba(255, 190, 70, 0.16)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
     ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255, 205, 90, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(190, 52, 46, 0.85)';
-    for (let i = 0; i < 6; i++) {
-      const a = anim * 0.8 + (i / 6) * Math.PI * 2;
-      const x = player.x + Math.cos(a) * radius * 0.8, y = player.y + Math.sin(a) * radius * 0.8;
-      ctx.fillRect(x - 3, y - 1, 6, 2);
-      ctx.fillRect(x - 1, y - 3, 2, 6);
+    // broken rune arcs turning in opposite directions
+    ctx.lineWidth = 2.5;
+    for (const [r, sp, n] of [[0.92, 0.7, 8], [0.78, -1.1, 5]]) {
+      for (let i = 0; i < n; i++) {
+        const a0 = anim * sp + (i / n) * Math.PI * 2;
+        ctx.strokeStyle = `rgba(255, 220, 120, ${0.6 - (r < 0.8 ? 0.2 : 0)})`;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, radius * r, a0, a0 + (Math.PI * 2 / n) * 0.45);
+        ctx.stroke();
+      }
     }
+    ctx.restore();
   }
 
   function drawZones() {
@@ -5217,12 +5250,23 @@
         ctx.restore();
         continue;
       }
-      for (let i = 0; i < 3; i++) {
-        const ox = Math.cos(z.seed + i * 2.1 + anim) * z.r * 0.3, oy = Math.sin(z.seed + i * 2.1 + anim) * z.r * 0.2;
-        ctx.fillStyle = z.tint === 'green' ? `rgba(90, 160, 70, ${0.18 * a})` : `rgba(130, 80, 160, ${0.16 * a})`;
+      // toxic smoke: dark core, sickly rim, slow curling wisps
+      const tox = z.tint === 'green' ? ['34, 60, 30', '120, 220, 60'] : ['46, 26, 60', '170, 90, 230'];
+      const g = ctx.createRadialGradient(z.x, z.y, z.r * 0.1, z.x, z.y, z.r);
+      g.addColorStop(0, `rgba(${tox[0]}, ${0.42 * a})`);
+      g.addColorStop(0.75, `rgba(${tox[0]}, ${0.22 * a})`);
+      g.addColorStop(1, `rgba(${tox[1]}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${tox[1]}, ${0.45 * a})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const st = z.seed + i * 1.57 + anim * 0.8;
         ctx.beginPath();
-        ctx.arc(z.x + ox, z.y + oy, z.r * (0.7 + i * 0.15), 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(z.x, z.y, z.r * (0.45 + i * 0.13), st, st + 1.1);
+        ctx.stroke();
       }
     }
   }
@@ -5233,6 +5277,87 @@
       drawSprite('talisman', m.x, m.y, { upright: true });
     }
     ctx.globalAlpha = 1;
+  }
+
+  // Sword-light trail behind a flying technique, coloured by its school, with an additive glow.
+  function drawTrail(p) {
+    const vx = p.vx || 0, vy = p.vy || 0, sp = Math.hypot(vx, vy);
+    if (sp < 40 || lowFx) return;
+    const rgb = p.evo?.rgb || p.rgb || COMBO_FX[p.src]?.[0] || '255, 240, 210';
+    const L = Math.min(70, sp * 0.09), ux = vx / sp, uy = vy / sp;
+    const w = (p.radius || 8) * 0.9;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createLinearGradient(p.x - ux * L, p.y - uy * L, p.x, p.y);
+    g.addColorStop(0, `rgba(${rgb}, 0)`);
+    g.addColorStop(1, `rgba(${rgb}, 0.55)`);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = w;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x - ux * L, p.y - uy * L);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.lineWidth = Math.max(1, w * 0.25);
+    ctx.beginPath();
+    ctx.moveTo(p.x - ux * L * 0.55, p.y - uy * L * 0.55);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    const gl = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, w * 1.8);
+    gl.addColorStop(0, `rgba(${rgb}, 0.5)`);
+    gl.addColorStop(1, `rgba(${rgb}, 0)`);
+    ctx.fillStyle = gl;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, w * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // Plum blossom technique as razor petals: a thin crimson blade with a white edge.
+  function drawBladePetal(p, rot) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(rot);
+    const L = 9, W = 3.2;
+    ctx.fillStyle = p.evo ? `rgb(${p.evo.rgb})` : '#c81e45';
+    ctx.beginPath();
+    ctx.moveTo(-L, 0); ctx.quadraticCurveTo(0, -W, L, 0); ctx.quadraticCurveTo(0, W, -L, 0);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 235, 240, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.7, -0.6); ctx.quadraticCurveTo(0, -W * 0.8, L * 0.9, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Ghost fire (orbiting foxfire): a blue-white flame tongue streaming behind its spin.
+  function drawGhostFire(x, y, ang, big) {
+    const R = big ? 11 : 8;
+    const tx = -Math.sin(ang), ty = Math.cos(ang); // tangent of the orbit
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.2);
+    g.addColorStop(0, 'rgba(200, 235, 255, 0.85)');
+    g.addColorStop(0.4, 'rgba(80, 150, 255, 0.45)');
+    g.addColorStop(1, 'rgba(40, 80, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, R * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    // tongue trailing opposite to the spin
+    const wob = Math.sin(anim * 18 + x * 0.1) * 2;
+    ctx.fillStyle = 'rgba(110, 180, 255, 0.75)';
+    ctx.beginPath();
+    ctx.moveTo(x + ty * R * 0.7, y - tx * R * 0.7);
+    ctx.quadraticCurveTo(x - tx * R * 1.6 + wob, y - ty * R * 1.6, x - tx * R * 3 + wob, y - ty * R * 3 - 4);
+    ctx.quadraticCurveTo(x - tx * R * 1.2, y - ty * R * 1.2, x - ty * R * 0.7, y + tx * R * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.beginPath();
+    ctx.arc(x, y, R * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawTornado(p) {
@@ -5935,15 +6060,7 @@
     drawDisciples();
 
     const orbEvo = player.weapons.orbit?.evolved;
-    for (const pt of orbitPoints()) {
-      if (orbEvo) {
-        ctx.fillStyle = 'rgba(110, 190, 255, 0.35)';
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 22, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      drawSprite('foxfire', pt.x, pt.y, orbEvo ? { sx: 1.3, sy: 1.3, upright: true } : { upright: true });
-    }
+    for (const pt of orbitPoints()) drawGhostFire(pt.x, pt.y, Math.atan2(pt.y - player.y, pt.x - player.x), orbEvo);
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawAbove) WEAPONS[id].drawAbove(w);
     for (const p of projectiles) {
       if (p.kind === 'tornado') { drawTornado(p); continue; }
@@ -5956,6 +6073,8 @@
         continue;
       }
       const rot = p.kind === 'boomerang' ? p.spin : p.kind === 'homing' ? 0 : p.kind === 'petal' ? p.spin + p.life * 8 : Math.atan2(p.vy, p.vx);
+      drawTrail(p);
+      if (p.kind === 'petal') { drawBladePetal(p, rot); continue; }
       if (p.evo) {
         ctx.fillStyle = `rgba(${p.evo.rgb}, 0.35)`;
         ctx.beginPath();
