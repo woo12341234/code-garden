@@ -5,6 +5,8 @@
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
   let viewW = 0, viewH = 0, dpr = 1, worldScale = 1;
+  // 2.5D: the ground plane is tilted away from the camera (squashed vertically); people and props stand upright.
+  let TILT = 0.72, viewHW = 0; // viewHW = how much world height fits on screen
   const IS_MOBILE = window.matchMedia('(hover: none)').matches || 'ontouchstart' in window;
 
   function resize() {
@@ -15,6 +17,7 @@
     worldScale = short < 560 ? Math.max(0.74, short / 560) : 1;
     viewW = window.innerWidth / worldScale;
     viewH = window.innerHeight / worldScale;
+    viewHW = viewH / TILT;
     canvas.width = Math.round(window.innerWidth * dpr);
     canvas.height = Math.round(window.innerHeight * dpr);
     ctx.setTransform(dpr * worldScale, 0, 0, dpr * worldScale, 0, 0);
@@ -110,6 +113,9 @@
     naedan: { size: 26, color: '#a050e0', emoji: '💎' },
     bottari: { size: 30, color: '#c8323c', emoji: '🧧' },
     jangsanbeom: { size: 48, color: '#e8e4dc', emoji: '🐯' },
+    prop_pine: { size: 128, color: '#346848' }, prop_bamboo: { size: 120, color: '#78aa50' }, prop_rock: { size: 76, color: '#96928c' },
+    prop_pagoda: { size: 116, color: '#96928c' }, prop_grave: { size: 84, color: '#788c46' }, prop_deadtree: { size: 120, color: '#50423c' },
+    prop_lantern: { size: 104, color: '#c8323c' }, prop_house: { size: 150, color: '#cebc8c' },
     spider: { size: 48, color: '#342838', emoji: '🕷️' },
     toad: { size: 48, color: '#60843c', emoji: '🐸' },
     skeleton: { size: 48, color: '#ece6d2', emoji: '💀' },
@@ -189,7 +195,17 @@
     return img;
   }
 
+  // Undo the ground tilt around (x, y) so whatever is drawn next stands upright. Pair with ctx.restore().
+  function beginUpright(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 1 / TILT);
+    ctx.translate(-x, -y);
+  }
+  // Things lower on screen are closer to the camera, so they're drawn a little bigger.
+  const depthScale = (y) => (TILT < 1 ? clamp(1 + (y - cam.y) * 0.00028, 0.86, 1.16) : 1);
   // groundR anchors squash/stretch at the creature's feet instead of its center.
+  // Creatures, pickups and props stand upright; spinning projectiles lie flat on the tilted ground.
   function drawSprite(key, x, y, o = {}) {
     const s = SPRITES[key];
     if (!s) return;
@@ -197,6 +213,10 @@
     const ground = o.groundR || 0;
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y + ground));
+    if (TILT < 1 && (o.groundR !== undefined || o.upright)) {
+      const d = depthScale(y);
+      ctx.scale(d, d / TILT);
+    }
     if (o.rot) ctx.rotate(o.rot);
     ctx.scale((o.flip ? -1 : 1) * (o.sx || 1), o.sy || 1);
     if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
@@ -886,8 +906,8 @@
         const r = w.range * player.area * (stage >= 1 ? 1.4 : 1);
         arcStrike(a, r, stage >= 1 ? 1.5 : 1.25, w.damage * (stage >= 1 ? 1.15 : 1), 10);
         if (player.issen && ++player.swings % 8 === 0) {
-          beamStrike(a, Math.hypot(viewW, viewH) * 0.6, 22, w.damage * 4, 'gold');
-          beamStrike(a + Math.PI, Math.hypot(viewW, viewH) * 0.6, 22, w.damage * 4, 'gold');
+          beamStrike(a, Math.hypot(viewW, viewHW) * 0.6, 22, w.damage * 4, 'gold');
+          beamStrike(a + Math.PI, Math.hypot(viewW, viewHW) * 0.6, 22, w.damage * 4, 'gold');
           shake = Math.max(shake, 8);
           flash = Math.max(flash, 0.15);
           addFloatText(player.x, player.y - 46, '일섬!', '#ffd76b');
@@ -961,7 +981,7 @@
       upgrade(w) { w.count++; w.damage += 8; },
       update(w, dt) {
         if ((w.timer -= dt) > 0) return;
-        const pool = enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewH / 2);
+        const pool = enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewHW / 2);
         if (!pool.length) return;
         w.timer = w.cooldown * player.haste;
         for (let i = 0; i < w.count + player.extra; i++) {
@@ -1895,6 +1915,9 @@
   const settings = progress.settings || (progress.settings = { sfx: true, music: true, vib: true });
   for (const k of ['shake', 'nums', 'flash']) if (settings[k] === undefined) settings[k] = true;
   if (settings.lowfx === undefined) settings.lowfx = false;
+  if (settings.tilt === undefined) settings.tilt = true;
+  TILT = settings.tilt ? 0.72 : 1;
+  resize();
   let lowFx = settings.lowfx;
   let ac = null, master = null, musicBus = null;
   function ensureAudio() {
@@ -2020,13 +2043,15 @@
   function startMusic() { if (!music.timer) music.timer = setInterval(musicTick, 60); }
   function applySettings() {
     lowFx = settings.lowfx;
+    TILT = settings.tilt ? 0.72 : 1;
+    resize();
     PARTICLE_CAP = lowFx ? 200 : IS_MOBILE ? 380 : 700;
     if (musicBus) musicBus.gain.setTargetAtTime(settings.music ? 0.22 : 0, ac.currentTime, 0.1);
     saveProgress();
     for (const el of document.querySelectorAll('.settings')) buildSettings(el);
   }
   function buildSettings(el) {
-    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동'], ['shake', '화면 흔들림'], ['nums', '피해 숫자'], ['flash', '번쩍임'], ['lowfx', '저사양 모드']].map(([k, label]) => {
+    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동'], ['shake', '화면 흔들림'], ['nums', '피해 숫자'], ['flash', '번쩍임'], ['lowfx', '저사양 모드'], ['tilt', '2.5D 시점']].map(([k, label]) => {
       const b = document.createElement('button');
       b.className = 'tool' + (settings[k] ? ' armed' : '');
       b.textContent = `${label} ${settings[k] ? '켬' : '끔'}`;
@@ -2740,9 +2765,11 @@
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
       const label = sanctum ? '이끼 낀 비석' : '기연';
+      beginUpright(o.x, o.y);
       ctx.strokeText(label, o.x, o.y - 36);
       ctx.fillStyle = '#fff';
       ctx.fillText(label, o.x, o.y - 36);
+      ctx.restore();
     }
   }
   function oddityChoice(o) {
@@ -2852,7 +2879,7 @@
     // golden dokkaebi
     if (stageTime > 30 && (goldTimer -= dt) <= 0) {
       goldTimer = player.goldRush ? 35 + Math.random() * 20 : 100 + Math.random() * 60;
-      const a = Math.random() * Math.PI * 2, r = Math.max(viewW, viewH) * 0.42;
+      const a = Math.random() * Math.PI * 2, r = Math.max(viewW, viewHW) * 0.42;
       spawnEnemy(ENEMY_TYPES.golddokkaebi, 0, 0, { x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r });
       const g = enemies[enemies.length - 1];
       g.escapeT = 14;
@@ -2901,9 +2928,11 @@
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
+      beginUpright(sh.x, sh.y);
       ctx.strokeText(sh.buff.name, sh.x, sh.y - 40);
       ctx.fillStyle = '#fff';
       ctx.fillText(sh.buff.name, sh.x, sh.y - 40);
+      ctx.restore();
     }
   }
 
@@ -2917,7 +2946,7 @@
     for (const al of altars) targets.push([al.x, al.y, `hsl(${(anim * 90) % 360}, 90%, 60%)`]);
     for (const it of pickups) if (it.kind === 'bottari') targets.push([it.x, it.y, '#ff5a5a']);
     for (const [tx, ty, col] of targets) {
-      const sx = viewW / 2 + (tx - cam.x) * cam.zoom, sy = viewH / 2 + (ty - cam.y) * cam.zoom;
+      const sx = viewW / 2 + (tx - cam.x) * cam.zoom, sy = viewH / 2 + (ty - cam.y) * cam.zoom * TILT;
       if (sx > 20 && sx < viewW - 20 && sy > 20 && sy < viewH - 20) continue;
       const a = Math.atan2(sy - viewH / 2, sx - viewW / 2);
       const m = 34;
@@ -3041,7 +3070,7 @@
     if (!second) { player.ult = 0; player.ults++; if (hasArc('twinult')) player.ultAgainAt = elapsed + 0.7; }
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
     const dmg = (40 + player.level * 7) * player.ultMul;
-    const L = Math.hypot(viewW, viewH) * 0.6;
+    const L = Math.hypot(viewW, viewHW) * 0.6;
     dmgSrc = 'ult';
     flash = Math.max(flash, 0.3);
     shake = Math.max(shake, 12);
@@ -3713,15 +3742,17 @@
       ctx.fillRect(al.x - 22, al.y - 22, 44, 6);
       ctx.fillStyle = '#ffd76b';
       ctx.fillRect(al.x - 4, al.y - 16, 8, 14);
-      drawSprite('bottari', al.x, al.y - 34 - pulse * 4);
+      drawSprite('bottari', al.x, al.y - 34 - pulse * 4, { upright: true });
       ctx.font = 'bold 13px "Gowun Batang", serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
       const label = `천운 제단 · ${player.altarCost}냥`;
+      beginUpright(al.x, al.y);
       ctx.strokeText(label, al.x, al.y - 62);
       ctx.fillStyle = '#ffe9a0';
       ctx.fillText(label, al.x, al.y - 62);
+      ctx.restore();
     }
   }
 
@@ -3819,7 +3850,7 @@
     return pool[0];
   }
 
-  function placeOnRing(e, a = Math.random() * Math.PI * 2, d = Math.hypot(viewW, viewH) / 2 + 40) {
+  function placeOnRing(e, a = Math.random() * Math.PI * 2, d = Math.hypot(viewW, viewHW) / 2 + 40) {
     e.x = player.x + Math.cos(a) * d;
     e.y = player.y + Math.sin(a) * d;
   }
@@ -3875,7 +3906,7 @@
   function spawnSurroundWave() {
     const type = elapsed >= 300 ? ENEMY_TYPES.crow : elapsed >= 180 ? ENEMY_TYPES.dokkaebi : ENEMY_TYPES.wisp;
     const n = 16 + Math.floor(elapsed / 20);
-    const r = Math.min(viewW, viewH) / 2 + 60;
+    const r = Math.min(viewW, viewHW) / 2 + 60;
     for (let i = 0; i < n; i++) spawnEnemy(type, (i / n) * Math.PI * 2, r);
     showBanner(`${type.name} 떼가 몰려와요!`, 'boss');
   }
@@ -3886,7 +3917,7 @@
     const n = 36;
     for (let i = 0; i < n; i++) {
       const x = player.x - dir * (viewW / 2 + 60 + Math.random() * 260);
-      const y = player.y + (i / (n - 1) - 0.5) * viewH * 1.1;
+      const y = player.y + (i / (n - 1) - 0.5) * viewHW * 1.1;
       spawnEnemy(types[i % types.length], 0, 0, { x, y });
       const e = enemies[enemies.length - 1];
       e.march = dir * 130;
@@ -3896,7 +3927,7 @@
 
   function spawnLantern() {
     const a = Math.random() * Math.PI * 2;
-    const d = Math.max(viewW, viewH) * (0.35 + Math.random() * 0.4);
+    const d = Math.max(viewW, viewHW) * (0.35 + Math.random() * 0.4);
     spawnEnemy(ENEMY_TYPES.seokdeung, 0, 0, { x: player.x + Math.cos(a) * d, y: player.y + Math.sin(a) * d });
   }
 
@@ -4213,7 +4244,7 @@
     }
     if (hasArc('meteor') && (player.meteorT -= dt) <= 0) {
       player.meteorT = 8;
-      const targets = shuffled(enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewH / 2)).slice(0, 8);
+      const targets = shuffled(enemies.filter((e) => !e.type.prop && Math.abs(e.x - player.x) < viewW / 2 && Math.abs(e.y - player.y) < viewHW / 2)).slice(0, 8);
       for (const e of targets) {
         const ex = e.x, ey = e.y;
         pendingProcs.push(() => {
@@ -4452,7 +4483,7 @@
   }
 
   function updateEnemies(dt) {
-    const farLimit = Math.hypot(viewW, viewH) * 0.85;
+    const farLimit = Math.hypot(viewW, viewHW) * 0.85;
     const aura = player.weapons.aura;
     const summons = [];
     const frozen = player.freeze > 0;
@@ -4700,10 +4731,10 @@
     } else if (it.kind === 'thunderball') {
       flash = 0.25;
       shake = 12;
-      fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.5, max: 0.5 });
+      fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewHW) / 2, life: 0.5, max: 0.5 });
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
-        if (Math.abs(e.x - player.x) < viewW / 2 + 40 && Math.abs(e.y - player.y) < viewH / 2 + 40) {
+        if (Math.abs(e.x - player.x) < viewW / 2 + 40 && Math.abs(e.y - player.y) < viewHW / 2 + 40) {
           damageEnemy(e, j, e.type.boss ? 120 : e.hp + 1, 0, 0, 0, true);
         }
       }
@@ -4712,7 +4743,7 @@
     } else if (it.kind === 'bangul') {
       player.freeze = 6;
       flash = 0.2;
-      fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.6, max: 0.6, color: 'ice' });
+      fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewHW) / 2, life: 0.6, max: 0.6, color: 'ice' });
       addFloatText(player.x, head, '정지!', '#8cc8f0');
     } else if (it.kind === 'bottari') {
       modalQueue.unshift({ type: 'gacha', src: '요괴 보따리' });
@@ -4926,7 +4957,7 @@
   function drawShadow(x, y, r) {
     ctx.fillStyle = 'rgba(80, 60, 40, 0.22)';
     ctx.beginPath();
-    ctx.ellipse(x, y, r, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, r, r * (TILT < 1 ? 0.5 : 0.35), 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -5018,7 +5049,7 @@
   function drawMines() {
     for (const m of mines) {
       ctx.globalAlpha = m.arm > 0 ? 0.5 : 0.75 + 0.25 * Math.sin(anim * 8);
-      drawSprite('talisman', m.x, m.y);
+      drawSprite('talisman', m.x, m.y, { upright: true });
     }
     ctx.globalAlpha = 1;
   }
@@ -5160,7 +5191,7 @@
       }
       if (f.kind === 'ultwave') {
         const t = 1 - a;
-        const R = (f.small ? 110 : Math.hypot(viewW, viewH) * 0.55) * (0.15 + t * 0.85);
+        const R = (f.small ? 110 : Math.hypot(viewW, viewHW) * 0.55) * (0.15 + t * 0.85);
         ctx.strokeStyle = `rgba(${f.rgb}, ${a})`;
         ctx.lineWidth = (f.small ? 6 : 18) * a + 2;
         ctx.beginPath();
@@ -5477,7 +5508,8 @@
     const r = t.radius;
     drawShadow(e.x, e.y + r * 0.85, r);
     const b = Math.sin(anim * 9 + e.phase);
-    const lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
+    let lift = t.move === 'float' ? Math.sin(anim * 3 + e.phase) * 4 - 4 : 0;
+    if (e.act === 'leap' && e.dashT > 0) lift -= Math.sin((1 - e.dashT / 0.42) * Math.PI) * 70;
     const sc = (t.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1);
     if (e.elite) {
       ctx.strokeStyle = `rgba(222, 176, 72, ${0.6 + 0.3 * Math.sin(anim * 6)})`;
@@ -5514,6 +5546,7 @@
         ctx.stroke();
       }
     }
+    beginUpright(e.x, e.y);
     if ((e.affix || e.title) && bk >= 1) {
       ctx.font = 'bold 12px "Gowun Batang", serif';
       ctx.textAlign = 'center';
@@ -5534,6 +5567,7 @@
       ctx.fillStyle = t.boss ? '#b58cf0' : e.elite ? '#deb048' : '#ff7fa8';
       ctx.fillRect(x, y, w * clamp(e.hp / e.maxHp, 0, 1), 4);
     }
+    ctx.restore();
   }
 
   function updateCamera(dt) {
@@ -5556,21 +5590,53 @@
     player.invuln = Math.max(player.invuln, 1.6);
   }
 
+  // ---------- 2.5D scenery: upright props scattered per chapter, depth-sorted with everyone else ----------
+  const CHAPTER_PROPS = [
+    ['prop_pine', 'prop_rock', 'prop_house', 'prop_lantern', 'prop_pine'],
+    ['prop_bamboo', 'prop_bamboo', 'prop_rock', 'prop_pine', 'prop_bamboo'],
+    ['prop_pagoda', 'prop_deadtree', 'prop_lantern', 'prop_rock', 'prop_pine'],
+    ['prop_grave', 'prop_deadtree', 'prop_grave', 'prop_lantern', 'prop_rock'],
+  ];
+  const PROP_CELL = 260;
+  function visibleProps(x0, y0, w, h) {
+    const kinds = CHAPTER_PROPS[Math.min(state === 'title' ? 0 : stageIdx, CHAPTER_PROPS.length - 1)];
+    const out = [];
+    const cx0 = Math.floor(x0 / PROP_CELL) - 1, cx1 = Math.floor((x0 + w) / PROP_CELL) + 1;
+    const cy0 = Math.floor(y0 / PROP_CELL) - 1, cy1 = Math.floor((y0 + h) / PROP_CELL) + 2;
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        if (Math.abs(cx) <= 1 && Math.abs(cy) <= 1) continue; // keep the starting clearing open
+        let hsh = (Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ Math.imul(stageIdx + 7, 83492791)) >>> 0;
+        hsh = Math.imul(hsh ^ (hsh >>> 13), 1274126177) >>> 0;
+        if ((hsh % 1000) / 1000 > 0.3) continue;
+        out.push({ prop: kinds[(hsh >>> 10) % kinds.length], x: cx * PROP_CELL + ((hsh >>> 4) % 200) + 30, y: cy * PROP_CELL + ((hsh >>> 14) % 200) + 30 });
+      }
+    }
+    return out;
+  }
+  function drawProp(p) {
+    const S = SPRITES[p.prop]?.size || 100;
+    drawShadow(p.x, p.y, S * 0.28);
+    // see-through when the hero walks behind it
+    const behind = player && player.y < p.y && (p.y - player.y) * TILT < S * 0.85 && Math.abs(player.x - p.x) < S * 0.38;
+    drawSprite(p.prop, p.x, p.y - S / 2, { groundR: S / 2, alpha: behind ? 0.42 : 1 });
+  }
+
   function render() {
     const sk = state === 'playing' && settings.shake ? shake : 0;
     const z = cam.zoom;
     const camX = Math.round((cam.x - viewW / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
-    const camY = Math.round((cam.y - viewH / 2 / z + (Math.random() - 0.5) * sk) * z) / z;
+    const camY = Math.round((cam.y - viewHW / 2 / z + (Math.random() - 0.5) * sk) * z * TILT) / (z * TILT);
     ctx.save();
-    ctx.scale(z, z);
+    ctx.scale(z, z * TILT);
     ctx.translate(-camX, -camY);
 
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = bgPattern || '#e9dfc6';
-    ctx.fillRect(camX, camY, viewW / z, viewH / z);
+    ctx.fillRect(camX, camY, viewW / z, viewHW / z);
     if (state !== 'title' && curStage().tint) {
       ctx.fillStyle = curStage().tint;
-      ctx.fillRect(camX, camY, viewW / z, viewH / z);
+      ctx.fillRect(camX, camY, viewW / z, viewHW / z);
     }
     drawDecals();
 
@@ -5585,16 +5651,26 @@
     drawShrines();
     drawAltars();
     drawMines();
-    for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
+    for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2, { upright: true });
 
     enemies.sort((a, b) => a.y - b.y);
-    let playerDrawn = false;
+    // painter's order: everything standing on the ground is drawn back (top) to front (bottom)
+    const props = visibleProps(camX, camY, viewW / z, viewHW / z).sort((a, b) => a.y - b.y);
+    let playerDrawn = false, pi = 0;
     for (const e of enemies) {
+      while (pi < props.length && props[pi].y < e.y) {
+        if (!playerDrawn && props[pi].y > player.y) { drawPlayer(); playerDrawn = true; }
+        drawProp(props[pi++]);
+      }
       if (!playerDrawn && e.y > player.y) {
         drawPlayer();
         playerDrawn = true;
       }
       drawEnemy(e);
+    }
+    while (pi < props.length) {
+      if (!playerDrawn && props[pi].y > player.y) { drawPlayer(); playerDrawn = true; }
+      drawProp(props[pi++]);
     }
     if (!playerDrawn) drawPlayer();
     drawDisciples();
@@ -5607,7 +5683,7 @@
         ctx.arc(pt.x, pt.y, 22, 0, Math.PI * 2);
         ctx.fill();
       }
-      drawSprite('foxfire', pt.x, pt.y, orbEvo ? { sx: 1.3, sy: 1.3 } : {});
+      drawSprite('foxfire', pt.x, pt.y, orbEvo ? { sx: 1.3, sy: 1.3, upright: true } : { upright: true });
     }
     for (const [id, w] of Object.entries(player.weapons)) if (WEAPONS[id].drawAbove) WEAPONS[id].drawAbove(w);
     for (const p of projectiles) {
@@ -5633,7 +5709,7 @@
         drawSprite(p.sprite, p.x, p.y, { rot, sx: 1.35, sy: 1.35 });
         continue;
       }
-      if (p.ghost) { drawSprite(p.sprite, p.x, p.y, { alpha: 0.7, sx: 0.7, sy: 0.7 }); continue; }
+      if (p.ghost) { drawSprite(p.sprite, p.x, p.y, { alpha: 0.7, sx: 0.7, sy: 0.7, upright: true }); continue; }
       drawSprite(p.sprite, p.x, p.y, { rot });
     }
     drawShells();
@@ -5656,12 +5732,27 @@
       if (size !== curSize) { ctx.font = `bold ${size}px "Gowun Batang", serif`; curSize = size; }
       const jx = f.crit && age < 0.25 ? Math.sin(age * 90) * 2.5 : 0;
       ctx.globalAlpha = clamp(f.life / 0.3, 0, 1);
+      beginUpright(f.x, f.y);
       ctx.strokeText(f.text, f.x + jx, f.y);
       ctx.fillStyle = f.color;
       ctx.fillText(f.text, f.x + jx, f.y);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
+
+    if (TILT < 1) {
+      const haze = ctx.createLinearGradient(0, 0, 0, viewH * 0.34);
+      haze.addColorStop(0, 'rgba(236, 228, 210, 0.62)');
+      haze.addColorStop(1, 'rgba(236, 228, 210, 0)');
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, 0, viewW, viewH * 0.34);
+      const near = ctx.createLinearGradient(0, viewH * 0.8, 0, viewH);
+      near.addColorStop(0, 'rgba(40, 30, 30, 0)');
+      near.addColorStop(1, 'rgba(40, 30, 30, 0.16)');
+      ctx.fillStyle = near;
+      ctx.fillRect(0, viewH * 0.8, viewW, viewH * 0.2);
+    }
 
     if (stick.active) {
       const len = Math.hypot(stick.dx, stick.dy);
