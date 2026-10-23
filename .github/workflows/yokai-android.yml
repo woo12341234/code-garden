@@ -1,4 +1,4 @@
-name: 요괴 퇴치록 - Android APK, iOS IPA & web build
+name: 강호난세 - Android APK, iOS IPA & web build
 
 on:
   push:
@@ -104,5 +104,5 @@ jobs:
         run: |
           gh release delete yokai-latest --yes --cleanup-tag || true
           gh release create yokai-latest out/* --prerelease --target "${{ github.sha }}" \
-            --title "요괴 퇴치록 최신 빌드" \
+            --title "강호난세 최신 빌드" \
             --notes "자동 빌드 ($(date -u +%Y-%m-%d)). yokai-survivors.apk: 안드로이드에 바로 설치(출처를 알 수 없는 앱 허용 필요). yokai-survivors-unsigned.ipa: 아이폰용, Sideloadly·AltStore로 본인 Apple ID 서명 후 설치. yokai-survivors-web.zip: 웹 버전(itch.io 등 업로드용)."

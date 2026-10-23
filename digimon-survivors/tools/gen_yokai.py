@@ -400,6 +400,161 @@ def firebomb():
     s.finish('firebomb.png', rim=(255, 210, 150, 255))
 
 
+def jangsanbeom():
+    """장산범: a white long-haired tiger-beast crouched to pounce."""
+    s = Y(24)
+    fur = rgba(232, 228, 220)
+    s.blob(11, 15, 8, 5, fur)
+    for x in range(4, 19, 2):
+        s.line(x, 12, x - 1.4, 19.6, mix(fur, rgba(160, 156, 170), 0.5), 0.7)
+    s.blob(17.6, 10.6, 4.4, 4, fur)
+    s.poly([(14.6, 8), (15, 4), (17, 7)], fur)
+    s.poly([(19.4, 7.4), (21, 3.8), (21.4, 8)], fur)
+    s.poly([(18, 12.6), (23.6, 12.6), (21, 15.4)], rgba(60, 30, 40))
+    s.line(18.6, 12.8, 23, 12.8, BONE, 0.6)
+    s.mark(17, 10, GLOW_Y)
+    s.mark(20, 10, GLOW_Y)
+    for x in (5.6, 9, 14, 17.4):
+        s.rect(x - 1, 18, x + 1, 22, mul(fur, 0.82))
+        s.mark(int(x), 22, INK)
+    s.line(3, 14, 0.6, 9, fur, 1.6)
+    s.finish('jangsanbeom.png', rim=(255, 240, 200, 255))
+
+
+def spider():
+    """거미 요괴: a bloated black spider with a pale woman-like mask and red eyes."""
+    s = Y(24)
+    leg = rgba(40, 32, 44)
+    for side in (-1, 1):
+        for i, (ax, ay) in enumerate([(9, 4), (10.6, 9), (10.6, 15), (9, 21)]):
+            x0 = 12 + side * 3
+            s.line(x0, 11 + i * 1.6, 12 + side * ax, ay, leg, 1.1)
+            s.line(12 + side * ax, ay, 12 + side * (ax + 1.4), ay + 2.6, leg, 0.9)
+    s.blob(12, 15.6, 6, 5.6, rgba(52, 40, 56))
+    s.blob(12, 15.4, 2.4, 2.8, rgba(170, 30, 40))
+    s.blob(12, 8.4, 4, 3.6, rgba(236, 228, 220))
+    s.mark(10, 8, GLOW_R)
+    s.mark(14, 8, GLOW_R)
+    s.line(10.4, 10.6, 13.6, 10.6, rgba(160, 30, 40), 0.6)
+    s.finish('spider.png', rim=(220, 200, 255, 255))
+
+
+def toad():
+    """독두꺼비: a warty poison toad oozing green venom."""
+    s = Y(24)
+    skin = rgba(96, 132, 60)
+    s.blob(12, 15, 9, 6.6, skin)
+    for x, y in [(7, 12), (11, 10.6), (16, 12.6), (9, 16), (15, 17), (18, 15)]:
+        s.blob(x, y, 1.2, 1.1, rgba(150, 200, 70))
+    s.blob(7.6, 9.6, 2.4, 2.2, skin)
+    s.blob(16.4, 9.6, 2.4, 2.2, skin)
+    s.mark(7, 9, GLOW_Y)
+    s.mark(16, 9, GLOW_Y)
+    s.mark(8, 9, INK)
+    s.mark(17, 9, INK)
+    s.line(6, 15.6, 18, 15.6, rgba(50, 60, 30), 0.8)
+    s.blob(12, 19.4, 5.6, 1.6, rgba(190, 220, 120))
+    for x in (4.6, 19.4):
+        s.blob(x, 20, 2.4, 1.4, mul(skin, 0.8))
+    s.blob(20, 18, 1, 1.6, rgba(150, 240, 90))
+    s.finish('toad.png', rim=(220, 255, 180, 255))
+
+
+def skeleton():
+    """백골: a cracked skeleton warrior with a rusty blade; rises again once."""
+    s = Y(24)
+    s.blob(12, 5.6, 4, 3.8, BONE)
+    s.mark(10, 5, INK)
+    s.mark(14, 5, INK)
+    s.mark(10, 6, GLOW_R)
+    s.mark(14, 6, GLOW_R)
+    for x in range(10, 15, 2):
+        s.mark(x, 8, INK)
+    s.rect(11.4, 9, 12.6, 17, BONE)
+    for y in (10.6, 12.4, 14.2):
+        s.line(8.4, y, 15.6, y, BONE, 0.8)
+    s.line(9, 10, 5.6, 15, BONE, 0.9)
+    s.line(15, 10, 18.6, 14, BONE, 0.9)
+    s.line(18.6, 14, 22.6, 4, rgba(140, 110, 90), 1.2)
+    s.line(10.6, 17, 9, 22.6, BONE, 1)
+    s.line(13.4, 17, 15, 22.6, BONE, 1)
+    s.blob(12, 17.4, 3, 1.2, BONE)
+    s.finish('skeleton.png', rim=(255, 200, 200, 255))
+
+
+def mangtae():
+    """망태 할아범: a hunched old man with a huge sack; children-snatcher who calls wisps."""
+    s = Y(24)
+    coat = rgba(84, 70, 60)
+    s.blob(16, 10.6, 6, 6.6, rgba(150, 120, 80))
+    s.line(13, 6, 19, 6, rgba(110, 86, 56), 0.8)
+    s.poly([(5, 12), (13, 10), (14, 23.4), (4, 23.4)], coat)
+    s.blob(8.6, 8, 3.6, 3.4, rgba(210, 170, 140))
+    s.poly([(4.4, 6.6), (12.8, 6.6), (8.6, 2)], rgba(40, 34, 40))
+    s.rect(3.6, 6, 13.6, 7, rgba(40, 34, 40))
+    s.mark(7, 8, GLOW_Y)
+    s.mark(10, 8, GLOW_Y)
+    s.line(6.6, 10.6, 10.6, 10.6, rgba(230, 230, 230), 0.8)
+    s.line(4, 13, 1.6, 23.4, rgba(120, 90, 60), 0.9)
+    s.blob(20.4, 4, 1.8, 1.8, rgba(110, 190, 255))
+    s.finish('mangtae.png', rim=(255, 220, 180, 255))
+
+
+def mulgwisin():
+    """물귀신: a drowned ghost with dripping black hair and grasping hands."""
+    s = Y(24)
+    body = rgba(120, 170, 190)
+    s.poly([(6, 9), (18, 9), (20, 23), (16, 20), (12, 23.4), (8, 20), (4, 23)], mix(body, WHITE, 0.25))
+    s.blob(12, 7.4, 5, 5, rgba(30, 34, 46))
+    s.poly([(7, 7), (17, 7), (19, 18), (15, 13), (12, 17), (9, 13), (5, 18)], rgba(30, 34, 46))
+    s.blob(12, 9, 2.4, 3, rgba(200, 225, 230))
+    s.mark(11, 9, INK)
+    s.mark(13, 9, INK)
+    s.mark(12, 11, rgba(60, 20, 30))
+    for side in (-1, 1):
+        s.line(12 + side * 5, 12, 12 + side * 10, 9, mix(body, WHITE, 0.3), 1.1)
+        for k in (-1, 0, 1):
+            s.mark(int(12 + side * 10.6), int(9 + k), mix(body, WHITE, 0.3))
+    for x in (8, 15):
+        s.mark(x, 21, rgba(100, 200, 255))
+    s.finish('mulgwisin.png', rim=(180, 230, 255, 255))
+
+
+def geuseundae():
+    """그슨대: a looming shadow that grows taller the longer it lives."""
+    s = Y(24)
+    dark = rgba(34, 28, 44)
+    s.poly([(7, 4), (17, 4), (21, 23.4), (3, 23.4)], dark)
+    s.blob(12, 6, 5.4, 4.6, dark)
+    for x in (9, 15):
+        s.blob(x, 7, 1.2, 0.9, GLOW_Y)
+        s.mark(x, 7, WHITE)
+    s.poly([(9, 11), (15, 11), (12, 14)], rgba(150, 30, 50))
+    for x in (5, 9, 13, 17):
+        s.line(x, 18, x + 1, 23.4, mul(dark, 1.6), 0.6)
+    s.finish('geuseundae.png', rim=(200, 170, 255, 255))
+
+
+def agwi():
+    """아귀: a starving ghoul with a needle-thin neck and huge belly that gobbles coins."""
+    s = Y(24)
+    skin = rgba(150, 110, 150)
+    s.blob(12, 16, 7, 6, skin)
+    s.blob(12, 16.6, 4.6, 3.6, mix(skin, WHITE, 0.25))
+    s.rect(11.4, 7, 12.6, 11, skin)
+    s.blob(12, 5, 3.6, 3.2, skin)
+    s.mark(10, 4, GLOW_R)
+    s.mark(14, 4, GLOW_R)
+    s.blob(12, 6.6, 1.6, 1, rgba(40, 10, 20))
+    s.line(5, 13, 1.6, 9.6, skin, 0.9)
+    s.line(19, 13, 22.4, 9.6, skin, 0.9)
+    s.line(9, 21.6, 8, 23.6, skin, 0.9)
+    s.line(15, 21.6, 16, 23.6, skin, 0.9)
+    s.blob(22.4, 8.6, 1.4, 1.4, GOLD)
+    s.finish('agwi.png', rim=(255, 210, 255, 255))
+
+
 if __name__ == '__main__':
-    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi, wolf, foxmage, firebomb):
+    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi, wolf, foxmage, firebomb,
+               jangsanbeom, spider, toad, skeleton, mangtae, mulgwisin, geuseundae, agwi):
         fn()

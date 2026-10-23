@@ -2,7 +2,7 @@
   "name": "yokai-survivors-android",
   "version": "1.0.0",
   "private": true,
-  "description": "Android wrapper (Capacitor) for 요괴 퇴치록",
+  "description": "Android wrapper (Capacitor) for 강호난세",
   "scripts": {
     "web": "node copy-web.js",
     "android:add": "npm run web && npx cap add android && node android-setup.js",

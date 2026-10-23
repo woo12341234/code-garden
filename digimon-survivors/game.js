@@ -103,6 +103,23 @@
     jumeoni: { size: 28, color: '#c8323c', emoji: '💰' },
     naedan: { size: 26, color: '#a050e0', emoji: '💎' },
     bottari: { size: 30, color: '#c8323c', emoji: '🧧' },
+    jangsanbeom: { size: 48, color: '#e8e4dc', emoji: '🐯' },
+    spider: { size: 48, color: '#342838', emoji: '🕷️' },
+    toad: { size: 48, color: '#60843c', emoji: '🐸' },
+    skeleton: { size: 48, color: '#ece6d2', emoji: '💀' },
+    mangtae: { size: 48, color: '#54463c', emoji: '👴' },
+    mulgwisin: { size: 48, color: '#78aabe', emoji: '👻' },
+    geuseundae: { size: 48, color: '#221c2c', emoji: '👤' },
+    agwi: { size: 48, color: '#966e96', emoji: '👹' },
+    bandit: { size: 56, color: '#7e5c3a', emoji: '🪓' },
+    archer: { size: 56, color: '#46603c', emoji: '🏹' },
+    thug: { size: 56, color: '#28262e', emoji: '🔪' },
+    assassin: { size: 56, color: '#202236', emoji: '🥷' },
+    cultist: { size: 56, color: '#961822', emoji: '🩸' },
+    brawler: { size: 56, color: '#d6a074', emoji: '👊' },
+    poisoner: { size: 56, color: '#503c6e', emoji: '🧪' },
+    demonguard: { size: 56, color: '#2e2432', emoji: '😈' },
+    chief: { size: 84, color: '#8c2822', emoji: '👑' },
     bangul: { size: 24, color: '#deb048', emoji: '🔔' },
     jeoseung: { size: 72, color: '#242028', emoji: '💀' },
     golddokkaebi: { size: 48, color: '#ecba3c', emoji: '💰' },
@@ -1629,6 +1646,24 @@
     wolf: { name: '이리 요괴', sprite: 'wolf', hp: 34, speed: 105, damage: 13, radius: 14, xp: 10, weight: 1.2, minTime: 200, barY: 18, ai: 'charger' },
     foxmage: { name: '여우 요술사', sprite: 'foxmage', hp: 40, speed: 70, damage: 10, radius: 14, xp: 12, weight: 0.8, minTime: 260, barY: 22, ai: 'ranged' },
     firebomb: { name: '불덩이 요괴', sprite: 'firebomb', hp: 26, speed: 95, damage: 22, radius: 14, xp: 9, weight: 0.8, minTime: 300, barY: 20, ai: 'bomber' },
+    jangsanbeom: { name: '장산범', sprite: 'jangsanbeom', hp: 46, speed: 92, damage: 15, radius: 15, xp: 11, weight: 1, barY: 22, ai: 'leap' },
+    spider: { name: '거미 요괴', sprite: 'spider', hp: 34, speed: 66, damage: 9, radius: 15, xp: 9, weight: 1, barY: 22, ai: 'web' },
+    toad: { name: '독두꺼비', sprite: 'toad', hp: 40, speed: 50, damage: 9, radius: 15, xp: 9, weight: 1, barY: 22, ai: 'poison', move: 'hop' },
+    skeleton: { name: '백골', sprite: 'skeleton', hp: 30, speed: 72, damage: 10, radius: 13, xp: 8, weight: 2, barY: 22, revive: true },
+    mangtae: { name: '망태 할아범', sprite: 'mangtae', hp: 70, speed: 46, damage: 12, radius: 15, xp: 16, weight: 0.5, barY: 22, summon: true },
+    mulgwisin: { name: '물귀신', sprite: 'mulgwisin', hp: 44, speed: 70, damage: 11, radius: 14, xp: 11, weight: 1, barY: 22, ai: 'pull', move: 'float', alpha: 0.9 },
+    geuseundae: { name: '그슨대', sprite: 'geuseundae', hp: 90, speed: 58, damage: 14, radius: 15, xp: 16, weight: 0.6, barY: 24, growth: true },
+    agwi: { name: '아귀', sprite: 'agwi', hp: 52, speed: 96, damage: 8, radius: 14, xp: 10, weight: 0.8, barY: 22, ai: 'thief' },
+    // ---- 사람 세력: 녹림 산채 · 흑도 · 혈교 · 독문 · 마교 ----
+    bandit: { name: '녹림 산적', sprite: 'bandit', hp: 36, speed: 74, damage: 11, radius: 14, xp: 9, weight: 2, barY: 30, faction: true },
+    archer: { name: '산적 궁수', sprite: 'archer', hp: 26, speed: 70, damage: 9, radius: 14, xp: 9, weight: 1, barY: 30, ai: 'ranged', arrow: true, faction: true },
+    thug: { name: '흑도 칼잡이', sprite: 'thug', hp: 40, speed: 86, damage: 12, radius: 14, xp: 10, weight: 1.5, barY: 30, move: 'zigzag', faction: true },
+    assassin: { name: '살수', sprite: 'assassin', hp: 30, speed: 98, damage: 16, radius: 13, xp: 12, weight: 0.8, barY: 30, ai: 'assassin', faction: true },
+    cultist: { name: '혈교 신도', sprite: 'cultist', hp: 44, speed: 60, damage: 10, radius: 14, xp: 13, weight: 0.7, barY: 30, ai: 'healer', faction: true },
+    brawler: { name: '사파 권사', sprite: 'brawler', hp: 110, speed: 62, damage: 17, radius: 16, xp: 15, weight: 0.8, barY: 30, ai: 'charger', faction: true },
+    poisoner: { name: '독문 독인', sprite: 'poisoner', hp: 36, speed: 64, damage: 11, radius: 14, xp: 12, weight: 0.8, barY: 30, ai: 'flask', faction: true },
+    demonguard: { name: '마교 무사', sprite: 'demonguard', hp: 150, speed: 70, damage: 20, radius: 16, xp: 20, weight: 0.7, barY: 32, ai: 'charger', faction: true },
+    chief: { name: '두목', sprite: 'chief', hp: 420, speed: 58, damage: 24, radius: 22, xp: 80, boss: true, barY: 44, special: 'slam', summon: true, summonType: 'bandit', faction: true },
     golddokkaebi: { name: '황금 도깨비', sprite: 'golddokkaebi', hp: 140, speed: 0, damage: 0, radius: 15, xp: 0, weight: 0, barY: 22, gold: true },
     seokdeung: { name: '석등', sprite: 'seokdeung', hp: 1, speed: 0, damage: 0, radius: 14, xp: 0, weight: 0, barY: 22, prop: true },
     jeoseung: { name: '저승사자', sprite: 'jeoseung', hp: 1500, speed: 72, damage: 40, radius: 28, xp: 300, boss: true, final: true, barY: 42, summon: true, special: 'souls' },
@@ -1647,10 +1682,10 @@
   const STAGE_LEN = 120; // 2:00 per chapter, then its boss
   const RUN_LIMIT = 600; // a run lasts at most 10 minutes
   const STAGES = [
-    { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow'], mid: null, boss: 'daedokkaebi', tint: null },
-    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
-    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi', 'wolf', 'foxmage', 'firebomb'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
-    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari', 'wolf', 'foxmage', 'firebomb'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
+    { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow', 'skeleton', 'toad', 'agwi', 'bandit', 'archer'], mid: null, boss: 'daedokkaebi', tint: null },
+    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf', 'spider', 'jangsanbeom', 'mangtae', 'skeleton', 'bandit', 'thug', 'assassin'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
+    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi', 'wolf', 'foxmage', 'firebomb', 'mulgwisin', 'spider', 'skeleton', 'agwi', 'cultist', 'poisoner', 'brawler', 'thug'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
+    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari', 'wolf', 'foxmage', 'firebomb', 'geuseundae', 'jangsanbeom', 'mulgwisin', 'mangtae', 'toad', 'demonguard', 'brawler', 'assassin', 'cultist'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
   ];
   const ENDLESS = { name: '무한 수련', sub: '끝없는 요괴의 밤', pool: null, mid: null, boss: null, tint: 'rgba(120, 20, 30, 0.16)', endless: true };
   const MARCH_TIMES = [420, 720]; // 백귀야행: a parade of ghosts crossing the screen (then every 5 min)
@@ -1963,7 +1998,7 @@
 
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover | victory
-  let shrines = [], shrineTimer = 25, goldTimer = 80, altars = [];
+  let shrines = [], shrineTimer = 25, goldTimer = 80, altars = [], puddles = [], risers = [];
   const cam = { x: 0, y: 0, zoom: 1, punch: 0 };
   let cinematic = null; // { t, x, y } — slow motion while the camera visits a boss
   let decals = [], ambient = [], bombs = [];
@@ -2016,6 +2051,8 @@
     mines = [];
     shrines = [];
     altars = [];
+    puddles = [];
+    risers = [];
     shrineTimer = 25;
     goldTimer = 60 + Math.random() * 40;
     achvTimer = 0;
@@ -2177,6 +2214,49 @@
         ctx.ellipse(d.x + ox * d.r, d.y + oy * d.r, d.r * k, d.r * k * 0.55, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  }
+  function drawPuddles() {
+    for (const pd of puddles) {
+      const k = Math.min(1, pd.life / 1.2, (pd.max - pd.life) / 0.3);
+      ctx.save();
+      ctx.translate(pd.x, pd.y);
+      ctx.scale(1, 0.55);
+      ctx.fillStyle = `rgba(120, 200, 60, ${0.32 * k})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, pd.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(180, 240, 90, ${0.4 * k})`;
+      for (let i = 0; i < 3; i++) {
+        const a = anim * 1.5 + i * 2.1 + pd.x;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * pd.r * 0.5, Math.sin(a) * pd.r * 0.5, 4 + 2 * Math.sin(anim * 5 + i), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (player.pullT > 0 && player.pullSrc) {
+      const s2 = player.pullSrc;
+      ctx.strokeStyle = 'rgba(90, 170, 210, 0.75)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(s2.x, s2.y);
+      ctx.quadraticCurveTo((s2.x + player.x) / 2 + Math.sin(anim * 20) * 12, (s2.y + player.y) / 2, player.x, player.y);
+      ctx.stroke();
+    }
+    if (player.webT > 0) {
+      ctx.strokeStyle = `rgba(240, 240, 250, ${Math.min(0.8, player.webT)})`;
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        ctx.lineTo(player.x + Math.cos(a) * 26, player.y + Math.sin(a) * 26);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 16, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
   function drawBombs() {
@@ -2597,11 +2677,13 @@
       burst(b.x, b.y, 20, ['#ff5a3c', '#ffd060', '#2a2224'], 260, 0.6, 5, true);
       sfx('boom');
       shake = Math.max(shake, 6);
+      if (b.pool && puddles.length < 40) puddles.push({ x: b.x, y: b.y, r: 44, life: 5, max: 5, tick: 0.4, dmg: b.dmg * 0.4 });
       if (dist(b.x, b.y, player.x, player.y) < b.r + player.radius && hurtPlayer(b.dmg)) return;
     }
     if ((player.comboT -= dt) <= 0) player.combo = 0;
     if (player.hp < player.maxHp * 0.3 && (player.heartT -= dt) <= 0) { player.heartT = 0.85; sfx('heart'); }
     updateAltars(dt);
+    updateRaids();
     // shrines
     if ((shrineTimer -= dt) <= 0) {
       shrineTimer = 65 + Math.random() * 30;
@@ -3360,6 +3442,39 @@
   }
   function dropPouch(x, y) { pickups.push({ kind: 'bottari', x, y }); }
 
+  // 세력 습격: once per chapter a rival faction surrounds you, led by its captain.
+  const RAIDS = [
+    { name: '녹림 산채 습격!', sub: '산적 떼가 길을 막았다', members: ['bandit', 'bandit', 'archer'], captain: null },
+    { name: '흑도 살막 습격!', sub: '보이지 않는 살수를 조심하세요', members: ['thug', 'thug', 'assassin'], captain: '흑도 두목' },
+    { name: '혈교 강림!', sub: '신도가 동료를 치유해요. 먼저 쓰러뜨리세요', members: ['cultist', 'poisoner', 'thug', 'brawler'], captain: '혈교 교주' },
+    { name: '마교 진격!', sub: '마교 무사단이 포위해 온다', members: ['demonguard', 'brawler', 'assassin', 'cultist'], captain: '마교 장로' },
+  ];
+  function updateRaids() {
+    if (stageTime < 62 || (player.raided || (player.raided = {}))[stageIdx]) return;
+    player.raided[stageIdx] = true;
+    const rd = RAIDS[Math.min(stageIdx, RAIDS.length - 1)];
+    const n = 12 + stageIdx * 5;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      spawnEnemy(ENEMY_TYPES[rd.members[i % rd.members.length]], 0, 0, { x: player.x + Math.cos(a) * 360, y: player.y + Math.sin(a) * 360 });
+    }
+    if (rd.captain) {
+      spawnEnemy(ENEMY_TYPES.chief, 0, 0, { x: player.x + 420, y: player.y });
+      const c = enemies[enemies.length - 1];
+      c.title = rd.captain;
+      c.summonPick = rd.members;
+    } else {
+      // 1장: an elite bandit leader instead of a full boss
+      spawnEnemy(ENEMY_TYPES.bandit, 0, 0, { x: player.x + 400, y: player.y });
+      const c = enemies[enemies.length - 1];
+      c.elite = true; c.affix = 'armored'; c.hp = c.maxHp = c.hp * 9; c.damage = Math.round(c.damage * 1.5);
+      c.title = '산채 두령';
+    }
+    showBanner(rd.name, 'boss', rd.sub + (rd.captain ? ` · ${rd.captain} 등장` : ''));
+    sfx('boss');
+    buzz([40, 30, 40]);
+  }
+
   // 천운 제단: one per chapter; stand on it to pay 은자 for a pull (price climbs each time).
   const ALTAR_R = 56;
   function updateAltars(dt) {
@@ -3505,11 +3620,11 @@
 
   // ---------- Difficulty (난이도) ----------
   const DIFFICULTIES = [
-    { id: 'easy', icon: '🍃', name: '입문', desc: '요괴 체력·공격력 ×0.6, 조금 덜 나와요. 은자 ×0.7', hp: 0.6, dmg: 0.6, spawn: 0.8, speed: 0.92, gold: 0.7, ramp: 0.8, elite: 0.6 },
-    { id: 'normal', icon: '⚔️', name: '강호', desc: '기본 난이도', hp: 1, dmg: 1, spawn: 1, speed: 1, gold: 1, ramp: 1, elite: 1 },
-    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×1.6, 공격력 ×1.5, 더 많이. 시간이 갈수록 훨씬 빨리 강해져요. 은자 ×1.6', hp: 1.6, dmg: 1.5, spawn: 1.3, speed: 1.1, gold: 1.6, ramp: 1.45, elite: 1.6 },
-    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×2.6, 공격력 ×2.1, 훨씬 많고 빨라요. 정예가 자주 나와요. 은자 ×2.8', hp: 2.6, dmg: 2.1, spawn: 1.7, speed: 1.2, gold: 2.8, ramp: 1.9, elite: 2.5 },
-    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×3.6, 공격력 ×2.8, 쉴 틈 없이 몰려오고 1분마다 미친 듯이 강해져요. 은자 ×4.5', hp: 3.6, dmg: 2.8, spawn: 2.2, speed: 1.3, gold: 4.5, ramp: 2.6, elite: 4 },
+    { id: 'easy', icon: '🍃', name: '입문', desc: '처음이라면. 요괴 체력·공격력 ×0.8. 은자 ×0.7', hp: 0.8, dmg: 0.8, spawn: 1, speed: 0.98, gold: 0.7, ramp: 1, elite: 0.8 },
+    { id: 'normal', icon: '⚔️', name: '강호', desc: '체력 ×1.4, 공격력 ×1.35, 더 많이 몰려와요', hp: 1.4, dmg: 1.35, spawn: 1.25, speed: 1.05, gold: 1, ramp: 1.25, elite: 1.3 },
+    { id: 'hard', icon: '🔥', name: '고수', desc: '체력 ×2.3, 공격력 ×2, 시간이 갈수록 훨씬 빨리 강해져요. 은자 ×1.6', hp: 2.3, dmg: 2, spawn: 1.6, speed: 1.15, gold: 1.6, ramp: 1.8, elite: 2 },
+    { id: 'hell', icon: '💀', name: '마경', desc: '체력 ×3.6, 공격력 ×2.8, 훨씬 많고 빨라요. 정예가 자주 나와요. 은자 ×2.8', hp: 3.6, dmg: 2.8, spawn: 2.1, speed: 1.25, gold: 2.8, ramp: 2.4, elite: 3 },
+    { id: 'cheonma', icon: '😈', name: '천마경', desc: '극악. 체력 ×5, 공격력 ×3.6, 쉴 틈 없이 몰려오고 1분마다 미친 듯이 강해져요. 은자 ×4.5', hp: 5, dmg: 3.6, spawn: 2.7, speed: 1.35, gold: 4.5, ramp: 3.2, elite: 4.5 },
   ];
   let diff = DIFFICULTIES[1];
 
@@ -3821,6 +3936,9 @@
       buzz(60);
       return;
     }
+    if (e.type.revive && !e.revived) risers.push({ type: e.type, x: e.x, y: e.y, t: 1.6 });
+    if (e.loot) pickups.push({ kind: 'coin_gold', value: Math.round(e.loot * 1.5), x: e.x, y: e.y });
+    if (e.type.ai === 'poison' && puddles.length < 40) puddles.push({ x: e.x, y: e.y, r: 46, life: 5, max: 5, tick: 0.3, dmg: e.damage * 0.6 });
     if (e.affix === 'volatile') bombs.push({ x: e.x, y: e.y, t: 0.9, max: 0.9, r: 95, dmg: e.damage * 1.4 });
     if (e.affix === 'split') for (let i = 0; i < 3; i++) spawnEnemy(e.type, 0, 0, { x: e.x + Math.cos(i * 2.1) * 24, y: e.y + Math.sin(i * 2.1) * 24 });
     if (e.elite) {
@@ -3925,13 +4043,24 @@
     {
       // accelerate / brake smoothly instead of snapping to full speed
       const len = Math.hypot(dx, dy) || 1;
-      const spd = player.speed * (player.boost > 0 ? 1.4 : 1) * (player.buffs.swift > 0 ? 1.35 : 1);
+      if (player.webT > 0) player.webT -= dt;
+      const spd = player.speed * (player.boost > 0 ? 1.4 : 1) * (player.buffs.swift > 0 ? 1.35 : 1) * (player.webT > 0 ? 0.5 : 1);
       const tvx = player.moving ? (dx / len) * spd : 0, tvy = player.moving ? (dy / len) * spd : 0;
       const k = Math.min(1, dt * (player.moving ? 16 : 12));
       player.vx += (tvx - player.vx) * k;
       player.vy += (tvy - player.vy) * k;
       player.x += player.vx * dt;
       player.y += player.vy * dt;
+      if (player.pullT > 0) {
+        // 물귀신 drags you in
+        player.pullT -= dt;
+        const src = player.pullSrc;
+        if (!src || !enemies.includes(src)) player.pullT = 0;
+        else {
+          const px = src.x - player.x, py = src.y - player.y, pd = Math.hypot(px, py) || 1;
+          if (pd > 30) { player.x += (px / pd) * 190 * dt; player.y += (py / pd) * 190 * dt; }
+        }
+      }
       if (dx !== 0) player.facing = Math.sign(dx);
       if (player.moving && (player.dustT -= dt) <= 0 && particles.length < PARTICLE_CAP) {
         player.dustT = 0.13;
@@ -3952,11 +4081,14 @@
   }
 
   // ---------- Enemy special behaviour (chargers, casters, bombers, blinking ghosts, boss attacks) ----------
-  function shoot(x, y, a, speed, dmg, rgb, r = 9) {
-    if (enemyShots.length < 220) enemyShots.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r, dmg, life: 3, rgb });
+  function shoot(x, y, a, speed, dmg, rgb, r = 9, web = false) {
+    if (enemyShots.length < 220) enemyShots.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r, dmg, life: 3, rgb, web });
   }
   function enemyAI(e, d, dx, dy, dt, speed) {
     const t = e.type;
+    // 살수 stay nearly invisible until they're close enough to strike
+    if (t.ai === 'assassin') e.alpha = d > 180 && !(e.tele > 0) && !(e.dashT > 0) ? 0.16 : 1;
+    if (e.enraged > 0) { e.enraged -= dt; speed *= 1.3; }
     const a = Math.atan2(dy, dx);
     if (e.dashT > 0) {
       e.dashT -= dt;
@@ -3967,9 +4099,24 @@
     if (e.tele > 0) {
       if ((e.tele -= dt) <= 0) {
         if (e.act === 'dash') { const sp = (t.boss ? 520 : 460) * diff.speed; e.dashT = t.boss ? 0.6 : 0.38; e.dvx = Math.cos(a) * sp; e.dvy = Math.sin(a) * sp; }
+        else if (e.act === 'arrow') { shoot(e.x, e.y, a, 400, e.damage * 0.9, '235, 220, 180', 7); if (e.elite) for (const k of [-0.18, 0.18]) shoot(e.x, e.y, a + k, 400, e.damage * 0.9, '235, 220, 180', 7); }
+        else if (e.act === 'heal') {
+          // 혈교 신도 pours blood into nearby allies
+          fx.push({ kind: 'ring', x: e.x, y: e.y, r: 160, life: 0.45, max: 0.45, color: 'blood' });
+          for (const o of enemies) if (o !== e && !o.type.prop && dist(o.x, o.y, e.x, e.y) < 160) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.25); o.enraged = 4; }
+        }
+        else if (e.act === 'flask') bombs.push({ x: e.lx, y: e.ly, t: 0.8, max: 0.8, r: 52, dmg: e.damage * 0.8, pool: true });
         else if (e.act === 'fan') for (let i = -1; i <= 1; i++) shoot(e.x, e.y, a + i * 0.25, 240, e.damage * 0.7, '120, 190, 255');
         else if (e.act === 'slam') { for (let i = 0; i < 18; i++) shoot(e.x, e.y, (i / 18) * Math.PI * 2, 210, e.damage * 0.6, '255, 170, 60', 11); shake = Math.max(shake, 6); sfx('boom'); }
         else if (e.act === 'spit') for (let i = -3; i <= 3; i++) shoot(e.x, e.y, a + i * 0.16, 270, e.damage * 0.55, '150, 230, 90');
+        else if (e.act === 'leap') {
+          // pounce onto where the hero stood when the warning started
+          const T = 0.42;
+          e.dashT = T; e.dvx = (e.lx - e.x) / T; e.dvy = (e.ly - e.y) / T;
+          bombs.push({ x: e.lx, y: e.ly, t: T, max: T + 0.5, r: 62, dmg: e.damage * 1.3 });
+        }
+        else if (e.act === 'web') shoot(e.x, e.y, a, 260, e.damage * 0.4, '235, 235, 245', 11, true);
+        else if (e.act === 'pull') { player.pullT = 0.9; player.pullSrc = e; fx.push({ kind: 'ring', x: e.x, y: e.y, r: 60, life: 0.4, max: 0.4, color: 'ice' }); }
         else if (e.act === 'souls') for (let k = 0; k < 3; k++) for (let i = 0; i < 10; i++) shoot(e.x, e.y, (i / 10) * Math.PI * 2 + k * 0.3, 150 + k * 50, e.damage * 0.5, '200, 220, 255', 10);
         else if (e.act === 'ring') for (let k = 0; k < 2; k++) for (let i = 0; i < 16; i++) shoot(e.x, e.y, (i / 16) * Math.PI * 2 + k * Math.PI / 16, 170 + k * 70, e.damage * 0.5, '255, 90, 200', 10);
         else if (e.act === 'aimed') for (let i = -2; i <= 2; i++) shoot(e.x, e.y, a + i * 0.12, 340, e.damage * 0.6, '255, 60, 60');
@@ -3979,6 +4126,7 @@
     }
     if ((e.aiT = (e.aiT ?? 1 + Math.random() * 2) - dt) > 0) {
       if (t.ai === 'ranged') return d < 200 ? -speed : d > 300 ? speed : 0;
+      if (t.ai === 'healer' || t.ai === 'flask') return d < 150 ? -speed * 0.6 : d > 260 ? speed : speed * 0.2;
       if (t.ai === 'bomber' && d < 70 && !e.fuse) { e.fuse = 0.75; }
       if (e.fuse > 0) {
         if ((e.fuse -= dt) <= 0) {
@@ -3991,12 +4139,43 @@
       return speed;
     }
     // choose the next move
-    if (t.ai === 'charger') {
+    if (t.ai === 'assassin') {
+      e.aiT = 1.8 + Math.random();
+      if (d < 180) { e.act = 'dash'; e.tele = 0.3; return 0; }
+    } else if (t.ai === 'healer') {
+      e.aiT = 3.6 + Math.random();
+      if (enemies.some((o) => o !== e && !o.type.prop && o.hp < o.maxHp && dist(o.x, o.y, e.x, e.y) < 160)) { e.act = 'heal'; e.tele = 0.5; return 0; }
+    } else if (t.ai === 'flask') {
+      e.aiT = 3.2 + Math.random();
+      if (d < 380) { e.act = 'flask'; e.tele = 0.4; e.lx = player.x + player.vx * 0.5; e.ly = player.y + player.vy * 0.5; return 0; }
+    } else if (t.ai === 'leap') {
+      e.aiT = 2.6 + Math.random() * 1.4;
+      if (d < 380 && d > 60) { e.act = 'leap'; e.tele = 0.55; e.lx = player.x; e.ly = player.y; return 0; }
+    } else if (t.ai === 'web') {
+      e.aiT = 3 + Math.random() * 1.5;
+      if (d < 400) { e.act = 'web'; e.tele = 0.45; return 0; }
+    } else if (t.ai === 'pull') {
+      e.aiT = 4.5 + Math.random() * 2;
+      if (d < 330 && d > 70) { e.act = 'pull'; e.tele = 0.7; return 0; }
+    } else if (t.ai === 'poison') {
+      e.aiT = 2.2 + Math.random();
+      if (puddles.length < 40) puddles.push({ x: e.x, y: e.y, r: 34, life: 7, max: 7, tick: 0, dmg: e.damage * 0.5 });
+    } else if (t.ai === 'thief') {
+      e.aiT = 0.6;
+      let best = null, bd = 420 * 420;
+      for (const it of pickups) {
+        if (it.kind !== 'coin' && it.kind !== 'coin_gold') continue;
+        const q = (it.x - e.x) ** 2 + (it.y - e.y) ** 2;
+        if (q < bd) { bd = q; best = it; }
+      }
+      e.target = best;
+      return speed;
+    } else if (t.ai === 'charger') {
       e.aiT = 2.2 + Math.random() * 1.2;
       if (d < 340) { e.act = 'dash'; e.tele = 0.5; return 0; }
     } else if (t.ai === 'ranged') {
       e.aiT = 2.4 + Math.random();
-      if (d < 420) { e.act = 'fan'; e.tele = 0.4; return 0; }
+      if (d < 420) { e.act = t.arrow ? 'arrow' : 'fan'; e.tele = t.arrow ? 0.3 : 0.4; return 0; }
     } else if (t.blink) {
       e.aiT = 5 + Math.random() * 3;
       if (d > 220) {
@@ -4026,6 +4205,7 @@
       if ((s2.life -= dt) <= 0) { enemyShots.splice(i, 1); continue; }
       if (dist(s2.x, s2.y, player.x, player.y) < s2.r + player.radius * 0.7) {
         enemyShots.splice(i, 1);
+        if (s2.web) { player.webT = 2; addFloatText(player.x, player.y - player.radius - 6, '거미줄!', '#e8e8f0'); }
         if (hurtPlayer(s2.dmg)) return true;
       }
     }
@@ -4056,7 +4236,7 @@
     sfx('hurt');
     buzz(35);
     stopTime(0.04);
-    player.invuln = 0.5;
+    player.invuln = 0.4;
     shake = Math.max(shake, 4);
     addFloatText(player.x, player.y - player.radius - 6, `-${hurt}`, '#e0503f');
     if (player.hp <= 0 && player.revives > 0) {
@@ -4113,11 +4293,32 @@
       if (e.type.grows) e.grow = clamp(1.8 - d / 300, 1, 1.8);
       if (player.chillAura && d < player.chillAura) speed *= 0.6;
       if (e.type.summon && (e.summonCd = (e.summonCd ?? 3) - dt) <= 0) {
-        e.summonCd = 5;
+        e.summonCd = e.type.boss ? 5 : 6.5;
         summons.push(e);
       }
-      e.x += (dx / d) * speed * dt;
-      e.y += (dy / d) * speed * dt;
+      if (e.target && pickups.includes(e.target)) {
+        // 아귀 goes for the coins instead of you, and gets fatter on them
+        const tx = e.target.x - e.x, ty = e.target.y - e.y, td = Math.hypot(tx, ty) || 1;
+        e.x += (tx / td) * speed * dt;
+        e.y += (ty / td) * speed * dt;
+        if (td < 14) {
+          e.loot = (e.loot || 0) + e.target.value;
+          e.grow = Math.min(1.8, 1 + e.loot / 120);
+          e.hp = Math.min(e.maxHp * 2, e.hp + e.target.value * 2);
+          pickups.splice(pickups.indexOf(e.target), 1);
+          e.target = null;
+        }
+      } else {
+        e.target = null;
+        e.x += (dx / d) * speed * dt;
+        e.y += (dy / d) * speed * dt;
+      }
+      if (e.type.growth) {
+        // 그슨대 looms larger and hits harder the longer it lives
+        e.age = (e.age || 0) + dt;
+        e.grow = 1 + Math.min(1.4, e.age / 18);
+        e.damage = Math.round((e.baseDmg ??= e.damage) * e.grow);
+      }
       if (e.type.move === 'zigzag') {
         const wiggle = Math.sin(elapsed * 8 + e.phase) * speed * 0.7 * dt;
         e.x += (-dy / d) * wiggle;
@@ -4152,10 +4353,32 @@
       }
     }
     if (enemies.some((e) => e.gone)) enemies = enemies.filter((e) => !e.gone);
+    // 백골 pull themselves back together once
+    for (let i = risers.length - 1; i >= 0; i--) {
+      const r = risers[i];
+      if ((r.t -= dt) > 0) continue;
+      risers.splice(i, 1);
+      spawnEnemy(r.type, 0, 0, { x: r.x, y: r.y });
+      const e = enemies[enemies.length - 1];
+      e.revived = true;
+      e.hp = e.maxHp *= 0.6;
+      burst(r.x, r.y, 12, ['#ece6d2', '#ff5050'], 140, 0.4, 4);
+    }
+    // 독두꺼비 venom pools
+    for (let i = puddles.length - 1; i >= 0; i--) {
+      const pd = puddles[i];
+      if ((pd.life -= dt) <= 0) { puddles.splice(i, 1); continue; }
+      if ((pd.tick -= dt) <= 0 && dist(pd.x, pd.y, player.x, player.y) < pd.r + player.radius * 0.6) {
+        pd.tick = 0.5;
+        if (hurtPlayer(pd.dmg)) return;
+      }
+    }
     for (const boss of summons) {
-      for (let i = 0; i < 3; i++) {
-        const a = (i / 3) * Math.PI * 2;
-        spawnEnemy(ENEMY_TYPES.wisp, 0, 0, { x: boss.x + Math.cos(a) * 40, y: boss.y + Math.sin(a) * 40 });
+      const n = boss.type.boss ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const pickT = boss.summonPick ? boss.summonPick[Math.floor(Math.random() * boss.summonPick.length)] : boss.type.summonType || 'wisp';
+        spawnEnemy(ENEMY_TYPES[pickT], 0, 0, { x: boss.x + Math.cos(a) * 40, y: boss.y + Math.sin(a) * 40 });
       }
     }
     // Push overlapping enemies apart so they don't stack into one blob.
@@ -5085,7 +5308,7 @@
       ctx.ellipse(e.x, e.y + r * 0.8, r * 1.5 * (0.5 + bk), r * 0.5 * (0.5 + bk), 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (t.alpha ?? 1) * bk, flip: !t.prop && player.x < e.x });
+    drawSprite(t.sprite, e.x, e.y + lift, { sx: sc * (1 + sq + 0.28 * hk), sy: sc * (1 - sq - 0.22 * hk) * (0.3 + 0.7 * bk), rot: hk * 0.18 * Math.sin(e.phase * 7), groundR: r, flash: e.flash > 0, alpha: (e.alpha ?? t.alpha ?? 1) * bk, flip: !t.prop && player.x < e.x });
     if ((e.tele > 0 && !t.duelist) || e.fuse > 0) {
       const warn = e.fuse > 0;
       ctx.strokeStyle = `rgba(255, 70, 50, ${0.5 + 0.5 * Math.sin(anim * 40)})`;
@@ -5103,14 +5326,14 @@
         ctx.stroke();
       }
     }
-    if (e.affix && bk >= 1) {
+    if ((e.affix || e.title) && bk >= 1) {
       ctx.font = 'bold 12px "Gowun Batang", serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(42, 34, 36, 0.9)';
-      const label = AFFIX[e.affix].name;
+      const label = e.title || AFFIX[e.affix].name;
       ctx.strokeText(label, e.x, e.y - t.barY - 6);
-      ctx.fillStyle = AFFIX[e.affix].color;
+      ctx.fillStyle = e.title ? '#ffd76b' : AFFIX[e.affix].color;
       ctx.fillText(label, e.x, e.y - t.barY - 6);
     }
     if (t.boss || e.elite || (!t.prop && e.hp < e.maxHp)) {
@@ -5169,6 +5392,7 @@
     drawDuel();
     drawOddities();
     drawEnemyShots();
+    drawPuddles();
     drawBombs();
     drawShrines();
     drawAltars();
