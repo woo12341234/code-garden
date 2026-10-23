@@ -59,6 +59,9 @@
       <div id="book-list"></div>
       <h3>협객</h3>
       <div id="hero-list"></div>
+      <h3>기물 도감 <span id="item-count"></span></h3>
+      <p class="hint">요괴 보따리와 천운 제단에서 뽑은 기물이 기록돼요.</p>
+      <div id="item-list"></div>
       <h3>요괴 도감 <span id="beast-count"></span></h3>
       <p class="hint">쓰러뜨린 요괴만 기록돼요. 그림에 마우스를 올리면 능력치가 보여요.</p>
       <div id="beast-list"></div>
@@ -119,6 +122,22 @@
     <p id="choice-subtitle" class="subtitle"></p>
     <div id="choice-cards"></div>
     <div id="choice-tools" class="tool-row"></div>
+  </div>
+
+  <div id="gacha-screen" class="overlay gacha hidden">
+    <p class="gacha-src"></p>
+    <div class="gacha-stage">
+      <div class="gacha-rays"></div>
+      <div class="gacha-orb"><img src="assets/bottari.png" class="pixel" alt=""></div>
+      <div class="gacha-card hidden">
+        <div class="gacha-grade"></div>
+        <div class="gacha-icon"></div>
+        <div class="gacha-name"></div>
+        <div class="gacha-desc"></div>
+        <div class="gacha-tag"></div>
+      </div>
+    </div>
+    <p class="hint">터치 · Space · A 로 계속</p>
   </div>
 
   <div id="pause-screen" class="overlay hidden">

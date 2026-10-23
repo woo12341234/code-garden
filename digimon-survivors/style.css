@@ -541,3 +541,42 @@ body.touch .tool { padding: 8px 12px; }
 .beast.locked img { filter: brightness(0) opacity(0.35); }
 #pause-guide { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 #daily-info { max-width: 720px; }
+
+/* ---------- 기물 뽑기 (gacha reveal) ---------- */
+.overlay.gacha { background: radial-gradient(circle at 50% 45%, rgba(60, 40, 60, 0.82), rgba(20, 14, 22, 0.94)); color: #fbf4e2; z-index: 30; cursor: pointer; user-select: none; }
+.overlay.gacha .hint { color: rgba(251, 244, 226, 0.7); }
+.gacha-src { font-family: 'Nanum Brush Script', cursive; font-size: 34px; margin: 0; color: #ffe9a0; letter-spacing: 2px; }
+.gacha-stage { position: relative; width: min(340px, 86vw); height: 340px; display: grid; place-items: center; }
+.gacha-rays { position: absolute; inset: -40px; border-radius: 50%; opacity: 0; transition: opacity 0.3s;
+  background: repeating-conic-gradient(from 0deg, var(--gc, #fff) 0deg 8deg, transparent 8deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 68%); mask: radial-gradient(circle, #000 20%, transparent 68%);
+  animation: gacha-spin 6s linear infinite; }
+.gacha.g2 .gacha-rays, .gacha.g3 .gacha-rays, .gacha.g4 .gacha-rays { opacity: 0.55; }
+.gacha.g3 .gacha-rays { animation-duration: 3.5s; }
+.gacha.g4 .gacha-rays { animation-duration: 2s; opacity: 0.8; }
+.gacha.g0 { --gc: #d8d2c2; } .gacha.g1 { --gc: #4aa3ff; } .gacha.g2 { --gc: #b05cff; } .gacha.g3 { --gc: #ff9a1f; } .gacha.g4 { --gc: #ff3b5c; }
+.gacha-orb { position: relative; width: 150px; height: 150px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle, var(--gc) 0%, transparent 70%); animation: gacha-shake 0.32s ease-in-out infinite; }
+.gacha-orb img { width: 110px; height: 110px; image-rendering: pixelated; filter: drop-shadow(0 0 14px var(--gc)); }
+.gacha.bump .gacha-orb { animation: gacha-bump 0.16s ease-out; }
+.gacha.bump { background: radial-gradient(circle at 50% 45%, var(--gc), rgba(20, 14, 22, 0.94) 70%); }
+.gacha-card { position: relative; width: 250px; padding: 18px 16px 16px; border-radius: 14px; background: #fbf4e2; color: var(--ink, #2a2224);
+  border: 4px solid var(--gc); box-shadow: 0 0 0 3px #2a2224, 0 0 40px var(--gc); animation: gacha-pop 0.45s cubic-bezier(.2, 1.6, .4, 1); }
+.gacha.g4 .gacha-card { border-color: transparent; background: linear-gradient(#fff6ee, #fbf4e2) padding-box, linear-gradient(var(--ang, 0deg), #ff3b5c, #ffd23c, #4ad97a, #4aa3ff, #b05cff, #ff3b5c) border-box; animation: gacha-pop 0.45s cubic-bezier(.2, 1.6, .4, 1), gacha-glow 1.2s linear infinite; }
+.gacha.g4 .gacha-grade { background: linear-gradient(90deg, #ff3b5c, #ffb020, #b05cff); }
+@keyframes gacha-glow { 0% { box-shadow: 0 0 0 3px #2a2224, 0 0 40px #ff3b5c; } 33% { box-shadow: 0 0 0 3px #2a2224, 0 0 50px #ffd23c; } 66% { box-shadow: 0 0 0 3px #2a2224, 0 0 50px #4aa3ff; } 100% { box-shadow: 0 0 0 3px #2a2224, 0 0 40px #ff3b5c; } }
+.gacha-grade { display: inline-block; padding: 2px 14px; border-radius: 10px; background: var(--gc); color: #fff; font-weight: 700; text-shadow: 0 1px 0 #2a2224; letter-spacing: 3px; }
+.gacha-icon img { width: 72px; height: 72px; margin: 10px 0 4px; image-rendering: pixelated; }
+.gacha-name { font-size: 22px; font-weight: 700; }
+.gacha-desc { font-size: 14px; margin-top: 6px; }
+.gacha-tag { margin-top: 8px; font-weight: 700; color: var(--red, #c8323c); min-height: 1em; }
+@keyframes gacha-spin { to { transform: rotate(360deg); } }
+@keyframes gacha-shake { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg) translateY(-3px); } }
+@keyframes gacha-bump { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes gacha-pop { 0% { transform: scale(0.2) rotate(-8deg); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.chip.item.g1 { border-color: #4aa3ff; } .chip.item.g2 { border-color: #b05cff; background: #f6ecff; }
+.chip.item.g3 { border-color: #ff9a1f; background: #fff1de; } .chip.item.g4 { border-color: #ff3b5c; background: #ffe6ea; font-weight: 700; }
+#item-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.item-dex { border: 2px solid var(--gc) !important; }
+.item-dex span img { width: 40px; height: 40px; image-rendering: pixelated; }
+.item-dex.locked { opacity: 0.55; }

@@ -1145,17 +1145,18 @@ if __name__ == '__main__':
         g.outline()
         export(name, badge(g.px))
     print(len(ICONS), 'icons')
-    # the 내단 pickup on the ground uses the bare gem glyph
-    g = Glyph()
-    ICONS['gem'][1](g)
-    g.outline()
-    h, w = len(g.px), len(g.px[0])
-    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    for y in range(h):
-        for x in range(w):
-            if g.px[y][x] is not None:
-                img.putpixel((x, y), g.px[y][x])
-    img.resize((w * EXPORT_SCALE, h * EXPORT_SCALE), Image.NEAREST).save(os.path.join(OUT_DIR, '..', 'naedan.png'))
+    # ground pickups that reuse bare glyphs: 내단 (gem) and 요괴 보따리 (luck pouch, gacha)
+    for glyph, sprite in (('gem', 'naedan'), ('luckbag', 'bottari')):
+        g = Glyph()
+        ICONS[glyph][1](g)
+        g.outline()
+        h, w = len(g.px), len(g.px[0])
+        img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        for y in range(h):
+            for x in range(w):
+                if g.px[y][x] is not None:
+                    img.putpixel((x, y), g.px[y][x])
+        img.resize((w * EXPORT_SCALE, h * EXPORT_SCALE), Image.NEAREST).save(os.path.join(OUT_DIR, '..', sprite + '.png'))
     for wid in list(WGLYPH) + list(REUSE):
         for evolved in (False, True):
             g = Glyph()

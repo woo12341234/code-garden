@@ -102,6 +102,7 @@
     eunja: { size: 24, color: '#ced4de', emoji: '🪙' },
     jumeoni: { size: 28, color: '#c8323c', emoji: '💰' },
     naedan: { size: 26, color: '#a050e0', emoji: '💎' },
+    bottari: { size: 30, color: '#c8323c', emoji: '🧧' },
     bangul: { size: 24, color: '#deb048', emoji: '🔔' },
     jeoseung: { size: 72, color: '#242028', emoji: '💀' },
     golddokkaebi: { size: 48, color: '#ecba3c', emoji: '💰' },
@@ -1801,6 +1802,12 @@
     shrine: () => [392, 523, 659, 784].forEach((f, i) => tone({ type: 'sine', f, dur: 0.5, vol: 0.1, delay: i * 0.05, vib: 3 })),
     goblin: () => [1046, 1318, 1046, 1568].forEach((f, i) => tone({ type: 'square', f, dur: 0.07, vol: 0.06, delay: i * 0.07 })),
     heart: () => { tone({ type: 'sine', f: 70, f2: 50, dur: 0.12, vol: 0.25 }); tone({ type: 'sine', f: 65, f2: 45, dur: 0.12, vol: 0.18, delay: 0.16 }); },
+    gachaStep: (n = 0) => { tone({ type: 'triangle', f: 523 * 2 ** (n * 4 / 12), dur: 0.22, vol: 0.13 }); noise({ dur: 0.18, vol: 0.1, freq: 5000, q: 2 }); },
+    gachaShake: () => noise({ dur: 0.12, vol: 0.06, freq: 1400, q: 3 }),
+    gachaReveal: (g = 0) => {
+      [523, 659, 784, 1046, 1318].slice(0, 3 + Math.min(2, g)).forEach((f, i) => tone({ type: 'triangle', f: f * (g >= 3 ? 1.5 : 1), dur: 0.35, vol: 0.12, delay: i * 0.07 }));
+      if (g >= 3) { tone({ type: 'sine', f: 196, dur: 2, vol: 0.22, vib: 2 }); noise({ dur: 0.8, vol: 0.18, freq: 6000, f2: 1200, q: 0.8 }); }
+    },
     death: () => { tone({ type: 'sawtooth', f: 330, f2: 60, dur: 1.2, vol: 0.2 }); tone({ type: 'sine', f: 196, f2: 98, dur: 1.4, vol: 0.15, delay: 0.1 }); },
   };
   const SOUND_GAP = { hit: 0.035, kill: 0.03, coin: 0.03, crit: 0.06, boom: 0.12 };
@@ -1956,7 +1963,7 @@
 
   // ---------- State ----------
   let state = 'title'; // title | playing | choice | paused | gameover | victory
-  let shrines = [], shrineTimer = 25, goldTimer = 80;
+  let shrines = [], shrineTimer = 25, goldTimer = 80, altars = [];
   const cam = { x: 0, y: 0, zoom: 1, punch: 0 };
   let cinematic = null; // { t, x, y } — slow motion while the camera visits a boss
   let decals = [], ambient = [], bombs = [];
@@ -1983,7 +1990,7 @@
       vx: 0, vy: 0, dustT: 0, bonusCult: 0, cardCount: 3, disciples: 0, discipleList: [], innChests: 0, stageGiftBonus: 0,
       combo: 0, comboT: 0, maxCombo: 0, coinChain: 0, coinAt: -9, buffs: {}, goldKills: 0, shrinesUsed: 0, heartT: 0,
       dashCd: 0, dashT: 0, dashVx: 0, dashVy: 0, dashFrom: null, dashes: 0, ult: 0, ults: 0, ultAgainAt: 0, spinUlt: 0, ultMul: 1,
-      arc: new Set(), meteorT: 8, cleared: 0, trail: [], relics: new Set(), gems: [], bossSeen: {},
+      arc: new Set(), meteorT: 8, cleared: 0, trail: [], relics: new Set(), gems: [], bossSeen: {}, items: {}, itemTicks: [], pulls: 0, pity: 0, altarCost: 40,
       formBonus: 0, issen: false, berserk: 0, necro: 0, dodge: 0, drunk: false, flameTrail: false, phoenix: false, bonusGift: 0, trailCd: 0, swings: 0,
       level: 1, xp: 0, xpToNext: 10, picks: {},
       facing: -1, moving: false, invuln: 0, glow: 0,
@@ -2008,6 +2015,7 @@
     zones = [];
     mines = [];
     shrines = [];
+    altars = [];
     shrineTimer = 25;
     goldTimer = 60 + Math.random() * 40;
     achvTimer = 0;
@@ -2593,6 +2601,7 @@
     }
     if ((player.comboT -= dt) <= 0) player.combo = 0;
     if (player.hp < player.maxHp * 0.3 && (player.heartT -= dt) <= 0) { player.heartT = 0.85; sfx('heart'); }
+    updateAltars(dt);
     // shrines
     if ((shrineTimer -= dt) <= 0) {
       shrineTimer = 65 + Math.random() * 30;
@@ -2682,6 +2691,8 @@
     for (const e of enemies) if (e.elite) targets.push([e.x, e.y, '#ff9a30']);
     for (const it of pickups) if (it.kind === 'treasure' || it.kind === 'naedan') targets.push([it.x, it.y, it.kind === 'naedan' ? '#b070ff' : '#ffe066']);
     for (const sh of shrines) targets.push([sh.x, sh.y, `rgb(${sh.buff.rgb})`]);
+    for (const al of altars) targets.push([al.x, al.y, `hsl(${(anim * 90) % 360}, 90%, 60%)`]);
+    for (const it of pickups) if (it.kind === 'bottari') targets.push([it.x, it.y, '#ff5a5a']);
     for (const [tx, ty, col] of targets) {
       const sx = viewW / 2 + (tx - cam.x) * cam.zoom, sy = viewH / 2 + (ty - cam.y) * cam.zoom;
       if (sx > 20 && sx < viewW - 20 && sy > 20 && sy < viewH - 20) continue;
@@ -3016,6 +3027,8 @@
         icon: '🔥', title: h ? `업화 ${h}단계` : '업화 없음', desc: heatDesc(h), sect: h === progress.heat,
         pick: () => setHeat(h),
       })));
+    } else if (m.type === 'gacha') {
+      showGacha(m.src);
     } else if (m.type === 'gem') {
       showChoice(`내단 (${player.gems.length + 1}/${GEM_SLOTS})`, '요괴의 내단을 흡수해 보석 자리에 박아요', gemOffers());
     } else if (m.type === 'nextStage') {
@@ -3210,6 +3223,213 @@
   function applyHeatToPlayer(p) {
     if (heat >= 3) p.healMul *= 0.5;
     if (heat >= 9) { p.maxHp = Math.round(p.maxHp * 0.7); p.hp = Math.min(p.hp, p.maxHp); }
+  }
+
+  // ---------- 기물 뽑기: pouches and altars roll graded items with a gacha-style reveal ----------
+  const GRADES = [
+    { id: 'common', name: '일반', color: '#d8d2c2', w: 46 },
+    { id: 'rare', name: '희귀', color: '#4aa3ff', w: 30 },
+    { id: 'epic', name: '영웅', color: '#b05cff', w: 16 },
+    { id: 'legend', name: '전설', color: '#ff9a1f', w: 7 },
+    { id: 'myth', name: '신화', color: '#ff3b5c', w: 1.2 },
+  ];
+  // Periodic item effects run from update(); each entry is { every, t, fn }.
+  function itemTick(p, every, fn) { p.itemTicks.push({ every, t: every, fn }); }
+  function thunderDrum() {
+    const near = enemies.filter((e) => !e.type.prop && dist(e.x, e.y, player.x, player.y) < 480);
+    dmgSrc = 'item';
+    for (const e of shuffled(near).slice(0, 5)) {
+      const j = enemies.indexOf(e);
+      if (j < 0) continue;
+      fx.push({ kind: 'bolt', x: e.x, y: e.y, seed: Math.random() * 10, life: 0.3, max: 0.3 });
+      damageEnemy(e, j, 30 + player.level * 6, 0, 0, 0);
+    }
+    sfx('crit');
+  }
+  const ITEMS = [
+    { id: 'tea', g: 0, icon: '🍵', name: '녹차 한 잔', desc: '초당 HP 0.5 회복', apply(p) { p.regen += 0.5; } },
+    { id: 'chopsticks', g: 0, icon: '🥢', name: '쇠젓가락', desc: '모든 피해 +5%', apply(p) { p.dmgMul += 0.05; } },
+    { id: 'sandal', g: 0, icon: '🍃', name: '짚신', desc: '이동 속도 +5%', apply(p) { p.speed *= 1.05; } },
+    { id: 'magnet', g: 0, icon: '🧲', name: '자석 부적', desc: '줍는 범위 +20%', apply(p) { p.pickupRadius *= 1.2; } },
+    { id: 'oldbook', g: 0, icon: '📜', name: '낡은 서책', desc: '경험치 +8%', apply(p) { p.xpMul += 0.08; } },
+    { id: 'leather', g: 0, icon: '🛡️', name: '가죽 호구', desc: '받는 피해 -4%', apply(p) { p.armor *= 0.96; } },
+    { id: 'peach', g: 0, icon: '🍑', name: '말린 복숭아', desc: '최대 HP +15', apply(p) { p.maxHp += 15; p.hp += 15; } },
+    { id: 'feather', g: 1, icon: '🎯', name: '매의 깃', desc: '치명타 +6%', apply(p) { p.crit += 0.06; } },
+    { id: 'hourglass', g: 1, icon: '⏳', name: '모래시계', desc: '모든 무공 대기시간 -6%', apply(p) { p.haste *= 0.94; } },
+    { id: 'arrowhead', g: 1, icon: '🏹', name: '관통 화살촉', desc: '관통 +1', apply(p) { p.pierce++; } },
+    { id: 'pouch', g: 1, icon: '🧧', name: '복주머니', desc: '은자 +25%, 행운 +0.2', apply(p) { p.greed *= 1.25; p.luck += 0.2; } },
+    { id: 'incense', g: 1, icon: '🕯️', name: '향초', desc: '지속시간 +15%, 범위 +8%', apply(p) { p.durMul += 0.15; p.area *= 1.08; } },
+    { id: 'wine', g: 1, icon: '🍶', name: '호리병 술', desc: '모든 피해 +12%, 받는 피해 +4%', apply(p) { p.dmgMul += 0.12; p.armor *= 1.04; } },
+    { id: 'clone', g: 2, icon: '👥', name: '분신 부적', desc: '발사 수 +1', apply(p) { p.extra++; } },
+    { id: 'bloodring', g: 2, icon: '🩸', name: '혈옥 반지', desc: '처치 시 HP 0.3 회복, 피해 +8%', apply(p) { p.killHeal += 0.3; p.dmgMul += 0.08; } },
+    { id: 'fan', g: 2, icon: '🌀', name: '태풍 부채', desc: '범위 +18%', apply(p) { p.area *= 1.18; } },
+    { id: 'drum', g: 2, icon: '⚡', name: '뇌신의 북', desc: '6초마다 주변 요괴 다섯에게 벼락', apply(p) { itemTick(p, 6, thunderDrum); } },
+    { id: 'mirror', g: 2, icon: '🔯', name: '팔괘경', desc: '치명 피해 +0.5, 받는 피해 -6%', apply(p) { p.critMul += 0.5; p.armor *= 0.94; } },
+    { id: 'pearl', g: 3, icon: '🐉', name: '여의주', desc: '쓰러지면 한 번 되살아나요, 최대 HP +30', apply(p) { p.revives++; p.maxHp += 30; p.hp += 30; } },
+    { id: 'moonblade', g: 3, icon: '🌕', name: '월광검', desc: '8초마다 거대한 달빛 검기가 사방을 베어요', apply(p) { itemTick(p, 8, () => { dmgSrc = 'item'; fx.push({ kind: 'ultwave', x: player.x, y: player.y, rgb: '200, 220, 255', life: 0.5, max: 0.5, small: true }); ringBlast(player.x, player.y, 230, 60 + player.level * 9, 30, 'ice'); }); } },
+    { id: 'crown', g: 3, icon: '👑', name: '패왕의 관', desc: '모든 피해 +30%, 보스 피해 +30%', apply(p) { p.dmgMul += 0.3; p.bossMul *= 1.3; } },
+    { id: 'crow', g: 3, icon: '☀️', name: '삼족오 깃털', desc: '필살기 게이지 ×1.8, 대기시간 -10%', apply(p) { p.ultGain = (p.ultGain || 1) * 1.8; p.haste *= 0.9; } },
+    { id: 'fortune', g: 4, icon: '🌈', name: '천운', desc: '피해 +50%, 대기시간 -20%, 발사 +1, 이동 +15%', apply(p) { p.dmgMul += 0.5; p.haste *= 0.8; p.extra++; p.speed *= 1.15; } },
+    { id: 'heart', g: 4, icon: '😈', name: '천마의 심장', desc: '피해 +80%, 처치 시 HP 1 회복, 최대 HP -25%', apply(p) { p.dmgMul += 0.8; p.killHeal += 1; p.maxHp = Math.round(p.maxHp * 0.75); p.hp = Math.min(p.hp, p.maxHp); } },
+  ];
+  const ITEM_BY_ID = Object.fromEntries(ITEMS.map((it) => [it.id, it]));
+  function rollGrade() {
+    // 행운 nudges the odds up; 8 pulls without 영웅 or better guarantees one.
+    const lk = Math.max(0, player.luck - 1);
+    const ws = GRADES.map((g, i) => g.w * (i >= 2 ? 1 + lk * 0.6 : 1));
+    if (player.pity >= 8) ws[0] = ws[1] = 0;
+    let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+    let g = 0;
+    while (r >= ws[g]) r -= ws[g++];
+    return g;
+  }
+  function pullItem() {
+    const g = rollGrade();
+    player.pity = g >= 2 ? 0 : player.pity + 1;
+    player.pulls++;
+    const pool = ITEMS.filter((it) => it.g === g);
+    const it = pool[Math.floor(Math.random() * pool.length)];
+    const stack = (player.items[it.id] || 0) + 1;
+    player.items[it.id] = stack;
+    it.apply(player);
+    const dex = progress.itemDex || (progress.itemDex = {});
+    const isNew = !dex[it.id];
+    dex[it.id] = (dex[it.id] || 0) + 1;
+    saveProgress();
+    return { it, g, stack, isNew };
+  }
+  let gacha = null;
+  function showGacha(src) {
+    const res = pullItem();
+    const el = $('gacha-screen');
+    const orb = el.querySelector('.gacha-orb');
+    const card = el.querySelector('.gacha-card');
+    el.querySelector('.gacha-src').textContent = src || '요괴 보따리';
+    card.classList.add('hidden');
+    orb.classList.remove('hidden');
+    el.className = 'overlay gacha g0';
+    orb.style.setProperty('--gc', GRADES[0].color);
+    gacha = { res, step: 0, done: false, timers: [] };
+    const T = (ms, f) => gacha.timers.push(setTimeout(f, ms));
+    for (let i = 0; i < 4; i++) T(120 + i * 110, () => sfx('gachaShake'));
+    // climb through the grades one flash at a time (the classic "it's turning gold!" moment)
+    for (let k = 1; k <= res.g; k++) {
+      T(450 + k * 430, () => {
+        el.classList.remove(`g${k - 1}`);
+        el.classList.add(`g${k}`, 'bump');
+        orb.style.setProperty('--gc', GRADES[k].color);
+        sfx('gachaStep', k);
+        buzz(20 + k * 10);
+        setTimeout(() => el.classList.remove('bump'), 160);
+      });
+    }
+    T(650 + res.g * 430 + 250, revealGacha);
+    el.classList.remove('hidden');
+  }
+  function revealGacha() {
+    if (!gacha || gacha.done) return;
+    gacha.timers.forEach(clearTimeout);
+    gacha.done = true;
+    const { it, g, stack, isNew } = gacha.res;
+    const el = $('gacha-screen');
+    el.className = `overlay gacha g${g} revealed`;
+    el.querySelector('.gacha-orb').classList.add('hidden');
+    const card = el.querySelector('.gacha-card');
+    card.style.setProperty('--gc', GRADES[g].color);
+    card.querySelector('.gacha-grade').textContent = GRADES[g].name;
+    card.querySelector('.gacha-icon').replaceChildren(iconImg(it.icon));
+    card.querySelector('.gacha-name').textContent = it.name + (stack > 1 ? ` ★${stack}` : '');
+    card.querySelector('.gacha-desc').textContent = it.desc;
+    card.querySelector('.gacha-tag').textContent = isNew ? 'NEW!' : stack > 1 ? '중복 · 효과 한 번 더!' : '';
+    card.classList.remove('hidden');
+    sfx('gachaReveal', g);
+    if (g >= 3) {
+      flash = Math.max(flash, 0.35);
+      shake = Math.max(shake, 10);
+      buzz([60, 40, 120]);
+      showToast(`${GRADES[g].name} 기물 획득!`, it.name);
+    }
+  }
+  function gachaAdvance() {
+    if (!gacha) return false;
+    if (!gacha.done) { revealGacha(); return true; }
+    gacha = null;
+    $('gacha-screen').classList.add('hidden');
+    closeChoice();
+    return true;
+  }
+  function dropPouch(x, y) { pickups.push({ kind: 'bottari', x, y }); }
+
+  // 천운 제단: one per chapter; stand on it to pay 은자 for a pull (price climbs each time).
+  const ALTAR_R = 56;
+  function updateAltars(dt) {
+    if (stageTime > 40 && !altars.some((a) => a.stage === stageIdx) && !player.altarSpawned?.[stageIdx]) {
+      (player.altarSpawned || (player.altarSpawned = {}))[stageIdx] = true;
+      const a = Math.random() * Math.PI * 2, r = 300 + Math.random() * 160;
+      altars.push({ x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r, stage: stageIdx, charge: 0, cool: 0 });
+      showBanner('천운 제단 출현', '', '은자를 바치면 기물을 뽑을 수 있어요');
+      sfx('shrine');
+    }
+    for (let i = altars.length - 1; i >= 0; i--) {
+      const al = altars[i];
+      if (al.stage !== stageIdx) { altars.splice(i, 1); continue; }
+      al.cool = Math.max(0, al.cool - dt);
+      const inside = dist(al.x, al.y, player.x, player.y) < ALTAR_R;
+      al.charge = inside && !al.cool ? al.charge + dt : 0;
+      if (al.charge < 1) continue;
+      al.charge = 0;
+      al.cool = 2.5;
+      const purse = Math.floor(player.gold) - banked;
+      if (purse < player.altarCost) {
+        addFloatText(al.x, al.y - 50, `은자 부족 (${player.altarCost}냥)`, '#e0503f');
+        continue;
+      }
+      player.gold -= player.altarCost;
+      player.altarCost = Math.round(player.altarCost * 1.6);
+      burst(al.x, al.y, 30, ['#ffd76b', '#ff9a1f', '#ffffff', '#b05cff'], 240, 0.8, 5, true);
+      modalQueue.unshift({ type: 'gacha', src: '천운 제단' });
+      modalDelay = Math.max(modalDelay, 0.35);
+    }
+    for (const t of player.itemTicks) if ((t.t -= dt) <= 0) { t.t = t.every; t.fn(); }
+  }
+  function drawAltars() {
+    for (const al of altars) {
+      const pulse = 0.5 + 0.5 * Math.sin(anim * 4);
+      const hue = (anim * 90) % 360;
+      ctx.save();
+      ctx.translate(al.x, al.y);
+      ctx.scale(1, 0.5);
+      ctx.fillStyle = `hsla(${hue}, 90%, 60%, ${0.12 + 0.08 * pulse})`;
+      ctx.strokeStyle = `hsla(${hue}, 90%, 60%, 0.95)`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, ALTAR_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      if (al.charge > 0) {
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(0, 0, ALTAR_R - 7, -Math.PI / 2, -Math.PI / 2 + al.charge * Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.fillStyle = '#5a2a2a';
+      ctx.fillRect(al.x - 18, al.y - 18, 36, 20);
+      ctx.fillStyle = '#c8323c';
+      ctx.fillRect(al.x - 22, al.y - 22, 44, 6);
+      ctx.fillStyle = '#ffd76b';
+      ctx.fillRect(al.x - 4, al.y - 16, 8, 14);
+      drawSprite('bottari', al.x, al.y - 34 - pulse * 4);
+      ctx.font = 'bold 13px "Gowun Batang", serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(42, 34, 36, 0.85)';
+      const label = `천운 제단 · ${player.altarCost}냥`;
+      ctx.strokeText(label, al.x, al.y - 62);
+      ctx.fillStyle = '#ffe9a0';
+      ctx.fillText(label, al.x, al.y - 62);
+    }
   }
 
   // ---------- 일일 도전: everyone gets the same hero, difficulty and twists for the day ----------
@@ -3593,6 +3813,7 @@
         pickups.push({ kind: 'coin_gold', value: 20, x: e.x + Math.cos(a) * 40, y: e.y + Math.sin(a) * 40 });
       }
       if (Math.random() < 0.5) pickups.push({ kind: 'treasure', x: e.x, y: e.y - 30 });
+      dropPouch(e.x + 30, e.y - 30);
       burst(e.x, e.y, 40, ['#ffd76b', '#ffffff', '#ffe9a0'], 300, 1, 5, true);
       showBanner('황금 도깨비 포획!', '', '은자와 엽전이 쏟아져요');
       sfx('goblin');
@@ -3609,6 +3830,7 @@
       pickups.push({ kind: 'treasure', x: e.x + 14, y: e.y + 6 });
       pickups.push({ kind: 'jumeoni', value: 15, x: e.x - 14, y: e.y + 6 });
       if (Math.random() < 0.12) dropGem(e.x, e.y - 18);
+      if (Math.random() < 0.35) dropPouch(e.x + 20, e.y - 18);
     }
     if (e.type.duelist) {
       fx.push({ kind: 'ultwave', x: e.x, y: e.y, rgb: '255, 215, 90', life: 0.6, max: 0.6, small: true });
@@ -3632,12 +3854,14 @@
       for (const g of pickups) if (g.kind === 'coin' || g.kind === 'coin_gold') g.vel = 300;
       pickups.push({ kind: 'jumeoni', value: 20, x: e.x, y: e.y + 20 });
       dropGem(e.x, e.y - 22);
+      dropPouch(e.x - 24, e.y - 22);
       progress.bosses[e.type.name] = true;
       saveProgress();
       pickups.push({ kind: 'treasure', x: e.x + 16, y: e.y + 6 });
       pickups.push({ kind: 'peach', value: 25, x: e.x - 16, y: e.y + 6 });
       return;
     }
+    if (Math.random() < 0.0025 * player.luck) dropPouch(e.x - 12, e.y + 6);
     const roll = Math.random() / player.luck;
     const drop = roll < 0.004 ? 'thunderball' : roll < 0.007 ? 'bangul' : roll < 0.011 ? 'gourd' : roll < 0.018 ? 'ginseng' : roll < 0.042 ? 'peach' : roll < 0.065 ? 'eunja' : null;
     if (drop) pickups.push({ kind: drop, value: drop === 'ginseng' ? 60 : drop === 'eunja' ? 2 : 25, x: e.x + 12, y: e.y + 6 });
@@ -4078,6 +4302,11 @@
       flash = 0.2;
       fx.push({ kind: 'ring', x: player.x, y: player.y, r: Math.hypot(viewW, viewH) / 2, life: 0.6, max: 0.6, color: 'ice' });
       addFloatText(player.x, head, '정지!', '#8cc8f0');
+    } else if (it.kind === 'bottari') {
+      modalQueue.unshift({ type: 'gacha', src: '요괴 보따리' });
+      modalDelay = Math.max(modalDelay, 0.4);
+      burst(player.x, player.y, 18, ['#ffd76b', '#ff5a5a', '#ffffff'], 200, 0.6, 4, true);
+      sfx('chest');
     } else if (it.kind === 'naedan') {
       modalQueue.unshift({ type: 'gem' });
       modalDelay = Math.max(modalDelay, 0.5);
@@ -4089,6 +4318,7 @@
       const r = Math.random() * player.luck;
       const n = (r > 0.94 ? 5 : r > 0.72 ? 3 : 1) + player.bonusGift;
       for (let k = n; k >= 1; k--) modalQueue.unshift({ type: 'chest', n: k, of: n });
+      if (n >= 5) modalQueue.splice(n, 0, { type: 'gacha', src: '대박 보물함' });
       addGold(10 * n);
       burst(player.x, player.y, 20, ['#ffe066', '#ffffff', '#ffc2dc'], 200, 0.6, 4, true);
       fx.push({ kind: 'chestbeam', x: player.x, y: player.y, life: 0.9, max: 0.9, big: n > 1 });
@@ -4941,6 +5171,7 @@
     drawEnemyShots();
     drawBombs();
     drawShrines();
+    drawAltars();
     drawMines();
     for (const it of pickups) drawSprite(it.kind, it.x, it.y + Math.sin(anim * 5 + it.x) * 2);
 
@@ -5085,6 +5316,21 @@
       row.append(recipe, result);
       return row;
     }));
+    const idex = progress.itemDex || {};
+    $('item-list').replaceChildren(...ITEMS.map((it) => {
+      const n = idex[it.id] || 0;
+      const el = document.createElement('div');
+      el.className = `beast item-dex g${it.g}` + (n ? '' : ' locked');
+      el.style.setProperty('--gc', GRADES[it.g].color);
+      const ic = document.createElement('span');
+      ic.append(iconImg(n ? it.icon : '🔒'));
+      const cap = document.createElement('small');
+      cap.textContent = n ? `${it.name} · ${n}` : `??? (${GRADES[it.g].name})`;
+      el.title = n ? `[${GRADES[it.g].name}] ${it.desc}` : '아직 뽑지 못한 기물';
+      el.append(ic, cap);
+      return el;
+    }));
+    $('item-count').textContent = `${ITEMS.filter((it) => idex[it.id]).length}/${ITEMS.length}`;
     const bestiary = progress.bestiary || {};
     $('beast-list').replaceChildren(...Object.entries(ENEMY_TYPES).filter(([, t]) => !t.prop && t.scale === undefined).map(([k, t]) => {
       const n = bestiary[k] || 0;
@@ -5206,6 +5452,13 @@
       richText(el, `📿 ${r.name}`);
       el.title = `${relicName(r)} → ${r.desc}`;
       return el;
+    }), ...Object.entries(player.items).sort((a, b) => ITEM_BY_ID[b[0]].g - ITEM_BY_ID[a[0]].g).map(([id, n]) => {
+      const it = ITEM_BY_ID[id];
+      const el = document.createElement('span');
+      el.className = `chip item g${it.g}`;
+      richText(el, `${it.icon} ${it.name}${n > 1 ? ` ★${n}` : ''}`);
+      el.title = `[${GRADES[it.g].name}] ${it.desc}`;
+      return el;
     }), ...player.gems.map((id) => {
       const g = GEMS.find((x) => x.id === id);
       const el = document.createElement('span');
@@ -5285,7 +5538,7 @@
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : kind === 'timeup' ? '시간 종료' : '쓰러졌다...';
     ui.continueBtn.classList.add('hidden'); // runs are capped at 10 minutes, no endless continue
     ui.gameoverPortrait.src = spritePath(player.hero);
-    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}\n점수 ${sc.score.toLocaleString()} · ${rankName(sc.score)}${sc.best ? ' · 최고 기록!' : ` (최고 ${progress.bestScore.toLocaleString()})`}${sc.unlocked ? ` · 업화 ${sc.unlocked}단계 해금!` : ''}${player.relics.size ? ` · 유물 ${player.relics.size}개` : ''}${player.gems.length ? ` · 내단 ${player.gems.map((g) => GEMS.find((x) => x.id === g).name).join('·')}` : ''}`;
+    ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}\n점수 ${sc.score.toLocaleString()} · ${rankName(sc.score)}${sc.best ? ' · 최고 기록!' : ` (최고 ${progress.bestScore.toLocaleString()})`}${sc.unlocked ? ` · 업화 ${sc.unlocked}단계 해금!` : ''}${player.relics.size ? ` · 유물 ${player.relics.size}개` : ''}${player.gems.length ? ` · 내단 ${player.gems.map((g) => GEMS.find((x) => x.id === g).name).join('·')}` : ''}${player.pulls ? ` · 기물 ${player.pulls}회 뽑기${Object.keys(player.items).some((id) => ITEM_BY_ID[id].g >= 3) ? ` (최고 ${GRADES[Math.max(...Object.keys(player.items).map((id) => ITEM_BY_ID[id].g))].name})` : ''}` : ''}`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();
     ui.hud.classList.add('hidden');
@@ -5321,6 +5574,7 @@
     if (e.repeat) return;
     const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden') || !ui.sectScreen.classList.contains('hidden');
     if (e.target && e.target.id === 'sect-name') return;
+    if (gacha && ['Space', 'Enter', 'KeyE', 'Digit1', 'NumpadEnter'].includes(e.code)) { e.preventDefault(); gachaAdvance(); return; }
     if (e.code === 'Escape' && overlayOpen) {
       ui.sectScreen.classList.add('hidden');
       ui.achv.classList.add('hidden');
@@ -5364,6 +5618,7 @@
   $('start-btn').addEventListener('click', startGame);
   $('restart-btn').addEventListener('click', () => (daily ? startDaily() : startGame()));
   $('daily-btn').addEventListener('click', startDaily);
+  $('gacha-screen').addEventListener('click', () => gachaAdvance());
   for (const id of ['achv-btn', 'achv-btn-2']) $(id).addEventListener('click', openAchievements);
   $('achv-close').addEventListener('click', () => ui.achv.classList.add('hidden'));
   $('shop-btn').addEventListener('click', openShop);
@@ -5435,7 +5690,9 @@
     const hit = (i) => b(i) && !pad.prev[i];
     pad.dx = Math.abs(gp.axes[0]) > 0.2 ? gp.axes[0] : (b(15) ? 1 : 0) - (b(14) ? 1 : 0);
     pad.dy = Math.abs(gp.axes[1]) > 0.2 ? gp.axes[1] : (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
-    if (state === 'choice') {
+    if (gacha) {
+      if (hit(0)) gachaAdvance();
+    } else if (state === 'choice') {
       if (!ui.choiceCards.querySelector('.pad-focus')) focusCard(0);
       if (hit(15) || hit(13)) focusCard(pad.sel + 1);
       if (hit(14) || hit(12)) focusCard(pad.sel - 1);
