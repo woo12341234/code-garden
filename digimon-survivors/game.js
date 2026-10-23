@@ -4,15 +4,21 @@
   // ---------- Canvas ----------
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
-  let viewW = 0, viewH = 0, dpr = 1;
+  let viewW = 0, viewH = 0, dpr = 1, worldScale = 1;
+  const IS_MOBILE = window.matchMedia('(hover: none)').matches || 'ontouchstart' in window;
 
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2); // cap for phones with 3x screens
-    viewW = window.innerWidth;
-    viewH = window.innerHeight;
-    canvas.width = Math.round(viewW * dpr);
-    canvas.height = Math.round(viewH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // phones render at a lower pixel ratio (pixel art doesn't need 3x) to save battery and frames
+    dpr = Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.5 : 2);
+    // small screens see a little more of the battlefield: the whole world is drawn slightly smaller
+    const short = Math.min(window.innerWidth, window.innerHeight);
+    worldScale = short < 560 ? Math.max(0.74, short / 560) : 1;
+    viewW = window.innerWidth / worldScale;
+    viewH = window.innerHeight / worldScale;
+    canvas.width = Math.round(window.innerWidth * dpr);
+    canvas.height = Math.round(window.innerHeight * dpr);
+    ctx.setTransform(dpr * worldScale, 0, 0, dpr * worldScale, 0, 0);
+    ctx.imageSmoothingEnabled = false;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -604,7 +610,7 @@
     if (!h) return null;
     return SECT_FX[h.allSects ? 'maeng' : h.sect] || null;
   }
-  const PARTICLE_CAP = 700;
+  let PARTICLE_CAP = IS_MOBILE ? 380 : 700;
   const INK_FX = { shape: 'ink', colors: ['#2a2224', '#2a2224', '#5a2a2a'] };
   function flair(st, x, y, n, speed = 120, life = 0.7, size = 4) {
     for (let i = 0; i < n && particles.length < PARTICLE_CAP; i++) {
@@ -1671,7 +1677,7 @@
   };
   for (const [k, t] of Object.entries(ENEMY_TYPES)) t.key = k;
   const BOSSES = [ENEMY_TYPES.daedokkaebi, ENEMY_TYPES.imugi, ENEMY_TYPES.heukyo];
-  const MAX_ENEMIES = 240;
+  const MAX_ENEMIES = IS_MOBILE ? 200 : 240;
   // Bosses arrive on the minute (from 1:00), surround waves on the half minute (from 2:30).
   const EVENT_INTERVAL = 60;
   const BOSS_START = 60;
@@ -1679,8 +1685,7 @@
   // ---------- Chapters (장) ----------
   // Each chapter runs STAGE_LEN seconds, then its boss appears; beating it clears the chapter and the
   // hero chooses to press on (keeping the build) or return home with the loot. Chapter 4 ends the run.
-  const STAGE_LEN = 120; // 2:00 per chapter, then its boss
-  const RUN_LIMIT = 600; // a run lasts at most 10 minutes
+  const STAGE_LEN = 300; // 5:00 per chapter, then its boss; after it you choose to move on or keep hunting
   const STAGES = [
     { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow', 'skeleton', 'toad', 'agwi', 'bandit', 'archer'], mid: null, boss: 'daedokkaebi', tint: null },
     { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf', 'spider', 'jangsanbeom', 'mangtae', 'skeleton', 'bandit', 'thug', 'assassin'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
@@ -1759,6 +1764,8 @@
   // ---------- Sound (synthesised with WebAudio, no files) ----------
   const settings = progress.settings || (progress.settings = { sfx: true, music: true, vib: true });
   for (const k of ['shake', 'nums', 'flash']) if (settings[k] === undefined) settings[k] = true;
+  if (settings.lowfx === undefined) settings.lowfx = false;
+  let lowFx = settings.lowfx;
   let ac = null, master = null, musicBus = null;
   function ensureAudio() {
     if (!ac) {
@@ -1882,12 +1889,14 @@
   }
   function startMusic() { if (!music.timer) music.timer = setInterval(musicTick, 60); }
   function applySettings() {
+    lowFx = settings.lowfx;
+    PARTICLE_CAP = lowFx ? 200 : IS_MOBILE ? 380 : 700;
     if (musicBus) musicBus.gain.setTargetAtTime(settings.music ? 0.22 : 0, ac.currentTime, 0.1);
     saveProgress();
     for (const el of document.querySelectorAll('.settings')) buildSettings(el);
   }
   function buildSettings(el) {
-    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동'], ['shake', '화면 흔들림'], ['nums', '피해 숫자'], ['flash', '번쩍임']].map(([k, label]) => {
+    el.replaceChildren(...[['sfx', '효과음'], ['music', '음악'], ['vib', '진동'], ['shake', '화면 흔들림'], ['nums', '피해 숫자'], ['flash', '번쩍임'], ['lowfx', '저사양 모드']].map(([k, label]) => {
       const b = document.createElement('button');
       b.className = 'tool' + (settings[k] ? ' armed' : '');
       b.textContent = `${label} ${settings[k] ? '켬' : '끔'}`;
@@ -2084,7 +2093,8 @@
 
   // ---------- Effects ----------
   function burst(x, y, n, colors, speed = 150, life = 0.5, size = 4, star = false) {
-    for (let i = 0; i < n; i++) {
+    if (lowFx) n = Math.ceil(n / 2);
+    for (let i = 0; i < n && particles.length < PARTICLE_CAP; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = speed * (0.35 + Math.random() * 0.65);
       particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, size, star, color: colors[i % colors.length] });
@@ -2092,7 +2102,7 @@
   }
 
   function addFloatText(x, y, text, color, size = 17, crit = false) {
-    if (floatTexts.length < 70) floatTexts.push({ x, y, text, color, life: 0.8, size: Math.round(size), crit });
+    if (floatTexts.length < (lowFx ? 30 : 70)) floatTexts.push({ x, y, text, color, life: 0.8, size: Math.round(size), crit });
   }
 
   function showBanner(text, kind = '', sub = '') {
@@ -2284,7 +2294,7 @@
   ];
   function updateAmbient(dt) {
     const a = AMBIENT[Math.min(stageIdx, AMBIENT.length - 1)];
-    if (ambient.length < 60 && Math.random() < a.rate * dt) {
+    if (!lowFx && ambient.length < 60 && Math.random() < a.rate * dt) {
       const fromTop = a.kind !== 'ember';
       ambient.push({ kind: a.kind, rgb: a.rgb, x: Math.random() * viewW, y: fromTop ? -10 : viewH + 10, vx: (Math.random() - 0.3) * 30, vy: fromTop ? 25 + Math.random() * 30 : -(30 + Math.random() * 30), life: 9, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 3, size: 2 + Math.random() * 3 });
     }
@@ -3015,7 +3025,7 @@
     player.cleared++;
     const gifts = 3 + (player.stageGiftBonus || 0);
     for (let k = 1; k <= gifts; k++) modalQueue.push({ type: 'chest', n: k, of: gifts });
-    modalQueue.push({ type: 'arcana' }, { type: 'nextStage' });
+    modalQueue.push({ type: 'arcana' }, { type: 'stage' });
     modalDelay = 1.6;
     checkAchievements();
   }
@@ -3120,8 +3130,9 @@
       return;
     } else if (m.type === 'stage') {
       const next = STAGES[stageIdx + 1];
-      showChoice(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '무공은 그대로 이어져요. 더 깊이 들어갈까요?', [
-        { icon: '🏮', title: `다음: ${next.name}`, desc: `${next.sub}. 더 강한 요괴가 나오고 은자도 더 많이 얻어요`, big: true, pick: () => enterStage(stageIdx + 1) },
+      showChoice(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '무공은 그대로 이어져요. 어떻게 할까요?', [
+        { icon: '🏮', title: `다음 장: ${next.name}`, desc: `${next.sub}. 더 강한 적이 나오고 은자도 더 많이 얻어요`, big: true, pick: () => { player.lingering = false; enterStage(stageIdx + 1); } },
+        { icon: '⚔️', title: '이 장에서 계속 사냥', desc: '여기 남아 레벨과 기물을 더 모아요. 적은 시간이 갈수록 강해져요. 일시정지 메뉴에서 언제든 다음 장으로 갈 수 있어요', big: true, pick: () => { player.lingering = true; } },
         { icon: '🧭', title: '여기서 귀환', desc: '모은 은자를 챙겨 로비로 돌아가요', big: true, pick: () => gameOver('retire') },
       ]);
     } else if (m.type === 'chest') {
@@ -3143,7 +3154,7 @@
       const b = document.createElement('button');
       b.className = 'tool' + (field === 'banishes' && banishMode ? ' armed' : '');
       b.dataset.key = key;
-      richText(b, `${icon} ${label} ${player[field]} [${key}]`);
+      richText(b, `${icon} ${label} ${player[field]}${IS_MOBILE ? "" : ` [${key}]`}`);
       b.disabled = player[field] <= 0;
       b.addEventListener('click', () => {
         if (state !== 'choice' || player[field] <= 0) return;
@@ -3450,8 +3461,10 @@
     { name: '마교 진격!', sub: '마교 무사단이 포위해 온다', members: ['demonguard', 'brawler', 'assassin', 'cultist'], captain: '마교 장로' },
   ];
   function updateRaids() {
-    if (stageTime < 62 || (player.raided || (player.raided = {}))[stageIdx]) return;
-    player.raided[stageIdx] = true;
+    const wave = stageTime >= 200 ? 2 : stageTime >= 62 ? 1 : 0;
+    const key = `${stageIdx}-${wave}`;
+    if (!wave || (player.raided || (player.raided = {}))[key]) return;
+    player.raided[key] = true;
     const rd = RAIDS[Math.min(stageIdx, RAIDS.length - 1)];
     const n = Math.round((12 + stageIdx * 4) * Math.min(1, diff.spawn + 0.15));
     for (let i = 0; i < n; i++) {
@@ -3657,17 +3670,18 @@
   // Enemies get tougher, faster and hit harder the longer the run goes.
   function spawnEnemy(type, angle, distance, at) {
     const t = elapsed;
+    const tr = elapsed * 0.55; // chapters last 5 minutes, so the time ramp is stretched out
     const c = player.curse;
     const sc = stageScale();
     // Yokai grow tougher, faster and deadlier with time; harder difficulties ramp up much faster.
     const ramp = diff.ramp || 1;
     // Bosses take the chapter step a little more gently so they stay beatable inside the 10-minute run.
     const scHp = (type.boss ? sc.hp ** 0.75 * (heat >= 5 ? 1.3 : 1) : sc.hp);
-    const hp = type.prop ? 1 : type.hp * (1 + ramp * (t / 120 + (t / 300) ** 2)) * (1 + c) * diff.hp * scHp;
+    const hp = type.prop ? 1 : type.hp * (1 + ramp * (tr / 120 + (tr / 300) ** 2)) * (1 + c) * diff.hp * scHp;
     const e = {
       type, x: 0, y: 0, hp, maxHp: hp,
       speed: type.speed * (1 + Math.min(t / 480, 0.35)) * (1 + c / 2) * diff.speed * sc.speed,
-      damage: Math.round(type.damage * (1 + (ramp * t) / 240) * diff.dmg * sc.dmg),
+      damage: Math.round(type.damage * (1 + (ramp * tr) / 240) * diff.dmg * sc.dmg),
       contactCd: 0, flash: 0, phase: Math.random() * Math.PI * 2, born: type.prop ? 0 : 0.45,
     };
     // 정예: a rare golden, much tougher version that drops a treasure chest.
@@ -3753,9 +3767,9 @@
     }
     spawnTimer -= dt;
     if (spawnTimer <= 0 && enemies.length < MAX_ENEMIES) {
-      spawnTimer = clamp(1.1 - elapsed / 220, 0.4, 1.1);
+      spawnTimer = clamp(1.1 - elapsed / 440, 0.4, 1.1);
       // fractional batch sizes round randomly, so lower spawn rates still matter early on
-      const want = (1 + Math.floor(elapsed / 90)) * (1 + player.curse) * diff.spawn * stageScale().spawn;
+      const want = (1 + Math.floor(elapsed / 180)) * (1 + player.curse) * diff.spawn * stageScale().spawn;
       const n = Math.floor(want) + (Math.random() < want % 1 ? 1 : 0);
       for (let i = 0; i < n; i++) spawnEnemy(pickEnemyType());
     }
@@ -3904,7 +3918,7 @@
     progress.totalKills++;
     if (e.type.key) { const b = progress.bestiary || (progress.bestiary = {}); b[e.type.key] = (b[e.type.key] || 0) + 1; }
     enemies.splice(idx, 1);
-    if (decals.length > 90) decals.shift();
+    if (decals.length > (lowFx ? 25 : 90)) decals.shift();
     decals.push({ x: e.x, y: e.y + e.type.radius * 0.6, r: e.type.radius * (e.type.boss ? 2.2 : 1.1), life: 6, max: 6, blobs: Array.from({ length: 5 }, () => [(Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.7, 0.25 + Math.random() * 0.45]) });
     if (fx.length < 200) fx.push({ kind: 'die', sprite: e.type.sprite, x: e.x, y: e.y, r: e.type.radius, sc: (e.type.scale || 1) * (e.grow || 1) * (e.elite ? 1.4 : 1), alpha: e.type.alpha ?? 1, life: 0.32, max: 0.32 });
     if (e.type.boss || e.elite) shake = Math.max(shake, e.type.boss ? 10 : 5);
@@ -4685,7 +4699,6 @@
     updatePickups(dt);
     updateEffects(dt);
     if ((achvTimer -= dt) <= 0) { achvTimer = 0.5; checkAchievements(); checkRealm(); checkQuests(); }
-    if (elapsed >= RUN_LIMIT && !player.victoryAt) { gameOver('timeup'); return; }
     if (player.victoryAt && elapsed >= player.victoryAt && !modalQueue.length) { player.victoryAt = 0; progress.bestStage = Math.max(progress.bestStage, STAGES.length); saveProgress(); victory(); return; }
     if (player.stageClearAt && elapsed >= player.stageClearAt && !modalQueue.length) { player.stageClearAt = 0; stageClear(); }
     if (modalQueue.length && modalDelay <= 0) openNextModal();
@@ -4721,8 +4734,8 @@
     }
     ui.gold.textContent = `은자 ${Math.floor(player.gold)}냥`;
     const st = curStage();
-    ui.timer.textContent = `${fmtTime(Math.max(0, RUN_LIMIT - elapsed))} 남음`;
-    ui.stageInfo.textContent = `[${diff.name}] ` + (st.endless ? st.name : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`);
+    ui.timer.textContent = fmtTime(elapsed);
+    ui.stageInfo.textContent = `[${diff.name}] ` + (st.endless ? st.name : player.lingering ? `${st.name.split(' · ')[0]} 돌파 · 계속 사냥 중` : stageBossOut ? `${st.name.split(' · ')[0]} · 보스전!` : `${st.name} · 보스까지 ${fmtTime(Math.max(0, STAGE_LEN - stageTime))}`);
     const next = REALMS[player.realm + 1];
     ui.evoHint.textContent = `${REALMS[player.realm].name} · ${rankOf(player.realm)}${next ? ` (다음 경지 ${cultivation()}/${next.need})` : ''}`;
     const dashP = player.dashCd > 0 ? 1 - player.dashCd / (DASH_CD * (hasArc('gale') ? 0.5 : 1)) : 1;
@@ -5720,6 +5733,7 @@
     if (!$('pause-guide').children.length) $('pause-guide').textContent = '아직 합성할 수 있는 무공이 없어요';
     ui.pauseStats.textContent = `[${diff.name}] ${REALMS[player.realm].name} · ${rankOf(player.realm)} · 피해 ×${player.dmgMul.toFixed(2)} · 치명타 ${Math.round(player.crit * 100)}% · 대기시간 ×${player.haste.toFixed(2)} · 받는 피해 ×${player.armor.toFixed(2)} · 은자 ${Math.floor(player.gold)}냥${player.revives ? ` · 환생 ${player.revives}` : ''}`;
     ui.quitBtn.textContent = '로비로 나가기';
+    $('next-stage-btn').classList.toggle('hidden', !player.lingering);
     ui.quitBtn.dataset.confirm = '';
   }
 
@@ -5830,14 +5844,14 @@
   canvas.addEventListener('pointerdown', (e) => {
     if (state !== 'playing') return;
     const r = canvas.getBoundingClientRect();
-    Object.assign(stick, { active: true, id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, dx: 0, dy: 0 });
+    Object.assign(stick, { active: true, id: e.pointerId, ox: (e.clientX - r.left) / worldScale, oy: (e.clientY - r.top) / worldScale, dx: 0, dy: 0 });
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!stick.active || e.pointerId !== stick.id) return;
     const r = canvas.getBoundingClientRect();
-    stick.dx = e.clientX - r.left - stick.ox;
-    stick.dy = e.clientY - r.top - stick.oy;
+    stick.dx = (e.clientX - r.left) / worldScale - stick.ox;
+    stick.dy = (e.clientY - r.top) / worldScale - stick.oy;
   });
   const endStick = (e) => { if (e.pointerId === stick.id) stick.active = false; };
   canvas.addEventListener('pointerup', endStick);
@@ -5887,6 +5901,14 @@
   $('shop-close').addEventListener('click', () => ui.shop.classList.add('hidden'));
   $('refund-btn').addEventListener('click', refundShop);
   $('resume-btn').addEventListener('click', togglePause);
+  $('next-stage-btn').addEventListener('click', () => {
+    if (state !== 'paused' || !player.lingering) return;
+    player.lingering = false;
+    togglePause();
+    enemies = enemies.filter((e) => e.type.prop);
+    enemyShots = [];
+    enterStage(stageIdx + 1);
+  });
   ui.quitBtn.addEventListener('click', () => {
     if (state !== 'paused') return;
     if (!ui.quitBtn.dataset.confirm) {
@@ -5940,9 +5962,20 @@
 
   // ---------- Main loop ----------
   let lastTime = 0;
+  let slowT = 0, frameAvg = 16;
   function frame(ts) {
+    if (ts - lastTime < 1000 / 62) { requestAnimationFrame(frame); return; }
     const dt = Math.min((ts - lastTime) / 1000 || 0, 0.05);
     lastTime = ts;
+    if (state === 'playing') {
+      frameAvg += ((dt * 1000) - frameAvg) * 0.05;
+      slowT = frameAvg > 26 ? slowT + dt : Math.max(0, slowT - dt);
+      if (slowT > 3 && !settings.lowfx) {
+        settings.lowfx = true;
+        applySettings();
+        showToast('저사양 모드 켜짐', '화면이 버벅여서 효과를 줄였어요 (설정에서 끌 수 있어요)');
+      }
+    }
     pollPad();
     if (state === 'playing' || state === 'title') anim += dt;
     if (state === 'playing') {

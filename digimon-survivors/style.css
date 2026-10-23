@@ -144,7 +144,7 @@ html, body { height: 100%; }
 }
 .overlay h1 { font-size: 88px; line-height: 1; }
 .overlay h1::after {
-  content: '퇴';
+  content: '難';
   display: inline-block;
   margin-left: 12px;
   padding: 2px 6px;
@@ -580,3 +580,14 @@ body.touch .tool { padding: 8px 12px; }
 .item-dex { border: 2px solid var(--gc) !important; }
 .item-dex span img { width: 40px; height: 40px; image-rendering: pixelated; }
 .item-dex.locked { opacity: 0.55; }
+
+/* ---------- phones: keep the pause buttons on screen, scroll the details instead ---------- */
+@media (max-width: 560px), (max-height: 560px) {
+  #pause-screen { justify-content: flex-start; gap: 8px; }
+  #pause-screen h2 { font-size: 34px; margin: 0; }
+  #pause-box { max-height: calc(100dvh - 210px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #pause-screen .btn-row { flex-wrap: wrap; gap: 8px; justify-content: center; }
+  #pause-screen .btn { font-size: 24px; padding: 2px 18px; }
+  .overlay.gacha .gacha-stage { height: 300px; }
+  .gacha-src { font-size: 28px; }
+}
