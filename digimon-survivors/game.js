@@ -152,6 +152,15 @@
     });
   }
 
+  // Each hero has 3 more looks unlocked by realm: _t1 (일류), _t2 (초절정), _t3 (현경).
+  for (const [key, def] of Object.entries(SPRITE_DEFS)) {
+    if (def.crisp && !key.includes('_t')) for (let t = 1; t <= 3; t++) SPRITE_DEFS[`${key}_t${t}`] = { ...def };
+  }
+  const heroTier = (realm) => (realm >= 6 ? 3 : realm >= 4 ? 2 : realm >= 2 ? 1 : 0);
+  const heroLook = (p) => {
+    const t = heroTier(p.realm || 0);
+    return t && SPRITE_DEFS[`${p.hero}_t${t}`] ? `${p.hero}_t${t}` : p.hero;
+  };
   function preloadAssets() {
     return Promise.all(Object.entries(SPRITE_DEFS).map(async ([key, def]) => {
       SPRITES[key] = { ...def, img: await loadImage(spritePath(key)) };
@@ -2438,7 +2447,13 @@
   function checkRealm() {
     const c = cultivation();
     if (player.realm + 1 >= REALMS.length || c < REALMS[player.realm + 1].need) return;
+    const oldTier = heroTier(player.realm);
     player.realm++;
+    if (heroTier(player.realm) !== oldTier) {
+      ui.portrait.src = spritePath(heroLook(player));
+      setTimeout(() => showToast('✨ 모습이 바뀌었다!', ['', '금테 두른 무복과 견갑', '흉갑과 망토, 기운이 서린 병기', '황금빛 의복과 몸을 감싼 오라'][heroTier(player.realm)]), 900);
+      focusLines(player.x, player.y, 0.5, false);
+    }
     player.dmgMul += 0.06;
     if (hasArc('ten')) for (const [id, w] of Object.entries(player.weapons)) if (w.level < WEAPONS[id].max) grantWeapon(player, id);
     player.maxHp += 10;
@@ -5734,17 +5749,18 @@
     const dx = Math.cos(player.atkDir), dy = Math.sin(player.atkDir);
     const side = dx >= 0 ? 1 : -1;
     const [style, rgb] = MOTION[player.hero] || ['slash', '255, 255, 255'];
-    for (const t of player.trail) drawSprite(player.hero, t.x, t.y - ((SPRITES[player.hero]?.size || 48) / 2 - r), { groundR: r + (SPRITES[player.hero]?.size || 48) / 2 - r, alpha: t.life * 1.6, sx: grow, sy: grow, flash: true, flip: player.facing < 0 });
+    const look = heroLook(player);
+    for (const t of player.trail) drawSprite(look, t.x, t.y - ((SPRITES[player.hero]?.size || 48) / 2 - r), { groundR: r + (SPRITES[player.hero]?.size || 48) / 2 - r, alpha: t.life * 1.6, sx: grow, sy: grow, flash: true, flip: player.facing < 0 });
     const reach = style === 'cast' ? 3 : 9;
     const lx = player.x + dx * punch * reach, ly = player.y + dy * punch * reach * 0.6 - hop;
     // 64px heroes stand with their feet on the shadow
     const lift = (SPRITES[player.hero]?.size || 48) / 2 - r;
     const opts = (k, alpha) => ({ flip: player.facing < 0, rot: side * punch * (style === 'cast' ? 0.03 : 0.1) * k + (player.drunk || player.buffs.drunk > 0 ? Math.sin(anim * 2.6) * 0.14 : 0) + clamp(player.vx / (player.speed || 1), -1, 1) * 0.04, sx: grow * (1 - amp * b + 0.1 * punch * k), sy: grow * (1 + amp * b - 0.08 * punch * k), groundR: r + lift, alpha });
     if (player.atk > 0 && style !== 'cast') {
-      for (const k of [0.35, 0.65]) drawSprite(player.hero, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
+      for (const k of [0.35, 0.65]) drawSprite(look, player.x + dx * punch * reach * k, player.y + dy * punch * reach * 0.6 * k - hop - lift, opts(k, 0.12 + k * 0.1));
     }
     if (player.atk > 0 && style === 'cast') drawMagicCircle(at, rgb);
-    drawSprite(player.hero, lx, ly - lift, opts(1, blink ? 0.45 : 1));
+    drawSprite(look, lx, ly - lift, opts(1, blink ? 0.45 : 1));
     if (player.atk > 0) drawStrike(style, at, side, rgb);
   }
 
@@ -6441,7 +6457,7 @@
     const sc = recordScore(win);
     ui.gameoverTitle.textContent = win ? '퇴치 완료!' : kind === 'retire' ? '무사 귀환' : kind === 'timeup' ? '시간 종료' : '쓰러졌다...';
     ui.continueBtn.classList.add('hidden'); // runs are capped at 10 minutes, no endless continue
-    ui.gameoverPortrait.src = spritePath(player.hero);
+    ui.gameoverPortrait.src = spritePath(heroLook(player));
     ui.gameoverStats.textContent = `[${diff.name}] ${h.name} · ${REALMS[player.realm].name} ${rankOf(player.realm)} · Lv.${player.level} · ${curStage().name.split(' · ')[0]}까지 · ${fmtTime(elapsed)} 버팀 · 요괴 ${kills}마리 퇴치 · 합성 ${player.combos}개 · 최대 ${player.maxCombo}연격 · 은자 ${Math.floor(player.gold)}냥 획득 · 숙련 +${mxp} (Lv.${masteryLevel(player.hero)}) · 명성 +${fame}\n점수 ${sc.score.toLocaleString()} · ${rankName(sc.score)}${sc.best ? ' · 최고 기록!' : ` (최고 ${progress.bestScore.toLocaleString()})`}${sc.unlocked ? ` · 업화 ${sc.unlocked}단계 해금!` : ''}${player.relics.size ? ` · 유물 ${player.relics.size}개` : ''}${player.gems.length ? ` · 내단 ${player.gems.map((g) => GEMS.find((x) => x.id === g).name).join('·')}` : ''}${player.pulls ? ` · 기물 ${player.pulls}회 뽑기${Object.keys(player.items).some((id) => ITEM_BY_ID[id].g >= 3) ? ` (최고 ${GRADES[Math.max(...Object.keys(player.items).map((id) => ITEM_BY_ID[id].g))].name})` : ''}` : ''}`;
     $('gameover-dmg').replaceChildren(...damageReport());
     checkAchievements();

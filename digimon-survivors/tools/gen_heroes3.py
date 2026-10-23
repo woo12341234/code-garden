@@ -166,7 +166,7 @@ def weapon(s, kind, hand, c=None):
     hx, hy = hand
     if kind in ('sword', 'sword_up', 'greatsword', 'dao'):
         tip = {'sword': (hx + 5.6, hy + 6.2), 'sword_up': (hx + 2, hy - 8.6), 'greatsword': (hx + 2.4, hy - 10.6), 'dao': (hx + 6, hy + 6)}[kind]
-        w = 2.4 if kind in ('greatsword', 'dao') else 1.5
+        w = (2.4 if kind in ('greatsword', 'dao') else 1.5) + (0.6 if TIER >= 3 else 0)
         s.line(hx, hy, tip[0], tip[1], c or rgba(220, 226, 236), w)
         dx, dy = tip[0] - hx, tip[1] - hy
         L = (dx * dx + dy * dy) ** 0.5
@@ -227,10 +227,61 @@ def weapon(s, kind, hand, c=None):
         s.blob(hx, hy, 1.7, 1.6, rgba(240, 236, 220))
 
 
+TIER = 0  # appearance tier being generated: 0 base .. 3 awakened (set by __main__)
+
+
+def aura(s, col):
+    """Glow ring one pixel outside the ink outline."""
+    out = [row[:] for row in s.px]
+    for y in range(s.h):
+        for x in range(s.w):
+            if s.px[y][x] is not None:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < s.w and 0 <= ny < s.h and s.px[ny][nx] is not None:
+                    out[y][x] = col
+                    break
+    s.px = out
+
+
+def tier_body(s, o):
+    """Gear gained with each realm tier, layered over the base outfit."""
+    robe = o['robe']
+    if TIER >= 1:
+        # gold-trimmed collar and hem, shoulder guards, a jade ornament on the sash
+        s.line(6.8, 20.1, 17.2, 20.1, GOLD, 1)
+        s.line(10.4, 11.3, 12, 14.2, GOLD, 0.8)
+        s.line(13.6, 11.3, 12, 14.2, GOLD, 0.8)
+        for x in (7.2, 16.8):
+            s.blob(x, 11.9, 1.8, 1.2, mul(robe, 0.62))
+            s.mark(int(x), 11, GOLD)
+        s.mark(12, 16, rgba(120, 225, 175))
+    if TIER >= 2:
+        # breastplate and hair ornament
+        s.rect(9.4, 12.4, 14.6, 15.3, mix(STEEL, robe, 0.35))
+        s.line(9.4, 13.8, 14.6, 13.8, GOLD, 0.6)
+        s.line(8.6, 1.4, 15.4, 0.4, GOLD, 1)
+    if TIER >= 3:
+        # medallion and gold embroidery on the skirt
+        s.blob(12, 16.3, 1.4, 1.2, GOLD)
+        s.mark(12, 16, RED)
+        for x, y in ((8, 18.6), (16, 18.6), (10, 19.4), (14, 19.4)):
+            s.mark(x, int(y), GOLD)
+
+
 def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, eye_kind=None, eye_c=rgba(60, 40, 40),
          hat_kind=None, hat_c=None, cape=None, wpn_c=None, extra=None, sleeve=None, trousers=None, wide=0):
     s = C()
     o = {'robe': robe, 'inner': inner, 'sash': sash}
+    if TIER >= 2 and not cape:
+        cape = (mul(sash, 0.85), mul(robe, 0.55))  # earns a cape in its school colour
+    if cape and TIER >= 3:
+        cape = (cape[0], GOLD)  # gold-lined at the peak
+    if TIER >= 2 and wpn_c is None:
+        wpn_c = rgba(236, 246, 255)
+    if TIER >= 3:
+        wpn_c = mix(wpn_c or rgba(236, 246, 255), rgba(255, 236, 170), 0.6)
     if cape:
         o['cape'] = cape
     if sleeve:
@@ -241,6 +292,7 @@ def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, ey
     if extra and 'behind' in extra:
         extra['behind'](s)
     hand = body(s, o, skin, pose, wide)
+    tier_body(s, o)
     head(s, skin)
     ek = eye_kind or ('angry' if sex == 'm' else 'cute')
     eyes(s, ek, eye_c)
@@ -257,7 +309,15 @@ def make(name, sex, hair_st, hair_c, robe, inner, sash, pose, wpn, skin=SKIN, ey
     if extra and 'after' in extra:
         extra['after'](s)
     s.outline()
-    s.save(name + '.png')
+    if TIER >= 2:
+        glow = mix(sash, WHITE, 0.35)
+        aura(s, (glow[0], glow[1], glow[2], 150 if TIER == 2 else 90))
+    if TIER >= 3:
+        aura(s, (255, 214, 100, 200))
+        for x, y in ((1, 4), (22, 6), (2, 13), (22, 15), (3, 20)):
+            if s.px[y][x] is None:
+                s.px[y][x] = (255, 236, 160, 230)
+    s.save(name + ('_t%d' % TIER if TIER else '') + '.png')
 
 
 def fox_tails(s):
@@ -336,5 +396,7 @@ CAST = [
 ]
 
 if __name__ == '__main__':
-    for mk in CAST:
-        mk()
+    for t in range(4):
+        TIER = t
+        for mk in CAST:
+            mk()
