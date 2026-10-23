@@ -770,3 +770,6 @@ input#sect-name { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1p
 #portrait { position: absolute; width: 230%; height: 230%; left: -65%; top: -4%; max-width: none; }
 .card.hero img { width: 104px; height: 104px; margin: -10px 0 -6px; }
 @media (max-width: 560px) { .card.hero img { width: 84px; height: 84px; } }
+/* chunky heroes: big heads, so the portrait zooms less */
+#portrait { width: 160%; height: 160%; left: -30%; top: -2%; }
+.card.hero img { width: 96px; height: 96px; margin: -6px 0 -4px; }

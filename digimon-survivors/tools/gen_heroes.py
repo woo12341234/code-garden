@@ -28,40 +28,40 @@ K = 2
 
 
 class H(Sprite):
-    def __init__(self, n=32):
-        super().__init__(n * K)
-        self.K = K
+    def __init__(self, n=32, k=None):
+        self.K = K if k is None else k
+        super().__init__(n * self.K)
         self.protect = set()  # pixels the shading pass must leave alone (eyes etc.)
 
     def put(self, x, y, c):
-        for dy in range(K):
-            for dx in range(K):
-                Sprite.put(self, int(x) * K + dx, int(y) * K + dy, c)
+        for dy in range(self.K):
+            for dx in range(self.K):
+                Sprite.put(self, int(x) * self.K + dx, int(y) * self.K + dy, c)
 
     def dot(self, x, y, c):
         """One fine-grid pixel at fractional 32-grid coordinates (x, y), protected from shading."""
-        fx, fy = int(x * K), int(y * K)
+        fx, fy = int(x * self.K), int(y * self.K)
         Sprite.put(self, fx, fy, c)
         self.protect.add((fx, fy))
 
     def at(self, x, y):
         """Colour at a 32-grid cell (None if empty)."""
-        return self.px[int(y) * K][int(x) * K]
+        return self.px[int(y) * self.K][int(x) * self.K]
 
     def erase_disc(self, cx, cy, r):
         for y in range(self.h):
             for x in range(self.w):
-                if math.hypot((x + 0.5) / K - cx, (y + 0.5) / K - cy) <= r:
+                if math.hypot((x + 0.5) / self.K - cx, (y + 0.5) / self.K - cy) <= r:
                     self.px[y][x] = None
 
     def poly(self, pts, color):
-        Sprite.poly(self, [(px * K, py * K) for px, py in pts], color)
+        Sprite.poly(self, [(px * self.K, py * self.K) for px, py in pts], color)
 
     def ellipse(self, cx, cy, rx, ry, base, shade=True, hl=True, ymax=None):
-        Sprite.ellipse(self, cx * K, cy * K, rx * K, ry * K, base, shade=shade, hl=hl, ymax=None if ymax is None else ymax * K)
+        Sprite.ellipse(self, cx * self.K, cy * self.K, rx * self.K, ry * self.K, base, shade=shade, hl=hl, ymax=None if ymax is None else ymax * self.K)
 
     def line(self, x0, y0, x1, y1, c, w=1.2):
-        x0, y0, x1, y1, w = x0 * K, y0 * K, x1 * K, y1 * K, max(1.0, w * K * 0.9)
+        x0, y0, x1, y1, w = x0 * self.K, y0 * self.K, x1 * self.K, y1 * self.K, max(1.0, w * self.K * 0.9)
         dx, dy = x1 - x0, y1 - y0
         L = dx * dx + dy * dy or 1
         for y in range(self.h):
@@ -79,9 +79,9 @@ class H(Sprite):
 
     def mark(self, x, y, c):
         self.put(x, y, c)
-        for dy in range(K):
-            for dx in range(K):
-                self.protect.add((int(x) * K + dx, int(y) * K + dy))
+        for dy in range(self.K):
+            for dx in range(self.K):
+                self.protect.add((int(x) * self.K + dx, int(y) * self.K + dy))
 
     def inner_lines(self):
         """Line art between parts: where two clearly different colours meet, the darker side
@@ -110,7 +110,7 @@ class H(Sprite):
         """Cel shading: light from the upper left, a dark band along each row's right edge."""
         self.inner_lines()
         out = [row[:] for row in self.px]
-        for y in range(y0 * K, self.h):
+        for y in range(y0 * self.K, self.h):
             row = self.px[y]
             x = 0
             while x < self.w:
@@ -122,8 +122,8 @@ class H(Sprite):
                     x += 1
                 end = x - 1
                 n = end - start + 1
-                if n >= 4 * K:
-                    for k in range(K if n < 7 * K else 2 * K):
+                if n >= 4 * self.K:
+                    for k in range(self.K if n < 7 * self.K else 2 * self.K):
                         if (end - k, y) not in self.protect:
                             out[y][end - k] = mul(row[end - k], 0.74)
                     if (start, y) not in self.protect:
@@ -142,7 +142,7 @@ class H(Sprite):
                 if c is None or (x, y) in self.protect:
                     continue
                 right = x + 1 >= self.w or self.px[y][x + 1] is None
-                top = self.px[y - 1][x] is None and y < 12 * K
+                top = self.px[y - 1][x] is None and y < 12 * self.K
                 if right or top:
                     out[y][x] = mix(c, color, amount if right else amount * 0.6)
         self.px = out

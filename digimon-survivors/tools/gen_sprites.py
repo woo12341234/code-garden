@@ -156,9 +156,12 @@ class Sprite:
     def save(self, name):
         self.center()
         k = getattr(self, 'K', 1)
-        # sprites drawn on the fine grid are already detailed; the coarse ones get Scale2x
-        hd = self.px if k > 1 else self.scale2x()
-        k = max(k, 2)
+        if getattr(self, 'raw', False):
+            hd, k = self.px, 1  # chunky low-res art: keep the big crisp pixels
+        else:
+            # sprites drawn on the fine grid are already detailed; the coarse ones get Scale2x
+            hd = self.px if k > 1 else self.scale2x()
+            k = max(k, 2)
         H2, W2 = len(hd), len(hd[0])
         img = Image.new('RGBA', (W2, H2), (0, 0, 0, 0))
         p = img.load()
