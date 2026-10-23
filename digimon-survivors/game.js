@@ -1761,6 +1761,136 @@
     for (const u of SHOP) for (let i = 0; i < shopLevel(u.id); i++) u.apply(p);
   }
 
+  // ---------- 장비 (mobile-style gear): 4 slots, 5 grades, merge 3 of a grade into the next ----------
+  const GEAR = [
+    { id: 'weapon', icon: '🗡️', slot: '무기', names: ['녹슨 검', '정련된 검', '청강검', '현철 보검', '용음신검'], val: [6, 12, 20, 32, 50],
+      desc: (v) => `모든 피해 +${v}%`, apply(p, v) { p.dmgMul += v / 100; } },
+    { id: 'armor', icon: '🥋', slot: '의복', names: ['무명옷', '가죽 갑의', '철갑', '금사갑', '천잠보의'], val: [15, 30, 50, 80, 120],
+      desc: (v) => `최대 HP +${v}, 받는 피해 -${Math.round(v / 7)}%`, apply(p, v) { p.maxHp += v; p.hp += v; p.armor *= 1 - v / 700; } },
+    { id: 'trinket', icon: '📿', slot: '장신구', names: ['동전 목걸이', '옥패', '호박 노리개', '야명주', '여의 노리개'], val: [3, 6, 10, 15, 22],
+      desc: (v) => `치명타 +${v}%, 경험치 +${v}%`, apply(p, v) { p.crit += v / 100; p.xpMul += v / 100; } },
+    { id: 'boots', icon: '🪶', slot: '신발', names: ['짚신', '가죽신', '비운화', '축지신', '등운보'], val: [3, 6, 9, 13, 18],
+      desc: (v) => `이동 속도 +${v}%, 대기시간 -${Math.round(v * 0.7)}%`, apply(p, v) { p.speed *= 1 + v / 100; p.haste *= 1 - v * 0.007; } },
+  ];
+  const GEAR_COST = 300;
+  const gearInv = (id) => ((progress.gear || (progress.gear = {}))[id] || (progress.gear[id] = [0, 0, 0, 0, 0]));
+  const gearBest = (id) => { const inv = gearInv(id); for (let g = 4; g >= 0; g--) if (inv[g] > 0) return g; return -1; };
+  function applyGear(p) {
+    for (const G of GEAR) { const g = gearBest(G.id); if (g >= 0) G.apply(p, G.val[g]); }
+  }
+  function rollGear() {
+    const ws = [55, 28, 12, 4.5, 0.5];
+    let r = Math.random() * 100, g = 0;
+    while (r >= ws[g]) r -= ws[g++];
+    const G = GEAR[Math.floor(Math.random() * GEAR.length)];
+    const inv = gearInv(G.id);
+    const better = g > gearBest(G.id);
+    inv[g]++;
+    saveProgress();
+    return { g, icon: G.icon, name: `[${G.slot}] ${G.names[g]}`, desc: G.desc(G.val[g]), tag: better ? '장착! 더 좋은 장비예요' : '보관함에 들어갔어요 (3개 모으면 합성)' };
+  }
+  function openGearBox(src) {
+    showGacha(src, rollGear, () => buildGear());
+  }
+  function buildGear() {
+    $('gear-gold').textContent = `은자 ${progress.gold}냥 · 장비 상자 ${progress.gearBoxes || 0}개`;
+    $('gear-open').disabled = !(progress.gearBoxes > 0);
+    $('gear-buy').disabled = progress.gold < GEAR_COST;
+    $('gear-buy').textContent = `은자 ${GEAR_COST}냥으로 뽑기`;
+    $('gear-list').replaceChildren(...GEAR.map((G) => {
+      const inv = gearInv(G.id), g = gearBest(G.id);
+      const row = document.createElement('div');
+      row.className = 'gear-row';
+      row.style.setProperty('--gc', g >= 0 ? GRADES[g].color : '#bbb');
+      const ic = document.createElement('div');
+      ic.className = 'gear-icon';
+      ic.append(iconImg(G.icon, 'pi big'));
+      const info = document.createElement('div');
+      info.className = 'gear-info';
+      const nm = document.createElement('b');
+      nm.textContent = g >= 0 ? `${G.slot} · ${G.names[g]} (${GRADES[g].name})` : `${G.slot} · 없음`;
+      const ds = document.createElement('small');
+      ds.textContent = g >= 0 ? G.desc(G.val[g]) : '장비 상자에서 얻을 수 있어요';
+      const cnt = document.createElement('small');
+      cnt.className = 'gear-count';
+      cnt.textContent = '보관: ' + inv.map((n, i) => `${GRADES[i].name} ${n}`).join(' · ');
+      info.append(nm, ds, cnt);
+      row.append(ic, info);
+      const mg = inv.findIndex((n, i) => i < 4 && n >= 3);
+      if (mg >= 0) {
+        const b = document.createElement('button');
+        b.className = 'tool armed';
+        b.textContent = `합성: ${GRADES[mg].name} 3 → ${GRADES[mg + 1].name}`;
+        b.addEventListener('click', () => {
+          inv[mg] -= 3;
+          inv[mg + 1]++;
+          saveProgress();
+          sfx('gachaReveal', mg + 1);
+          showToast(`${GRADES[mg + 1].name} 장비 합성!`, `${G.slot} · ${G.names[mg + 1]}`);
+          buildGear();
+        });
+        row.append(b);
+      }
+      return row;
+    }));
+  }
+
+  // ---------- 출석부 (7-day login calendar) and 방치 보상 (idle earnings) ----------
+  const ATTEND = [
+    { gold: 200 }, { boxes: 1 }, { gold: 400 }, { boxes: 2 }, { gold: 600 }, { boxes: 2 }, { gold: 1000, boxes: 3 },
+  ];
+  const attendText = (r) => [r.gold ? `은자 ${r.gold}` : '', r.boxes ? `장비 상자 ${r.boxes}` : ''].filter(Boolean).join(' + ');
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  function attendPending() {
+    return (progress.attend?.last || '') !== todayStr();
+  }
+  function buildAttend() {
+    const a = progress.attend || { last: '', day: 0 };
+    const next = attendPending() ? a.day % 7 : -1;
+    $('attend-list').replaceChildren(...ATTEND.map((r, i) => {
+      const el = document.createElement('div');
+      el.className = 'attend-day' + (i < (next >= 0 ? next : ((a.day - 1) % 7) + 1) ? ' got' : '') + (i === next ? ' today' : '');
+      el.innerHTML = `<b>${i + 1}일</b><small>${attendText(r)}</small>`;
+      return el;
+    }));
+    $('attend-claim').disabled = next < 0;
+    $('attend-claim').textContent = next < 0 ? '오늘은 이미 받았어요' : `${next + 1}일차 보상 받기`;
+    const idle = idlePending();
+    $('idle-text').textContent = `문파 제자들이 수련하며 모은 은자: ${idle.gold}냥 (${idle.hours.toFixed(1)}시간, 최대 12시간 · 시간당 ${idleRate()}냥)`;
+    $('idle-claim').disabled = idle.gold < 1;
+  }
+  function claimAttend() {
+    if (!attendPending()) return;
+    const a = progress.attend || (progress.attend = { last: '', day: 0 });
+    const r = ATTEND[a.day % 7];
+    a.day++;
+    a.last = todayStr();
+    progress.gold += r.gold || 0;
+    progress.gearBoxes = (progress.gearBoxes || 0) + (r.boxes || 0);
+    saveProgress();
+    sfx('chest');
+    showToast('출석 보상!', attendText(r));
+    buildAttend();
+    buildAchievements();
+  }
+  const idleRate = () => 30 + 40 * (progress.bestStage || 0) + 2 * Object.keys(progress.sect || {}).length;
+  function idlePending() {
+    if (!progress.idleAt) { progress.idleAt = Date.now(); saveProgress(); }
+    const hours = Math.min(12, (Date.now() - progress.idleAt) / 3600000);
+    return { hours, gold: Math.floor(hours * idleRate()) };
+  }
+  function claimIdle() {
+    const idle = idlePending();
+    if (idle.gold < 1) return;
+    progress.gold += idle.gold;
+    progress.idleAt = Date.now();
+    saveProgress();
+    sfx('coin', 8);
+    showToast('방치 보상 수령', `은자 ${idle.gold}냥`);
+    buildAttend();
+    buildAchievements();
+  }
+
   // ---------- Sound (synthesised with WebAudio, no files) ----------
   const settings = progress.settings || (progress.settings = { sfx: true, music: true, vib: true });
   for (const k of ['shake', 'nums', 'flash']) if (settings[k] === undefined) settings[k] = true;
@@ -2042,6 +2172,7 @@
     };
     hero.setup(player);
     applyShop(player);
+    applyGear(player);
     applySectBuildings(player);
     const ml = masteryLevel(heroId);
     if (ml >= 1) { player.maxHp += 15; player.hp += 15; }
@@ -3023,9 +3154,13 @@
     addGold(40 * (stageIdx + 1));
     showBanner(`${STAGES[stageIdx].name.split(' · ')[0]} 돌파!`, '', '요괴가 물러갔어요 · HP 전부 회복');
     player.cleared++;
+    progress.gearBoxes = (progress.gearBoxes || 0) + 1;
+    showToast('장비 상자 획득', '로비의 장비 화면에서 열 수 있어요');
     const gifts = 3 + (player.stageGiftBonus || 0);
     for (let k = 1; k <= gifts; k++) modalQueue.push({ type: 'chest', n: k, of: gifts });
-    modalQueue.push({ type: 'arcana' }, { type: 'stage' });
+    modalQueue.push({ type: 'arcana' });
+    if (Math.random() < 0.6) modalQueue.push({ type: 'deal' });
+    modalQueue.push({ type: 'stage' });
     modalDelay = 1.6;
     checkAchievements();
   }
@@ -3120,7 +3255,34 @@
         pick: () => setHeat(h),
       })));
     } else if (m.type === 'gacha') {
-      showGacha(m.src);
+      showGacha(m.src, () => pullItem(m.grade));
+    } else if (m.type === 'deal') {
+      // 선인과 마인 (angel / devil): heal up, or pay max HP for a guaranteed legendary
+      showChoice('갈림길', '돌파한 길목에서 두 존재가 기다리고 있어요', [
+        { icon: '🙏', title: '선인의 축복', desc: '최대 HP +25, HP 전부 회복', big: true, pick: () => { player.maxHp += 25; player.hp = player.maxHp; } },
+        { icon: '😈', title: '마인의 거래', desc: `최대 HP를 20% 바치고 전설 기물 하나를 확정으로 얻어요 (지금 최대 HP ${Math.round(player.maxHp)})`, big: true, pick: () => {
+          player.maxHp = Math.round(player.maxHp * 0.8);
+          player.hp = Math.min(player.hp, player.maxHp);
+          modalQueue.unshift({ type: 'gacha', src: '마인의 거래', grade: 3 });
+        } },
+        { icon: '🧭', title: '그냥 지나간다', desc: '아무것도 받지 않아요', big: true, pick: () => {} },
+      ]);
+    } else if (m.type === 'revive') {
+      const cost = reviveCost();
+      showChoice('쓰러지기 직전…', `은자를 바치면 한 번 되살아날 수 있어요 (보유 ${progress.gold}냥)`, [
+        { icon: '🐉', title: `은자 ${cost}냥으로 부활`, desc: 'HP 전부 회복 · 주변 적을 날려버리고 3초 무적', big: true, pick: () => {
+          progress.gold -= cost;
+          saveProgress();
+          player.paidRevive = true;
+          player.hp = player.maxHp;
+          player.invuln = 3;
+          flash = 0.5;
+          dmgSrc = 'item';
+          ringBlast(player.x, player.y, 320, 200 + player.level * 15, 90, 'gold');
+          showBanner('기사회생!', '', '은자를 바쳐 다시 일어섰어요');
+        } },
+        { icon: '💀', title: '포기한다', desc: '이번 판을 여기서 끝내요', big: true, pick: () => gameOver() },
+      ]);
     } else if (m.type === 'gem') {
       showChoice(`내단 (${player.gems.length + 1}/${GEM_SLOTS})`, '요괴의 내단을 흡수해 보석 자리에 박아요', gemOffers());
     } else if (m.type === 'nextStage') {
@@ -3376,8 +3538,8 @@
     while (r >= ws[g]) r -= ws[g++];
     return g;
   }
-  function pullItem() {
-    const g = rollGrade();
+  function pullItem(forceG) {
+    const g = forceG ?? rollGrade();
     player.pity = g >= 2 ? 0 : player.pity + 1;
     player.pulls++;
     const pool = ITEMS.filter((it) => it.g === g);
@@ -3389,11 +3551,13 @@
     const isNew = !dex[it.id];
     dex[it.id] = (dex[it.id] || 0) + 1;
     saveProgress();
-    return { it, g, stack, isNew };
+    return { g, icon: it.icon, name: it.name + (stack > 1 ? ` ★${stack}` : ''), desc: it.desc, tag: isNew ? 'NEW!' : stack > 1 ? '중복 · 효과 한 번 더!' : '' };
   }
+  const reviveCost = () => 150 * (stageIdx + 1);
   let gacha = null;
-  function showGacha(src) {
-    const res = pullItem();
+  // roll() returns { g, icon, name, desc, tag }; onClose runs after the card is dismissed.
+  function showGacha(src, roll = () => pullItem(), onClose = closeChoice) {
+    const res = roll();
     const el = $('gacha-screen');
     const orb = el.querySelector('.gacha-orb');
     const card = el.querySelector('.gacha-card');
@@ -3402,7 +3566,7 @@
     orb.classList.remove('hidden');
     el.className = 'overlay gacha g0';
     orb.style.setProperty('--gc', GRADES[0].color);
-    gacha = { res, step: 0, done: false, timers: [] };
+    gacha = { res, step: 0, done: false, timers: [], onClose };
     const T = (ms, f) => gacha.timers.push(setTimeout(f, ms));
     for (let i = 0; i < 4; i++) T(120 + i * 110, () => sfx('gachaShake'));
     // climb through the grades one flash at a time (the classic "it's turning gold!" moment)
@@ -3423,32 +3587,33 @@
     if (!gacha || gacha.done) return;
     gacha.timers.forEach(clearTimeout);
     gacha.done = true;
-    const { it, g, stack, isNew } = gacha.res;
+    const { g, icon, name, desc, tag } = gacha.res;
     const el = $('gacha-screen');
     el.className = `overlay gacha g${g} revealed`;
     el.querySelector('.gacha-orb').classList.add('hidden');
     const card = el.querySelector('.gacha-card');
     card.style.setProperty('--gc', GRADES[g].color);
     card.querySelector('.gacha-grade').textContent = GRADES[g].name;
-    card.querySelector('.gacha-icon').replaceChildren(iconImg(it.icon));
-    card.querySelector('.gacha-name').textContent = it.name + (stack > 1 ? ` ★${stack}` : '');
-    card.querySelector('.gacha-desc').textContent = it.desc;
-    card.querySelector('.gacha-tag').textContent = isNew ? 'NEW!' : stack > 1 ? '중복 · 효과 한 번 더!' : '';
+    card.querySelector('.gacha-icon').replaceChildren(iconImg(icon));
+    card.querySelector('.gacha-name').textContent = name;
+    card.querySelector('.gacha-desc').textContent = desc;
+    card.querySelector('.gacha-tag').textContent = tag || '';
     card.classList.remove('hidden');
     sfx('gachaReveal', g);
     if (g >= 3) {
       flash = Math.max(flash, 0.35);
       shake = Math.max(shake, 10);
       buzz([60, 40, 120]);
-      showToast(`${GRADES[g].name} 기물 획득!`, it.name);
+      showToast(`${GRADES[g].name} 등급 획득!`, name);
     }
   }
   function gachaAdvance() {
     if (!gacha) return false;
     if (!gacha.done) { revealGacha(); return true; }
+    const done = gacha.onClose;
     gacha = null;
     $('gacha-screen').classList.add('hidden');
-    closeChoice();
+    done();
     return true;
   }
   function dropPouch(x, y) { pickups.push({ kind: 'bottari', x, y }); }
@@ -4273,6 +4438,13 @@
       } else showBanner('환생!', '', 'HP 절반으로 되살아났어요');
     } else if (player.hp <= 0) {
       player.hp = 0;
+      if (!player.paidRevive && !daily && progress.gold >= reviveCost()) {
+        // mobile-style second chance: pay banked 은자 once per run
+        player.paidRevive = true;
+        modalQueue.unshift({ type: 'revive' });
+        openNextModal();
+        return true;
+      }
       gameOver();
       return true;
     }
@@ -5813,14 +5985,12 @@
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
     if (e.repeat) return;
-    const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden') || !ui.sectScreen.classList.contains('hidden');
+    const overlayOpen = lobbyOverlayOpen();
     if (e.target && e.target.id === 'sect-name') return;
     if (gacha && ['Space', 'Enter', 'KeyE', 'Digit1', 'NumpadEnter'].includes(e.code)) { e.preventDefault(); gachaAdvance(); return; }
     if (e.code === 'Escape' && overlayOpen) {
-      ui.sectScreen.classList.add('hidden');
-      ui.achv.classList.add('hidden');
-      ui.shop.classList.add('hidden');
-      ui.questScreen.classList.add('hidden');
+      for (const id of LOBBY_OVERLAYS) $(id).classList.add('hidden');
+      buildAchievements();
       return;
     }
     if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
@@ -5921,6 +6091,19 @@
   ui.continueBtn.addEventListener('click', continueRun);
   $('lobby-btn').addEventListener('click', () => { if (state === 'gameover' || state === 'victory') toLobby(); });
 
+  const LOBBY_OVERLAYS = ['achv-screen', 'shop-screen', 'quest-screen', 'sect-screen', 'gear-screen', 'attend-screen'];
+  const lobbyOverlayOpen = () => LOBBY_OVERLAYS.some((id) => !$(id).classList.contains('hidden'));
+  $('gear-btn').addEventListener('click', () => { buildGear(); $('gear-screen').classList.remove('hidden'); });
+  $('gear-close').addEventListener('click', () => $('gear-screen').classList.add('hidden'));
+  $('gear-open').addEventListener('click', () => { if (progress.gearBoxes > 0 && !gacha) { progress.gearBoxes--; saveProgress(); openGearBox('장비 상자'); } });
+  $('gear-buy').addEventListener('click', () => { if (progress.gold >= GEAR_COST && !gacha) { progress.gold -= GEAR_COST; saveProgress(); openGearBox('장비 뽑기'); } });
+  $('attend-btn').addEventListener('click', () => { buildAttend(); $('attend-screen').classList.remove('hidden'); });
+  $('attend-close').addEventListener('click', () => { $('attend-screen').classList.add('hidden'); buildAchievements(); });
+  $('attend-claim').addEventListener('click', claimAttend);
+  $('idle-claim').addEventListener('click', claimIdle);
+  // first visit of the day: open the attendance book automatically
+  setTimeout(() => { if (state === 'title' && attendPending()) { buildAttend(); $('attend-screen').classList.remove('hidden'); } }, 600);
+
   // ---------- Gamepad ----------
   // Left stick / d-pad moves, A dashes (or picks), Y·RB fires the ultimate, Start pauses.
   const pad = { dx: 0, dy: 0, prev: [], sel: 0 };
@@ -5951,7 +6134,7 @@
       if (hit(0) || hit(4) || hit(6)) dash();
       if (hit(3) || hit(5) || hit(7)) ultimate();
     } else if ((state === 'title' || state === 'gameover' || state === 'victory') && hit(0)) {
-      const overlayOpen = !ui.achv.classList.contains('hidden') || !ui.shop.classList.contains('hidden') || !ui.questScreen.classList.contains('hidden') || !ui.sectScreen.classList.contains('hidden');
+      const overlayOpen = lobbyOverlayOpen();
       if (!overlayOpen) startGame();
     }
     if (hit(9) && (state === 'playing' || state === 'paused')) togglePause();

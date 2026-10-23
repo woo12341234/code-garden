@@ -84,6 +84,8 @@
       <button id="daily-btn" class="btn ghost">일일 도전</button>
       <button id="sect-btn" class="btn ghost">문파</button>
       <button id="shop-btn" class="btn ghost">수련장</button>
+      <button id="gear-btn" class="btn ghost">장비</button>
+      <button id="attend-btn" class="btn ghost">출석</button>
       <button id="quest-btn" class="btn ghost">의뢰</button>
       <button id="achv-btn" class="btn ghost">업적</button>
     </div>
@@ -114,6 +116,31 @@
       <p class="subtitle">요괴를 물리치고 모은 은자로 영구히 강해져요 · <b id="shop-gold"></b></p>
       <div id="shop-list"></div>
       <p class="hint"><button id="refund-btn" class="linklike">수련 초기화 (은자 전부 돌려받기)</button></p>
+    </div>
+  </div>
+
+  <div id="gear-screen" class="overlay hidden">
+    <div id="gear-box" class="panel">
+      <div class="achv-head"><h2>장비</h2><button id="gear-close" class="close" aria-label="닫기">✕</button></div>
+      <p class="subtitle">가장 좋은 장비가 자동으로 장착돼요 · 같은 등급 3개를 모으면 한 단계 위로 합성 · <b id="gear-gold"></b></p>
+      <div class="tool-row">
+        <button id="gear-open" class="btn">장비 상자 열기</button>
+        <button id="gear-buy" class="btn ghost">은자로 뽑기</button>
+      </div>
+      <div id="gear-list"></div>
+      <p class="hint">장비 상자는 장을 돌파할 때마다, 그리고 출석 보상으로 얻어요.</p>
+    </div>
+  </div>
+
+  <div id="attend-screen" class="overlay hidden">
+    <div id="attend-box" class="panel">
+      <div class="achv-head"><h2>출석부</h2><button id="attend-close" class="close" aria-label="닫기">✕</button></div>
+      <p class="subtitle">하루에 한 번, 7일마다 순환해요</p>
+      <div id="attend-list"></div>
+      <button id="attend-claim" class="btn">받기</button>
+      <h3>방치 보상</h3>
+      <p id="idle-text" class="hint"></p>
+      <button id="idle-claim" class="btn ghost">은자 받기</button>
     </div>
   </div>
 
