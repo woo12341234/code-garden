@@ -255,33 +255,117 @@
     };
   }
 
-  function buildBackground() {
-    const T = 320, U = 2;
+  // Painted pixel ground per chapter: layered tileable noise + hand-placed details, 2x2 "pixels".
+  const bgPatterns = [];
+  function tileNoise(rnd, L) {
+    // periodic value noise on an L x L lattice, sampled with u, v in [0, 1)
+    const v = Array.from({ length: L * L }, () => rnd());
+    const sm = (t) => t * t * (3 - 2 * t);
+    return (u, w) => {
+      const x = u * L, y = w * L;
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = sm(x - x0), fy = sm(y - y0);
+      const at = (i, j) => v[((j % L + L) % L) * L + ((i % L + L) % L)];
+      const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx;
+      const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
+      return a + (b - a) * fy;
+    };
+  }
+  const GROUNDS = [
+    // 1장 마을 어귀: meadow with worn dirt paths and wildflowers
+    { base: [[86, 118, 64], [104, 138, 72], [126, 156, 84]], patch: [[150, 126, 88], [172, 148, 104]], patchAt: 0.64,
+      blades: [70, 98, 52], dots: ['#f4f0e0', '#f2d26a', '#e98aa6', '#c9a0ff'], dotN: 70, leaves: null },
+    // 2장 대나무 숲: deep forest floor, moss and fallen bamboo leaves
+    { base: [[48, 78, 52], [60, 94, 60], [78, 112, 70]], patch: [[44, 60, 42], [56, 72, 48]], patchAt: 0.6,
+      blades: [36, 60, 40], dots: ['#9ccf6a', '#c8d878'], dotN: 30, leaves: ['#b9c264', '#8fae4e', '#d6c27a'] },
+    // 3장 버려진 산사: weathered flagstone courtyard with moss in the seams
+    { base: [[104, 100, 94], [116, 111, 102], [128, 122, 110]], flag: true, patch: [[84, 106, 64], [100, 124, 74]], patchAt: 0.6,
+      blades: [92, 112, 70], dots: ['#cfc8b8', '#7d786e'], dotN: 40, leaves: ['#c9853a', '#a65a2c'] },
+    // 4장 저승길: ashen ground split by glowing cracks, scattered bone
+    { base: [[50, 44, 56], [62, 54, 68], [76, 66, 82]], patch: [[38, 32, 44], [46, 38, 54]], patchAt: 0.58,
+      blades: [40, 34, 46], dots: ['#e8e2d4', '#8c7e96'], dotN: 26, leaves: null, cracks: true },
+  ];
+  function buildGround(cfg, seed) {
+    const T = 384, U = 2, G = T / U;
     const tile = document.createElement('canvas');
     tile.width = T;
     tile.height = T;
     const g = tile.getContext('2d');
-    g.fillStyle = '#e9dfc6';
-    g.fillRect(0, 0, T, T);
-    const rnd = seededRandom(7);
-    const spot = () => [Math.floor(rnd() * T / U) * U, Math.floor(rnd() * T / U) * U];
-    // Draw wrapped copies so decorations crossing the tile edge stay seamless.
-    const stamp = (cells, x0, y0) => {
-      for (const [dx, dy, color] of cells) {
-        g.fillStyle = color;
-        for (const ox of [-T, 0, T]) {
-          for (const oy of [-T, 0, T]) g.fillRect(x0 + dx * U + ox, y0 + dy * U + oy, U, U);
+    const rnd = seededRandom(seed);
+    const coarse = tileNoise(rnd, 4), mid = tileNoise(rnd, 12), fine = tileNoise(rnd, 48);
+    const img = g.createImageData(T, T);
+    const mix3 = (c, k) => (k < 0.5 ? c[0].map((v, i) => v + (c[1][i] - v) * k * 2) : c[1].map((v, i) => v + (c[2][i] - v) * (k - 0.5) * 2));
+    const FS = 32; // flagstone size in ground pixels
+    for (let y = 0; y < G; y++) {
+      for (let x = 0; x < G; x++) {
+        const u = x / G, w = y / G;
+        let k = mid(u, w) * 0.6 + fine(u, w) * 0.4;
+        k = Math.min(1, Math.max(0, k + ((x * 7 + y * 13) % 5 - 2) * 0.025)); // ordered dither
+        let c = mix3(cfg.base, k);
+        if (cfg.flag) {
+          // offset rows of slabs, each slab slightly different in tone
+          const row = Math.floor(y / FS), sx = x + (row % 2 ? FS / 2 : 0);
+          const col = Math.floor(sx / FS);
+          const seam = y % FS === 0 || sx % FS === 0;
+          const tone = (((col * 92821) ^ (row * 68917)) % 7) / 7 - 0.4;
+          c = c.map((v) => v + tone * 14);
+          // worn courtyard: some slabs are gone (earth shows), moss creeps over others
+          if (coarse(u, w) > 0.66) c = mix3(cfg.patch.concat([cfg.patch[1]]), fine(u, w));
+          else if (seam) c = coarse(u, w) > 0.42 ? cfg.patch[fine(u, w) > 0.5 ? 1 : 0] : c.map((v) => v * 0.6);
+          else if (mid(u, w) > 0.7) c = c.map((v, i) => v * 0.8 + cfg.patch[0][i] * 0.2);
+        } else if (coarse(u, w) * 0.7 + mid(u, w) * 0.3 > cfg.patchAt) {
+          const pk = fine(u, w);
+          c = pk > 0.5 ? cfg.patch[1] : cfg.patch[0];
+        }
+        if (cfg.cracks && coarse(u, w) > 0.5) {
+          // glowing fissures only in some stretches of ground
+          const cr = Math.abs(mid(u, w) - 0.5);
+          if (cr < 0.007) c = [214, 64, 50];
+          else if (cr < 0.014) c = [110, 38, 44];
+        }
+        for (let dy = 0; dy < U; dy++) {
+          for (let dx = 0; dx < U; dx++) {
+            const i = ((y * U + dy) * T + (x * U + dx)) * 4;
+            img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+          }
         }
       }
-    };
-    const TUFT = [[0, 0], [2, 0], [4, 0], [1, 1], [2, 1], [3, 1]];
-    for (let i = 0; i < 40; i++) {
-      const color = rnd() < 0.5 ? '#b9b096' : '#cbc2a6';
-      stamp(TUFT.map(([x, y]) => [x, y, color]), ...spot());
     }
-    for (let i = 0; i < 50; i++) stamp([[0, 0, rnd() < 0.5 ? '#ddd1b4' : '#f3ead6']], ...spot());
-    for (let i = 0; i < 10; i++) stamp([[0, 0, '#c8574d'], [1, 0, '#c8574d'], [1, 1, '#a8433b']], ...spot());
-    bgPattern = ctx.createPattern(tile, 'repeat');
+    g.putImageData(img, 0, 0);
+    // hand-placed details, wrapped so the tile stays seamless
+    const put = (x, y, w, h, color) => {
+      g.fillStyle = color;
+      for (const ox of [-T, 0, T]) for (const oy of [-T, 0, T]) g.fillRect(x + ox, y + oy, w, h);
+    };
+    const spot = () => [Math.floor(rnd() * G) * U, Math.floor(rnd() * G) * U];
+    const bl = `rgb(${cfg.blades.join(',')})`, blHi = `rgb(${cfg.blades.map((v) => Math.min(255, v + 34)).join(',')})`;
+    for (let i = 0; i < (cfg.flag ? 30 : 140); i++) {
+      const [x, y] = spot();
+      put(x, y, U, U * 3, bl); put(x + U * 2, y + U, U, U * 2, bl); put(x - U * 2, y + U * 2, U, U, blHi);
+    }
+    for (let i = 0; i < cfg.dotN; i++) {
+      const [x, y] = spot();
+      const c = cfg.dots[Math.floor(rnd() * cfg.dots.length)];
+      put(x, y, U, U, c); put(x + U, y, U, U, c); put(x, y + U, U, U, c);
+      if (i % 3 === 0) put(x + U, y + U, U, U, '#fff7c8');
+    }
+    if (cfg.leaves) {
+      for (let i = 0; i < 40; i++) {
+        const [x, y] = spot();
+        const c = cfg.leaves[Math.floor(rnd() * cfg.leaves.length)];
+        put(x, y, U * 4, U, c); put(x + U, y + U, U * 3, U, c);
+      }
+    }
+    for (let i = 0; i < 24; i++) {
+      // small pebbles with a light top edge
+      const [x, y] = spot();
+      put(x, y, U * 3, U * 2, 'rgba(40, 34, 30, 0.35)');
+      put(x, y - U, U * 3, U, 'rgba(255, 255, 255, 0.22)');
+    }
+    return ctx.createPattern(tile, 'repeat');
+  }
+  function buildBackground() {
+    GROUNDS.forEach((cfg, i) => { bgPatterns[i] = buildGround(cfg, 11 + i * 17); });
+    bgPattern = bgPatterns[0];
   }
 
   // ---------- Weapons ----------
@@ -1708,9 +1792,9 @@
   const STAGE_LEN = 300; // 5:00 per chapter, then its boss; after it you choose to move on or keep hunting
   const STAGES = [
     { name: '1장 · 마을 어귀', sub: '해 질 녘, 마을에 도깨비불이 번진다', pool: ['wisp', 'dokkaebi', 'crow', 'skeleton', 'toad', 'agwi', 'bandit', 'archer'], mid: null, boss: 'daedokkaebi', tint: null },
-    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf', 'spider', 'jangsanbeom', 'mangtae', 'skeleton', 'bandit', 'thug', 'assassin'], mid: 'daedokkaebi', boss: 'imugi', tint: 'rgba(60, 120, 60, 0.13)' },
-    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi', 'wolf', 'foxmage', 'firebomb', 'mulgwisin', 'spider', 'skeleton', 'agwi', 'cultist', 'poisoner', 'brawler', 'thug'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.15)' },
-    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari', 'wolf', 'foxmage', 'firebomb', 'geuseundae', 'jangsanbeom', 'mulgwisin', 'mangtae', 'toad', 'demonguard', 'brawler', 'assassin', 'cultist'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.28)' },
+    { name: '2장 · 대나무 숲', sub: '먹물 같은 안개가 숲을 삼킨다', pool: ['wisp', 'dokkaebi', 'crow', 'meok', 'jangseung', 'wolf', 'spider', 'jangsanbeom', 'mangtae', 'skeleton', 'bandit', 'thug', 'assassin'], mid: 'daedokkaebi', boss: 'imugi', tint: null },
+    { name: '3장 · 버려진 산사', sub: '원귀와 강시가 종을 울린다', pool: ['crow', 'meok', 'jangseung', 'wongwi', 'gangsi', 'wolf', 'foxmage', 'firebomb', 'mulgwisin', 'spider', 'skeleton', 'agwi', 'cultist', 'poisoner', 'brawler', 'thug'], mid: 'imugi', boss: 'heukyo', tint: 'rgba(90, 50, 120, 0.07)' },
+    { name: '4장 · 저승길', sub: '어둠 끝에서 저승사자가 기다린다', pool: ['meok', 'wongwi', 'gangsi', 'eodukssini', 'bulgasari', 'wolf', 'foxmage', 'firebomb', 'geuseundae', 'jangsanbeom', 'mulgwisin', 'mangtae', 'toad', 'demonguard', 'brawler', 'assassin', 'cultist'], mid: 'heukyo', boss: 'jeoseung', tint: 'rgba(20, 16, 30, 0.1)' },
   ];
   const ENDLESS = { name: '무한 수련', sub: '끝없는 요괴의 밤', pool: null, mid: null, boss: null, tint: 'rgba(120, 20, 30, 0.16)', endless: true };
   const MARCH_TIMES = [420, 720]; // 백귀야행: a parade of ghosts crossing the screen (then every 5 min)
@@ -5632,7 +5716,7 @@
     ctx.translate(-camX, -camY);
 
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = bgPattern || '#e9dfc6';
+    ctx.fillStyle = bgPatterns[Math.min(state === 'title' ? 0 : stageIdx, bgPatterns.length - 1)] || bgPattern || '#4a5a3a';
     ctx.fillRect(camX, camY, viewW / z, viewHW / z);
     if (state !== 'title' && curStage().tint) {
       ctx.fillStyle = curStage().tint;
@@ -5741,10 +5825,19 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
+    {
+      // soft spotlight on the hero, darker edges: keeps the eye on the fight
+      const px = viewW / 2 + (player.x - cam.x) * cam.zoom, py = viewH / 2 + (player.y - cam.y) * cam.zoom * TILT;
+      const vg = ctx.createRadialGradient(px, py, Math.min(viewW, viewH) * 0.28, px, py, Math.hypot(viewW, viewH) * 0.62);
+      vg.addColorStop(0, 'rgba(12, 10, 16, 0)');
+      vg.addColorStop(1, `rgba(12, 10, 16, ${state === 'title' ? 0.2 : stageIdx >= 3 ? 0.5 : 0.34})`);
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, viewW, viewH);
+    }
     if (TILT < 1) {
       const haze = ctx.createLinearGradient(0, 0, 0, viewH * 0.34);
-      haze.addColorStop(0, 'rgba(236, 228, 210, 0.62)');
-      haze.addColorStop(1, 'rgba(236, 228, 210, 0)');
+      haze.addColorStop(0, `rgba(${stageIdx >= 3 && state !== 'title' ? '70, 56, 84' : '214, 222, 226'}, 0.55)`);
+      haze.addColorStop(1, 'rgba(214, 222, 226, 0)');
       ctx.fillStyle = haze;
       ctx.fillRect(0, 0, viewW, viewH * 0.34);
       const near = ctx.createLinearGradient(0, viewH * 0.8, 0, viewH);
