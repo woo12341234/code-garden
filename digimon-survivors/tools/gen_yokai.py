@@ -1,0 +1,559 @@
+"""Generates the yokai sprites (menacing style) into ../assets, overwriting the old cute ones.
+
+Regular yokai are 24x24, bosses 32x32. Run after gen_sprites.py.
+Requires Pillow: pip install pillow
+"""
+import math
+
+from gen_sprites import Sprite, rgba, mul, mix, WHITE, INK, RED, GOLD, STEEL
+from gen_heroes import H
+
+BONE = rgba(236, 230, 210)
+GLOW_Y = rgba(255, 220, 70)
+GLOW_R = rgba(255, 60, 50)
+
+
+class Y(H):
+    def __init__(self, n):
+        H.__init__(self, n)
+
+    def finish(self, name, rim=(255, 210, 200, 255)):
+        self.shade(0)
+        self.rim(rim, 0.35)
+        self.outline()
+        Sprite.center(self)
+        self.save(name)
+
+
+def fangs(s, x0, x1, y, down=True):
+    for x in range(int(x0), int(x1) + 1, 2):
+        s.mark(x, y, BONE)
+        if down:
+            s.mark(x, y + 1, BONE)
+
+
+def wisp():
+    """도깨비불: a fierce blue skull-flame."""
+    s = Y(24)
+    deep = rgba(40, 90, 210)
+    mid = rgba(90, 170, 255)
+    s.poly([(5, 15), (19, 15), (17, 6), (15, 9), (13, 1.5), (11, 7), (9, 3.5), (8, 9)], deep)
+    s.blob(12, 15.5, 7, 6.6, deep)
+    s.poly([(7.4, 15), (16.6, 15), (14.6, 8), (12.8, 10.6), (11, 6), (9.6, 10)], mid)
+    s.blob(12, 16, 5, 4.8, mid)
+    s.blob(12, 16.6, 3, 2.8, rgba(220, 245, 255))
+    for x in (8, 9, 14, 15):
+        s.mark(x, 14, INK)
+        s.mark(x, 15, INK)
+    s.mark(9, 15, rgba(255, 255, 255))
+    s.mark(14, 15, rgba(255, 255, 255))
+    for x in range(9, 15):
+        s.mark(x, 19, INK)
+    for x in (9, 11, 13):
+        s.mark(x, 18, INK)
+    s.finish('wisp.png', rim=(200, 240, 255, 255))
+
+
+def dokkaebi():
+    """꼬마도깨비: red-skinned oni with a horn, fangs and a spiked club."""
+    s = Y(24)
+    skin = rgba(200, 54, 44)
+    s.line(18, 22, 22, 6, rgba(120, 76, 44), 2.6)
+    for (x, y) in [(21, 8), (22, 11), (20, 10), (21.6, 6)]:
+        s.mark(x, y, BONE)
+    s.blob(12, 16, 6.4, 5.6, skin)
+    s.rect(7.4, 18, 16.6, 21.6, rgba(230, 150, 50))
+    for x in (8.6, 11, 13.4, 15.6):
+        s.line(x, 18.4, x + 0.6, 21.4, INK, 0.6)
+    s.rect(8, 21.6, 10.6, 23.4, mul(skin, 0.7))
+    s.rect(13.4, 21.6, 16, 23.4, mul(skin, 0.7))
+    s.blob(12, 9.6, 5.4, 5, skin)
+    s.blob(12, 6, 6, 2.6, rgba(34, 28, 30), ymax=7.6)
+    for x in (7, 9.5, 14.5, 17):
+        s.poly([(x - 1.2, 6.4), (x + 1.2, 6.4), (x, 3)], rgba(34, 28, 30))
+    s.poly([(10.8, 4.4), (13.2, 4.4), (12, 0.4)], BONE)
+    for x in (8, 9, 10):
+        s.mark(x, 9, INK)
+    for x in (13, 14, 15):
+        s.mark(x, 9, INK)
+    s.mark(9, 10, GLOW_Y)
+    s.mark(14, 10, GLOW_Y)
+    s.rect(9, 12, 15, 13.2, rgba(60, 20, 20))
+    s.mark(9, 13, BONE)
+    s.mark(14, 13, BONE)
+    s.finish('dokkaebi.png')
+
+
+def crow():
+    """까마귀요괴: three-eyed crow demon with jagged wings."""
+    s = Y(24)
+    black = rgba(40, 36, 52)
+    s.poly([(12, 9), (1, 4), (3, 8), (0.4, 9), (3, 11), (1.4, 13.6), (7, 13), (12, 15)], black)
+    s.poly([(12, 9), (23, 4), (21, 8), (23.6, 9), (21, 11), (22.6, 13.6), (17, 13), (12, 15)], black)
+    s.blob(12, 13, 4, 5, mul(black, 1.3))
+    s.poly([(10.4, 17), (13.6, 17), (12, 21.6)], mul(black, 1.2))
+    s.blob(12, 9, 3.4, 3, mul(black, 1.3))
+    s.poly([(10.6, 10), (13.4, 10), (12, 14)], GOLD)
+    for x in (10, 12, 14):
+        s.mark(x, 8, GLOW_R)
+    s.line(10.4, 21, 9.6, 23.4, GOLD, 0.6)
+    s.line(13.6, 21, 14.4, 23.4, GOLD, 0.6)
+    s.finish('crow.png', rim=(190, 170, 255, 255))
+
+
+def meok():
+    """먹물요괴: an ink blot with many white eyes and a toothy maw, dripping."""
+    s = Y(24)
+    ink = rgba(30, 26, 38)
+    s.blob(12, 13, 8, 7.4, ink)
+    for x, h in [(5, 5), (8, 3.4), (16, 4), (19, 5.4)]:
+        s.rect(x - 0.8, 17, x + 0.8, 18 + h, ink)
+        s.blob(x, 18 + h, 1.2, 1.2, ink)
+    s.blob(6, 6, 2, 2, ink)
+    s.blob(18, 5, 1.6, 1.6, ink)
+    for (x, y) in [(8, 10), (15, 9), (11, 8), (17, 13), (6, 13)]:
+        s.mark(x, y, WHITE)
+        s.mark(x + 1, y, WHITE)
+        s.mark(x, y + 1, rgba(255, 80, 80))
+    s.rect(9, 14, 15.4, 16.6, rgba(110, 20, 30))
+    for x in range(9, 16, 2):
+        s.mark(x, 14, BONE)
+        s.mark(x + 1, 16, BONE)
+    s.finish('meok.png', rim=(150, 140, 200, 255))
+
+
+def jangseung():
+    """돌장승: carved stone totem with a furious face and glowing slits."""
+    s = Y(24)
+    stone = rgba(150, 120, 92)
+    s.rect(7, 4, 17, 23.6, stone)
+    s.blob(12, 4, 6, 3.4, rgba(36, 30, 32))
+    s.rect(6, 3, 18, 4.6, rgba(36, 30, 32))
+    for y in (8, 13):
+        s.line(7.6, y, 11, y + 1.4, INK, 1)
+        s.line(16.4, y, 13, y + 1.4, INK, 1)
+    s.mark(9, 9, GLOW_R)
+    s.mark(10, 10, GLOW_R)
+    s.mark(14, 9, GLOW_R)
+    s.mark(13, 10, GLOW_R)
+    s.rect(11, 10, 13, 15, mul(stone, 0.8))
+    s.rect(8.4, 16, 15.6, 18.6, INK)
+    for x in (9, 11, 13, 15):
+        s.mark(x, 16, BONE)
+        s.mark(x - 1, 18, BONE)
+    s.line(9, 20, 12, 22.6, mul(stone, 0.6), 0.6)
+    s.line(15, 19, 14, 23, mul(stone, 0.6), 0.6)
+    s.rect(7, 21, 9, 23.6, rgba(90, 130, 70))
+    s.finish('jangseung.png')
+
+
+def wongwi():
+    """원귀: ghost woman in white, black hair over her face, one red eye, tattered hem."""
+    s = Y(24)
+    white = rgba(236, 236, 232)
+    hair = rgba(24, 20, 28)
+    s.poly([(6, 10), (18, 10), (20, 22), (18, 20), (16, 23.4), (14, 20.6), (12, 23.6), (10, 20.6), (8, 23.4), (6, 20), (4, 22)], white)
+    s.poly([(6, 12), (3, 15), (2.6, 17.4), (6.4, 15.6)], white)
+    s.poly([(18, 12), (21, 15), (21.4, 17.4), (17.6, 15.6)], white)
+    s.blob(2.8, 17.6, 1.2, 1, rgba(220, 225, 230))
+    s.blob(21.2, 17.6, 1.2, 1, rgba(220, 225, 230))
+    s.blob(12, 6.6, 5, 5, hair)
+    s.poly([(7, 6), (17, 6), (18, 17), (15, 14), (13.4, 18), (12, 13), (10.6, 18), (9, 14), (6, 17)], hair)
+    s.rect(11, 7, 13, 11, rgba(210, 214, 220))
+    s.mark(12, 9, GLOW_R)
+    s.mark(12, 8, INK)
+    s.finish('wongwi.png', rim=(200, 230, 255, 255))
+
+
+def gangsi():
+    """강시: qing hat, talisman on the brow, grey-green skin, arms locked forward with long nails."""
+    s = Y(24)
+    robe = rgba(36, 44, 86)
+    skin = rgba(150, 180, 160)
+    s.poly([(7, 11), (17, 11), (18, 23.6), (6, 23.6)], robe)
+    s.rect(11.4, 11, 12.6, 23.6, GOLD)
+    s.rect(1.4, 12, 8, 14.6, robe)
+    s.rect(16, 12, 22.6, 14.6, robe)
+    s.rect(0.4, 12.4, 2, 14.2, skin)
+    s.rect(22, 12.4, 23.6, 14.2, skin)
+    s.mark(0, 13, BONE)
+    s.mark(23, 13, BONE)
+    s.blob(12, 7.6, 4.2, 4, skin)
+    s.rect(7, 3, 17, 5.4, rgba(30, 28, 40))
+    s.rect(9, 1, 15, 3, rgba(30, 28, 40))
+    s.blob(12, 1.4, 1, 1, RED)
+    s.rect(11, 3.6, 13, 9.4, rgba(240, 214, 100))
+    s.mark(12, 5, RED)
+    s.mark(12, 7, RED)
+    s.mark(9, 8, INK)
+    s.mark(15, 8, INK)
+    s.mark(9, 9, GLOW_Y)
+    s.mark(15, 9, GLOW_Y)
+    s.finish('gangsi.png', rim=(190, 255, 210, 255))
+
+
+def eodukssini():
+    """어둑시니: a looming shadow with a wide yellow grin and reaching tendrils."""
+    s = Y(24)
+    shade = rgba(30, 26, 40)
+    s.blob(12, 11, 8, 9, shade)
+    s.poly([(4, 14), (20, 14), (22, 23.6), (18, 20.6), (15, 23.6), (12, 20.6), (9, 23.6), (6, 20.6), (2, 23.6)], shade)
+    s.poly([(4.6, 9), (0.4, 4), (2, 10), (4.6, 13)], shade)
+    s.poly([(19.4, 9), (23.6, 4), (22, 10), (19.4, 13)], shade)
+    for x in (8, 9, 15, 16):
+        s.mark(x, 9, GLOW_Y)
+    s.mark(8, 8, GLOW_Y)
+    s.mark(16, 8, GLOW_Y)
+    for x in range(7, 18):
+        y = 14 + (1 if 9 <= x <= 15 else 0)
+        s.mark(x, y, GLOW_Y)
+    for x in range(8, 17, 2):
+        s.mark(x, 13, GLOW_Y)
+    s.finish('eodukssini.png', rim=(170, 150, 220, 255))
+
+
+def bulgasari():
+    """불가사리: iron-eating beast, spiked steel plates, molten glow in its belly."""
+    s = Y(24)
+    iron = rgba(110, 104, 110)
+    s.blob(12, 15, 9, 7, iron)
+    for x in (5, 8.6, 12, 15.4, 19):
+        s.poly([(x - 1.6, 10), (x + 1.6, 10), (x, 4.6)], STEEL)
+    s.blob(12, 17, 4.6, 3, rgba(255, 120, 40))
+    s.blob(12, 17, 2.4, 1.6, rgba(255, 220, 120))
+    s.blob(4.4, 12, 3.6, 3, iron)
+    s.mark(3, 11, GLOW_R)
+    s.mark(5, 11, GLOW_R)
+    s.rect(1.4, 13.4, 6.6, 14.6, INK)
+    s.mark(2, 13, BONE)
+    s.mark(5, 13, BONE)
+    for x in (6, 10, 14, 18):
+        s.rect(x - 1, 20.6, x + 1, 23.6, mul(iron, 0.75))
+    s.finish('bulgasari.png', rim=(255, 190, 140, 255))
+
+
+# ---------- bosses (32x32) ----------
+
+def daedokkaebi():
+    """대도깨비: blue oni lord, twin horns, wild mane, armour and a golden spiked club."""
+    s = Y(32)
+    skin = rgba(60, 100, 190)
+    s.line(25, 30, 29.6, 6, rgba(200, 160, 60), 3.6)
+    for (x, y) in [(29, 8), (30.4, 11), (28, 12), (29.6, 15), (27.6, 17)]:
+        s.mark(x, y, BONE)
+    s.blob(16, 21, 9, 8, skin)
+    s.rect(8, 22, 24, 27, rgba(230, 150, 50))
+    for x in (9.6, 12.6, 15.6, 18.6, 21.6):
+        s.line(x, 22.4, x + 0.8, 26.6, INK, 0.7)
+    s.poly([(8, 15), (24, 15), (22, 21), (10, 21)], rgba(70, 60, 70))
+    s.line(9, 18, 23, 18, GOLD, 1)
+    s.rect(10, 27, 14, 31.4, mul(skin, 0.7))
+    s.rect(18, 27, 22, 31.4, mul(skin, 0.7))
+    s.blob(16, 11, 7, 6.4, skin)
+    s.blob(16, 7, 9, 4, rgba(30, 26, 30), ymax=9)
+    s.poly([(6, 9), (2, 12), (5, 13), (3, 16), (8, 14)], rgba(30, 26, 30))
+    s.poly([(26, 9), (30, 12), (27, 13), (29, 16), (24, 14)], rgba(30, 26, 30))
+    s.poly([(10, 6), (6, 0.4), (12, 4.6)], BONE)
+    s.poly([(22, 6), (26, 0.4), (20, 4.6)], BONE)
+    for x in (11, 12, 13, 19, 20, 21):
+        s.mark(x, 10, INK)
+    s.mark(12, 11, GLOW_Y)
+    s.mark(20, 11, GLOW_Y)
+    s.rect(12, 14, 20, 15.6, rgba(60, 16, 20))
+    s.mark(12, 13, BONE)
+    s.mark(19, 13, BONE)
+    s.finish('daedokkaebi.png')
+
+
+def imugi():
+    """이무기: coiled serpent-dragon, glowing eyes, fanged jaws, whiskers."""
+    s = Y(32)
+    scale = rgba(50, 120, 80)
+    belly = rgba(220, 200, 120)
+    for cy, rx in [(26, 13), (20, 10.6), (15, 8)]:
+        s.blob(16, cy, rx, 4.6, scale)
+        s.blob(16, cy + 1.6, rx - 3, 1.8, belly)
+    for x in range(6, 27, 3):
+        s.mark(x, 25, mul(scale, 1.4))
+    s.blob(16, 8, 6, 4.6, scale)
+    s.poly([(10, 9), (22, 9), (20, 13.4), (12, 13.4)], scale)
+    s.rect(12, 11, 20, 13, rgba(120, 20, 30))
+    for x in range(12, 20, 2):
+        s.mark(x, 11, BONE)
+        s.mark(x + 1, 12, BONE)
+    s.mark(12, 7, GLOW_Y)
+    s.mark(13, 7, GLOW_Y)
+    s.mark(19, 7, GLOW_Y)
+    s.mark(18, 7, GLOW_Y)
+    s.line(10, 10, 3, 6, rgba(230, 210, 140), 0.7)
+    s.line(22, 10, 29, 6, rgba(230, 210, 140), 0.7)
+    for x in (12, 16, 20):
+        s.poly([(x - 1.4, 4.6), (x + 1.4, 4.6), (x, 1.6)], mul(scale, 0.7))
+    s.finish('imugi.png', rim=(200, 255, 200, 255))
+
+
+def heukyo():
+    """흑요장군: black-armoured ghost general, horned helm, red plume, glowing eyes, halberd."""
+    s = Y(32)
+    armor = rgba(48, 44, 58)
+    s.line(27, 31, 28, 2, rgba(90, 70, 60), 1.6)
+    s.poly([(26, 3), (30.6, 6), (28, 9), (26.6, 7)], STEEL)
+    s.poly([(7, 13), (25, 13), (28, 30), (4, 30)], rgba(120, 20, 30))
+    s.poly([(9, 14), (23, 14), (24, 29), (8, 29)], armor)
+    for y in (17, 20, 23, 26):
+        s.line(9, y, 23, y, mul(armor, 1.6), 0.8)
+    s.blob(6.6, 15.6, 3.6, 3, mul(armor, 1.3))
+    s.blob(25.4, 15.6, 3.6, 3, mul(armor, 1.3))
+    s.blob(16, 9, 5.6, 5, rgba(30, 28, 36))
+    s.poly([(9.6, 8), (22.4, 8), (21, 4), (11, 4)], armor)
+    s.poly([(10, 6), (5, 1), (11, 4)], GOLD)
+    s.poly([(22, 6), (27, 1), (21, 4)], GOLD)
+    s.poly([(14, 4), (18, 4), (19, 0.4), (16, 2), (13, 0.4)], RED)
+    for x in (13, 14, 18, 19):
+        s.mark(x, 10, GLOW_R)
+    s.rect(12, 12, 20, 13, rgba(80, 76, 90))
+    s.finish('heukyo.png', rim=(255, 160, 160, 255))
+
+
+def golddokkaebi():
+    """황금 도깨비: a gilded dokkaebi hugging a bulging sack of silver."""
+    s = Y(24)
+    skin = rgba(236, 186, 60)
+    sack = rgba(170, 60, 50)
+    s.blob(17.4, 15, 5.4, 5.6, sack)
+    s.poly([(15.6, 9.6), (19.6, 9.6), (18.6, 11.4), (16.4, 11.4)], sack)
+    s.rect(15.6, 10.8, 19.6, 11.6, GOLD)
+    for x, y in [(15, 14), (19, 17), (17, 19)]:
+        s.mark(x, y, rgba(230, 236, 246))
+    s.blob(10, 16, 5.4, 5.2, skin)
+    s.rect(6, 18.6, 13.4, 21.6, rgba(120, 60, 160))
+    s.rect(6.6, 21.6, 8.8, 23.4, mul(skin, 0.75))
+    s.rect(11, 21.6, 13.2, 23.4, mul(skin, 0.75))
+    s.blob(10, 9.6, 4.8, 4.6, skin)
+    s.poly([(8.8, 5.4), (11.2, 5.4), (10, 1)], rgba(255, 245, 210))
+    s.mark(8, 9, INK)
+    s.mark(12, 9, INK)
+    s.mark(8, 10, rgba(80, 255, 120))
+    s.mark(12, 10, rgba(80, 255, 120))
+    s.rect(8, 12, 12.4, 13, rgba(90, 30, 20))
+    s.mark(9, 12, WHITE)
+    s.mark(11, 12, WHITE)
+    for x, y in [(3, 4), (21, 5), (2, 13)]:
+        s.mark(x, y, rgba(255, 250, 200))
+    s.finish('golddokkaebi.png', rim=(255, 250, 200, 255))
+
+
+def wolf():
+    """이리 요괴: a lean grey demon wolf with red eyes, low to the ground, ready to lunge."""
+    s = Y(24)
+    fur = rgba(96, 92, 108)
+    s.blob(12, 14.6, 7.6, 4.6, fur)
+    s.poly([(4.6, 12), (1, 9.6), (2.6, 13.6)], fur)
+    s.poly([(1, 9.6), (0.4, 7), (3.4, 10.6)], mul(fur, 0.8))
+    s.blob(18.4, 11.4, 3.8, 3.4, fur)
+    s.poly([(20, 11), (23.6, 12.4), (20.4, 14)], fur)
+    s.poly([(16.6, 9), (17, 5.4), (18.6, 8.4)], fur)
+    s.poly([(19.4, 8.6), (20.4, 5.4), (21, 9)], fur)
+    s.mark(19, 10, GLOW_R)
+    s.mark(20, 10, GLOW_R)
+    s.line(20.6, 13.4, 23.4, 13.4, BONE, 0.6)
+    for x in (6.4, 9.4, 14.4, 17):
+        s.rect(x - 0.9, 17.4, x + 0.9, 21.6, mul(fur, 0.8))
+    for x in (8, 11, 14):
+        s.line(x, 11, x + 1.4, 13, mul(fur, 1.4), 0.6)
+    s.finish('wolf.png', rim=(255, 190, 190, 255))
+
+
+def foxmage():
+    """여우 요술사: a masked fox spirit in a shaman robe, a blue fireball in its paw."""
+    s = Y(24)
+    robe = rgba(120, 40, 60)
+    s.poly([(6, 11), (18, 11), (20, 23.4), (4, 23.4)], robe)
+    s.rect(11, 11, 13, 23.4, GOLD)
+    s.poly([(4, 18), (1, 21), (3, 23), (6, 21)], rgba(240, 170, 80))
+    s.blob(12, 7.4, 4.6, 4, rgba(236, 232, 226))
+    s.poly([(7.6, 5.6), (7, 0.6), (10, 4)], rgba(236, 232, 226))
+    s.poly([(16.4, 5.6), (17, 0.6), (14, 4)], rgba(236, 232, 226))
+    s.poly([(8.6, 8), (15.4, 8), (14, 10.6), (10, 10.6)], RED)
+    s.mark(10, 7, INK)
+    s.mark(14, 7, INK)
+    s.mark(10, 8, GLOW_Y)
+    s.mark(14, 8, GLOW_Y)
+    s.blob(20, 12, 2.4, 2.6, rgba(110, 190, 255))
+    s.blob(20, 12.4, 1.1, 1.1, WHITE)
+    s.finish('foxmage.png', rim=(200, 230, 255, 255))
+
+
+def firebomb():
+    """불덩이 요괴: a cracked, glowing ember ball with a fuse-like flame, grinning madly."""
+    s = Y(24)
+    s.poly([(10, 6), (12, 0.6), (14, 6)], rgba(255, 200, 80))
+    s.blob(12, 14, 8, 7.6, rgba(60, 40, 40))
+    for (x0, y0, x1, y1) in [(6, 10, 10, 15), (16, 9, 13, 16), (8, 19, 14, 17)]:
+        s.line(x0, y0, x1, y1, rgba(255, 140, 40), 1.2)
+    s.blob(12, 14, 3.6, 3, rgba(255, 120, 40))
+    for x in (8, 9, 15, 16):
+        s.mark(x, 11, GLOW_Y)
+    for x in range(8, 17):
+        s.mark(x, 17 if 9 < x < 15 else 16, GLOW_Y)
+    s.finish('firebomb.png', rim=(255, 210, 150, 255))
+
+
+def jangsanbeom():
+    """장산범: a white long-haired tiger-beast crouched to pounce."""
+    s = Y(24)
+    fur = rgba(232, 228, 220)
+    s.blob(11, 15, 8, 5, fur)
+    for x in range(4, 19, 2):
+        s.line(x, 12, x - 1.4, 19.6, mix(fur, rgba(160, 156, 170), 0.5), 0.7)
+    s.blob(17.6, 10.6, 4.4, 4, fur)
+    s.poly([(14.6, 8), (15, 4), (17, 7)], fur)
+    s.poly([(19.4, 7.4), (21, 3.8), (21.4, 8)], fur)
+    s.poly([(18, 12.6), (23.6, 12.6), (21, 15.4)], rgba(60, 30, 40))
+    s.line(18.6, 12.8, 23, 12.8, BONE, 0.6)
+    s.mark(17, 10, GLOW_Y)
+    s.mark(20, 10, GLOW_Y)
+    for x in (5.6, 9, 14, 17.4):
+        s.rect(x - 1, 18, x + 1, 22, mul(fur, 0.82))
+        s.mark(int(x), 22, INK)
+    s.line(3, 14, 0.6, 9, fur, 1.6)
+    s.finish('jangsanbeom.png', rim=(255, 240, 200, 255))
+
+
+def spider():
+    """거미 요괴: a bloated black spider with a pale woman-like mask and red eyes."""
+    s = Y(24)
+    leg = rgba(40, 32, 44)
+    for side in (-1, 1):
+        for i, (ax, ay) in enumerate([(9, 4), (10.6, 9), (10.6, 15), (9, 21)]):
+            x0 = 12 + side * 3
+            s.line(x0, 11 + i * 1.6, 12 + side * ax, ay, leg, 1.1)
+            s.line(12 + side * ax, ay, 12 + side * (ax + 1.4), ay + 2.6, leg, 0.9)
+    s.blob(12, 15.6, 6, 5.6, rgba(52, 40, 56))
+    s.blob(12, 15.4, 2.4, 2.8, rgba(170, 30, 40))
+    s.blob(12, 8.4, 4, 3.6, rgba(236, 228, 220))
+    s.mark(10, 8, GLOW_R)
+    s.mark(14, 8, GLOW_R)
+    s.line(10.4, 10.6, 13.6, 10.6, rgba(160, 30, 40), 0.6)
+    s.finish('spider.png', rim=(220, 200, 255, 255))
+
+
+def toad():
+    """독두꺼비: a warty poison toad oozing green venom."""
+    s = Y(24)
+    skin = rgba(96, 132, 60)
+    s.blob(12, 15, 9, 6.6, skin)
+    for x, y in [(7, 12), (11, 10.6), (16, 12.6), (9, 16), (15, 17), (18, 15)]:
+        s.blob(x, y, 1.2, 1.1, rgba(150, 200, 70))
+    s.blob(7.6, 9.6, 2.4, 2.2, skin)
+    s.blob(16.4, 9.6, 2.4, 2.2, skin)
+    s.mark(7, 9, GLOW_Y)
+    s.mark(16, 9, GLOW_Y)
+    s.mark(8, 9, INK)
+    s.mark(17, 9, INK)
+    s.line(6, 15.6, 18, 15.6, rgba(50, 60, 30), 0.8)
+    s.blob(12, 19.4, 5.6, 1.6, rgba(190, 220, 120))
+    for x in (4.6, 19.4):
+        s.blob(x, 20, 2.4, 1.4, mul(skin, 0.8))
+    s.blob(20, 18, 1, 1.6, rgba(150, 240, 90))
+    s.finish('toad.png', rim=(220, 255, 180, 255))
+
+
+def skeleton():
+    """백골: a cracked skeleton warrior with a rusty blade; rises again once."""
+    s = Y(24)
+    s.blob(12, 5.6, 4, 3.8, BONE)
+    s.mark(10, 5, INK)
+    s.mark(14, 5, INK)
+    s.mark(10, 6, GLOW_R)
+    s.mark(14, 6, GLOW_R)
+    for x in range(10, 15, 2):
+        s.mark(x, 8, INK)
+    s.rect(11.4, 9, 12.6, 17, BONE)
+    for y in (10.6, 12.4, 14.2):
+        s.line(8.4, y, 15.6, y, BONE, 0.8)
+    s.line(9, 10, 5.6, 15, BONE, 0.9)
+    s.line(15, 10, 18.6, 14, BONE, 0.9)
+    s.line(18.6, 14, 22.6, 4, rgba(140, 110, 90), 1.2)
+    s.line(10.6, 17, 9, 22.6, BONE, 1)
+    s.line(13.4, 17, 15, 22.6, BONE, 1)
+    s.blob(12, 17.4, 3, 1.2, BONE)
+    s.finish('skeleton.png', rim=(255, 200, 200, 255))
+
+
+def mangtae():
+    """망태 할아범: a hunched old man with a huge sack; children-snatcher who calls wisps."""
+    s = Y(24)
+    coat = rgba(84, 70, 60)
+    s.blob(16, 10.6, 6, 6.6, rgba(150, 120, 80))
+    s.line(13, 6, 19, 6, rgba(110, 86, 56), 0.8)
+    s.poly([(5, 12), (13, 10), (14, 23.4), (4, 23.4)], coat)
+    s.blob(8.6, 8, 3.6, 3.4, rgba(210, 170, 140))
+    s.poly([(4.4, 6.6), (12.8, 6.6), (8.6, 2)], rgba(40, 34, 40))
+    s.rect(3.6, 6, 13.6, 7, rgba(40, 34, 40))
+    s.mark(7, 8, GLOW_Y)
+    s.mark(10, 8, GLOW_Y)
+    s.line(6.6, 10.6, 10.6, 10.6, rgba(230, 230, 230), 0.8)
+    s.line(4, 13, 1.6, 23.4, rgba(120, 90, 60), 0.9)
+    s.blob(20.4, 4, 1.8, 1.8, rgba(110, 190, 255))
+    s.finish('mangtae.png', rim=(255, 220, 180, 255))
+
+
+def mulgwisin():
+    """물귀신: a drowned ghost with dripping black hair and grasping hands."""
+    s = Y(24)
+    body = rgba(120, 170, 190)
+    s.poly([(6, 9), (18, 9), (20, 23), (16, 20), (12, 23.4), (8, 20), (4, 23)], mix(body, WHITE, 0.25))
+    s.blob(12, 7.4, 5, 5, rgba(30, 34, 46))
+    s.poly([(7, 7), (17, 7), (19, 18), (15, 13), (12, 17), (9, 13), (5, 18)], rgba(30, 34, 46))
+    s.blob(12, 9, 2.4, 3, rgba(200, 225, 230))
+    s.mark(11, 9, INK)
+    s.mark(13, 9, INK)
+    s.mark(12, 11, rgba(60, 20, 30))
+    for side in (-1, 1):
+        s.line(12 + side * 5, 12, 12 + side * 10, 9, mix(body, WHITE, 0.3), 1.1)
+        for k in (-1, 0, 1):
+            s.mark(int(12 + side * 10.6), int(9 + k), mix(body, WHITE, 0.3))
+    for x in (8, 15):
+        s.mark(x, 21, rgba(100, 200, 255))
+    s.finish('mulgwisin.png', rim=(180, 230, 255, 255))
+
+
+def geuseundae():
+    """그슨대: a looming shadow that grows taller the longer it lives."""
+    s = Y(24)
+    dark = rgba(34, 28, 44)
+    s.poly([(7, 4), (17, 4), (21, 23.4), (3, 23.4)], dark)
+    s.blob(12, 6, 5.4, 4.6, dark)
+    for x in (9, 15):
+        s.blob(x, 7, 1.2, 0.9, GLOW_Y)
+        s.mark(x, 7, WHITE)
+    s.poly([(9, 11), (15, 11), (12, 14)], rgba(150, 30, 50))
+    for x in (5, 9, 13, 17):
+        s.line(x, 18, x + 1, 23.4, mul(dark, 1.6), 0.6)
+    s.finish('geuseundae.png', rim=(200, 170, 255, 255))
+
+
+def agwi():
+    """아귀: a starving ghoul with a needle-thin neck and huge belly that gobbles coins."""
+    s = Y(24)
+    skin = rgba(150, 110, 150)
+    s.blob(12, 16, 7, 6, skin)
+    s.blob(12, 16.6, 4.6, 3.6, mix(skin, WHITE, 0.25))
+    s.rect(11.4, 7, 12.6, 11, skin)
+    s.blob(12, 5, 3.6, 3.2, skin)
+    s.mark(10, 4, GLOW_R)
+    s.mark(14, 4, GLOW_R)
+    s.blob(12, 6.6, 1.6, 1, rgba(40, 10, 20))
+    s.line(5, 13, 1.6, 9.6, skin, 0.9)
+    s.line(19, 13, 22.4, 9.6, skin, 0.9)
+    s.line(9, 21.6, 8, 23.6, skin, 0.9)
+    s.line(15, 21.6, 16, 23.6, skin, 0.9)
+    s.blob(22.4, 8.6, 1.4, 1.4, GOLD)
+    s.finish('agwi.png', rim=(255, 210, 255, 255))
+
+
+if __name__ == '__main__':
+    for fn in (wisp, dokkaebi, crow, meok, jangseung, wongwi, gangsi, eodukssini, bulgasari, daedokkaebi, imugi, heukyo, golddokkaebi, wolf, foxmage, firebomb,
+               jangsanbeom, spider, toad, skeleton, mangtae, mulgwisin, geuseundae, agwi):
+        fn()

@@ -1,0 +1,8 @@
+{
+  "appId": "com.codegarden.yokaisurvivors",
+  "appName": "강호난세",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#e9dfc6"
+  }
+}
