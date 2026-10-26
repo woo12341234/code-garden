@@ -3,7 +3,7 @@ name: 강호난세 - Android APK, iOS IPA & web build
 on:
   push:
     paths:
-      - 'digimon-survivors/**'
+      - 'ganghonanse/**'
       - '.github/workflows/yokai-android.yml'
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Package the web build (itch.io / Netlify / any static host)
-        working-directory: digimon-survivors
+        working-directory: ganghonanse
         run: |
           mkdir -p ../web-dist
           cp index.html style.css game.js manifest.webmanifest sw.js ../web-dist/
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: digimon-survivors/mobile
+        working-directory: ganghonanse/mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,13 +50,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: yokai-survivors-apk
-          path: digimon-survivors/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ganghonanse/mobile/android/app/build/outputs/apk/debug/app-debug.apk
 
   ios:
     runs-on: macos-14
     defaults:
       run:
-        working-directory: digimon-survivors/mobile
+        working-directory: ganghonanse/mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: yokai-survivors-ios-unsigned-ipa
-          path: digimon-survivors/mobile/yokai-survivors-unsigned.ipa
+          path: ganghonanse/mobile/yokai-survivors-unsigned.ipa
 
   # Collect the builds into one pre-release ("yokai-latest") so they can be downloaded from a phone.
   release:

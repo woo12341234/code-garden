@@ -1,8 +1,8 @@
 {
-  "name": "yokai-survivors-android",
+  "name": "ganghonanse-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "Android wrapper (Capacitor) for 강호난세",
+  "description": "Android / iOS wrapper (Capacitor) for 강호난세",
   "scripts": {
     "web": "node copy-web.js",
     "android:add": "npm run web && npx cap add android && node android-setup.js",
