@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f1418">
+<title>강호난세 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --gold: #ffd98a; --ink: #0f1418; --glass: rgba(18, 22, 30, .74); --line: rgba(255, 255, 255, .14); }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: #f4efe6; font-family: 'Noto Sans KR', system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  canvas { display: block; position: fixed; inset: 0; }
+  #fx2d { pointer-events: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .bar { position: absolute; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,.5); border: 1px solid var(--line); }
+  .bar i { display: block; height: 100%; width: 0; }
+  #xpbar { top: max(6px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(94vw, 680px); height: 9px; }
+  #xpbar i { background: linear-gradient(90deg, #6fd3ff, #b48cff); transition: width .12s; }
+  #top { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 14px); left: 0; right: 0; display: flex; justify-content: center; gap: 14px; font-weight: 700; font-size: 13px; text-shadow: 0 1px 3px #000; }
+  #top b { color: var(--gold); }
+  #stage { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 34px); left: 0; right: 0; text-align: center; font-size: 12px; opacity: .8; text-shadow: 0 1px 2px #000; }
+  #me { position: absolute; left: max(10px, env(safe-area-inset-left)); top: calc(max(6px, env(safe-area-inset-top)) + 14px); display: flex; gap: 8px; align-items: center; background: var(--glass); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px 6px 6px; backdrop-filter: blur(6px); }
+  #me img { width: 40px; height: 40px; image-rendering: pixelated; border-radius: 8px; background: rgba(255,255,255,.06); object-fit: cover; object-position: 50% 10%; }
+  #me .col { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+  #me .nm { font-size: 12px; font-weight: 700; }
+  #hpbar { position: relative; height: 9px; }
+  #hpbar i { background: linear-gradient(90deg, #e2433f, #ff8a5c); width: 100%; }
+  #ultbar { position: relative; height: 5px; }
+  #ultbar i { background: linear-gradient(90deg, #ffb347, #fff2a0); }
+  #weps { position: absolute; left: max(10px, env(safe-area-inset-left)); top: calc(max(6px, env(safe-area-inset-top)) + 72px); display: flex; flex-wrap: wrap; gap: 3px; max-width: 200px; }
+  #weps img { width: 24px; height: 24px; image-rendering: pixelated; }
+  #boss { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 56px); left: 50%; transform: translateX(-50%); width: min(70vw, 420px); display: none; text-align: center; font-size: 13px; font-weight: 900; color: #ffb0a0; text-shadow: 0 1px 3px #000; }
+  #boss .bar { position: relative; height: 10px; margin-top: 3px; }
+  #boss .bar i { background: linear-gradient(90deg, #a01828, #ff4d4d); }
+  .btn { pointer-events: auto; background: var(--glass); border: 1px solid rgba(255,255,255,.22); color: #f4efe6; border-radius: 14px; font: inherit; font-weight: 700; padding: 10px 16px; backdrop-filter: blur(6px); cursor: pointer; }
+  .btn.main { background: linear-gradient(180deg, #e8b24a, #b07a22); color: #1b1206; border-color: #ffe3a0; font-size: 18px; padding: 12px 34px; }
+  #ctl { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: flex-end; }
+  #jumpBtn, #ultBtn { width: 74px; height: 74px; border-radius: 50%; padding: 0; font-size: 15px; display: none; }
+  #ultBtn { width: 60px; height: 60px; font-size: 13px; }
+  #ultBtn.ready { border-color: #ffe08a; box-shadow: 0 0 18px rgba(255, 210, 100, .8); }
+  #menuBtn { position: absolute; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 14px); padding: 7px 11px; font-size: 13px; }
+  #hint { position: absolute; left: 12px; bottom: max(10px, env(safe-area-inset-bottom)); font-size: 11px; opacity: .65; text-shadow: 0 1px 2px #000; }
+  #stick { position: absolute; width: 112px; height: 112px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); background: rgba(255,255,255,.06); display: none; transform: translate(-50%,-50%); }
+  #stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: rgba(255,255,255,.4); }
+  #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; mix-blend-mode: difference; }
+  #banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; font-size: 28px; font-weight: 900; letter-spacing: 3px; color: #ffe2a0; text-shadow: 0 2px 0 #3a1a10, 0 0 18px rgba(255,160,60,.6); opacity: 0; transition: opacity .3s; padding: 0 12px; }
+  #banner small { display: block; font-size: 14px; letter-spacing: 1px; color: #f4efe6; opacity: .85; margin-top: 4px; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px; background: rgba(8,10,14,.66); backdrop-filter: blur(5px); padding: 16px; box-sizing: border-box; overflow-y: auto; }
+  .overlay.on { display: flex; }
+  .overlay h1 { margin: 0; font-size: 30px; letter-spacing: 3px; text-align: center; }
+  .overlay h2 { margin: 0; font-size: 22px; color: var(--gold); }
+  .overlay p { margin: 0; opacity: .85; text-align: center; font-size: 14px; line-height: 1.55; }
+  .cards { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+  .card { width: 210px; padding: 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(40,46,58,.96), rgba(22,26,34,.96)); border: 1px solid rgba(180,200,255,.25); color: inherit; font: inherit; text-align: left; cursor: pointer; display: grid; grid-template-columns: 40px 1fr; gap: 4px 10px; align-items: start; }
+  .card img { width: 40px; height: 40px; image-rendering: pixelated; grid-row: span 3; }
+  .card b { font-size: 15px; color: var(--gold); }
+  .card .st { font-size: 11px; color: #ffcf6a; letter-spacing: 1px; }
+  .card span { font-size: 12px; opacity: .85; line-height: 1.4; }
+  .card.evo { border-color: #ffd06a; box-shadow: 0 0 16px rgba(255, 200, 90, .45); background: linear-gradient(180deg, rgba(90,52,18,.96), rgba(40,22,10,.96)); }
+  .card.new b::after { content: ' NEW'; font-size: 10px; color: #8ef0c0; }
+  .heroes { display: grid; grid-template-columns: repeat(auto-fill, 84px); gap: 8px; width: min(94vw, 760px); justify-content: center; max-height: 46vh; overflow-y: auto; padding: 4px; }
+  .hero { background: rgba(30,36,46,.92); border: 2px solid rgba(255,255,255,.12); border-radius: 12px; padding: 4px; cursor: pointer; color: inherit; font: inherit; font-size: 11px; }
+  .hero.sel { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 217, 138, .5); }
+  .hero img { width: 64px; height: 64px; image-rendering: pixelated; display: block; margin: 0 auto; }
+  #heroInfo { min-height: 40px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  a.btn { text-decoration: none; }
+  @media (max-width: 640px) {
+    #top { justify-content: flex-end; padding-right: 58px; gap: 10px; }
+    #stage { text-align: right; padding-right: 58px; top: calc(max(6px, env(safe-area-inset-top)) + 34px); }
+    #boss { top: calc(max(6px, env(safe-area-inset-top)) + 118px); }
+    #banner { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="fx2d"></canvas>
+<div id="hud">
+  <div id="xpbar" class="bar"><i></i></div>
+  <div id="top"><span id="lv">Lv 1</span><b id="time">0:00</b><span id="kills">처치 0</span></div>
+  <div id="stage"></div>
+  <div id="boss"><span id="bossName"></span><div class="bar"><i></i></div></div>
+  <div id="me"><img id="portrait" alt=""><div class="col"><div class="nm" id="meName"></div><div id="hpbar" class="bar"><i></i></div><div id="ultbar" class="bar"><i></i></div></div></div>
+  <div id="weps"></div>
+  <div id="banner"></div>
+  <div id="hint">WASD 이동 · Space 경공(2단 점프) · Q 필살기 · V 카메라 · Esc 정지</div>
+  <div id="stick"><i></i></div>
+  <div id="ctl"><button id="ultBtn" class="btn">필살</button><button id="jumpBtn" class="btn">경공</button></div>
+  <button id="menuBtn" class="btn">Ⅱ</button>
+</div>
+<div id="flash"></div>
+<div id="start" class="overlay on">
+  <h1>강호난세 3D</h1>
+  <p>언덕을 달리고 경공으로 뛰어올라라. 절벽 위 보물과 각 장의 두목이 기다린다.</p>
+  <div class="heroes" id="heroes"></div>
+  <p id="heroInfo"></p>
+  <div class="row"><button class="btn main" id="go">출전</button><a class="btn" href="../">2D 판으로</a></div>
+</div>
+<div id="levelup" class="overlay"><h2 id="luTitle">깨달음</h2><div class="cards" id="cards"></div></div>
+<div id="pause" class="overlay">
+  <h1>정지</h1>
+  <div class="row"><button class="btn main" id="resume">계속</button><button class="btn" id="camBtn">카메라: 고정</button><button class="btn" id="fxBtn">이펙트: 높음</button></div>
+  <div class="row"><button class="btn" onclick="location.reload()">처음으로</button></div>
+</div>
+<div id="clear" class="overlay"><h1 id="clearTitle"></h1><p id="clearTxt"></p><div class="row"><button class="btn main" id="nextBtn">다음 장으로</button></div></div>
+<div id="over" class="overlay"><h1 id="overTitle">패배</h1><p id="overTxt"></p><div class="row"><button class="btn main" onclick="location.reload()">다시</button><a class="btn" href="../">2D 판으로</a></div></div>
+<script src="three.min.js"></script>
+<script src="game3d.js"></script>
+</body>
+</html>

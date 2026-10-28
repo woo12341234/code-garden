@@ -773,3 +773,4 @@ input#sect-name { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1p
 /* chunky heroes: big heads, so the portrait zooms less */
 #portrait { width: 160%; height: 160%; left: -30%; top: -2%; }
 .card.hero img { width: 96px; height: 96px; margin: -6px 0 -4px; }
+a.btn { text-decoration: none; display: inline-block; }
