@@ -1068,6 +1068,65 @@ def _(g):
         g.line(0.6, y, 3.4, y, rgba(180, 200, 230), 0.6)
 
 
+# ---- 비전 무공 (공용) ----
+@wglyph('eogeom')
+def _(g):
+    g.ring(8, 8, 6.6, 1.0, rgba(140, 200, 255), 0, 360)
+    for a in (-90, 30, 150):
+        r = math.radians(a)
+        cx, cy = 8 + math.cos(r) * 5, 8 + math.sin(r) * 5
+        t = r + math.pi / 2
+        blade(g, cx - math.cos(t) * 3.2, cy - math.sin(t) * 3.2, cx + math.cos(t) * 3.2, cy + math.sin(t) * 3.2)
+
+
+@wglyph('saja')
+def _(g):
+    for r, c in ((7.2, rgba(255, 220, 140)), (5.2, rgba(255, 180, 90)), (3.2, rgba(255, 240, 200))):
+        g.ring(5, 8, r, 1.0, c, -55, 55)
+    g.disc(3.4, 8, 2.4, GOLD)
+    g.rect(2.4, 7.4, 4.4, 8.6, INK)
+
+
+@wglyph('tanji')
+def _(g):
+    g.line(2, 14, 7, 9, rgba(236, 200, 160), 2.2)
+    g.disc(7.4, 8.6, 1.6, rgba(236, 200, 160))
+    g.line(8.6, 7.4, 14.6, 1.6, rgba(170, 230, 255), 0.9)
+    g.disc(14, 2.2, 1.4, WHITE)
+
+
+@wglyph('geomgang')
+def _(g):
+    g.ring(10, 10, 9, 2.6, rgba(120, 190, 255), 180, 300)
+    g.ring(10, 10, 9, 1.2, WHITE, 190, 290)
+    blade(g, 3, 14, 11, 6)
+
+
+@wglyph('ihyeong')
+def _(g):
+    for i, c in enumerate((rgba(90, 80, 130), rgba(140, 130, 190), rgba(220, 220, 250))):
+        x = 4 + i * 3.4
+        g.disc(x, 5, 1.8, c)
+        g.poly([(x - 2.2, 7), (x + 2.2, 7), (x + 2.8, 14), (x - 2.8, 14)], c)
+
+
+@wglyph('cheongeun')
+def _(g):
+    g.poly([(5, 2), (11, 2), (12.4, 9), (3.6, 9)], rgba(110, 110, 120))
+    g.rect(6.6, 0.6, 9.4, 2.2, rgba(80, 80, 90))
+    for x0, x1 in ((8, 2), (8, 14), (8, 8)):
+        g.line(x0, 10.4, x1, 15, rgba(255, 170, 80), 0.8)
+
+
+@wglyph('heupseong')
+def _(g):
+    for i in range(26):
+        a = i * 0.55
+        r = 1 + i * 0.26
+        g.put(8 + math.cos(a) * r, 8 + math.sin(a) * r, rgba(190, 120, 255) if i % 2 else rgba(240, 210, 255))
+    g.disc(8, 8, 1.6, rgba(120, 40, 170))
+
+
 REUSE = {
     'shot': 'sword', 'boomerang': 'chakram', 'beam': 'qi', 'fairy': 'crane', 'tornado': 'tornado', 'mine': 'talisman',
     'gwonbeop': 'fist', 'plumrain': 'plumfall', 'yeorae': 'palm', 'tagu': 'staff', 'bottle': 'bottle', 'needles': 'needles',
