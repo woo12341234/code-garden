@@ -1,9 +1,8 @@
-// Voxel ("3D 도트") figures with long, heroic proportions (~32 cubes tall). Each body part is modelled cube
-// by cube from a spec (hair, hat, weapon, robe, build) using colours read from the character's pixel sprite,
-// then meshed with per-cube colour jitter and corner ambient occlusion. Parts are InstancedMeshes, so a
-// crowd of one kind of foe costs 6 draw calls; pose() writes per-instance matrices for run/attack/flinch.
+// Low-poly wuxia figures with heroic proportions (~7.5 heads tall): small head, broad shoulders, long legs,
+// robe tails, hair and ribbons that trail in the wind, knees and elbows that bend. Colours are read from the
+// character's pixel sprite, then muted toward a dramatic palette. Every bone is an InstancedMesh, so a crowd
+// of one kind of foe costs ~14 draw calls; pose() composes the bone matrices for run / attack / flinch.
 window.Rig = (() => {
-  const V = 0.075; // world size of one cube
   const cv = document.createElement('canvas');
   const cx = cv.getContext('2d', { willReadFrequently: true });
   const C = (r, g, b) => new THREE.Color().setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
@@ -35,256 +34,205 @@ window.Rig = (() => {
     };
     const far = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) > 70;
     const hairs = band(0, 0.3), body = band(0.42, 0.78), low = band(0.8, 1);
-    let skin = [236, 196, 160];
+    let skin = [226, 190, 158];
     { const s = band(0.1, 0.55, false).find((c) => isSkin(c[0], c[1], c[2])); if (s) skin = s; }
-    const hair = hairs[0] || [40, 34, 40];
+    const hair = hairs[0] || [30, 26, 34];
     const main = body.find((c) => far(c, skin)) || hair;
     const accent = body.find((c) => far(c, main) && far(c, skin)) || main.map((v) => Math.min(255, v * 1.35));
     const pants = low.find((c) => far(c, skin)) || main;
-    return { skin: C(...skin), hair: C(...hair), main: C(...main), accent: C(...accent), pants: C(...pants) };
+    // a moodier, less candy-coloured palette
+    const mute = (c, k = 0.82) => { const col = C(...c); const hsl = {}; col.getHSL(hsl); return col.setHSL(hsl.h, hsl.s * k, hsl.l * 0.9); };
+    return { skin: C(...skin), hair: mute(hair, 0.7), main: mute(main), accent: mute(accent, 0.9), pants: mute(pants, 0.7) };
   }
 
-  // ---------- a tiny voxel modeller ----------
-  class Grid {
-    constructor() { this.m = new Map(); }
-    key(x, y, z) { return (x + 512) * 1048576 + (y + 512) * 1024 + (z + 512); }
-    set(x, y, z, c) { if (c) this.m.set(this.key(x, y, z), [x, y, z, c]); else this.m.delete(this.key(x, y, z)); }
-    has(x, y, z) { return this.m.has(this.key(x, y, z)); }
-    get(x, y, z) { const v = this.m.get(this.key(x, y, z)); return v && v[3]; }
-    box(x0, y0, z0, x1, y1, z1, c) { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) this.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); }
-    paint(x0, y0, z0, x1, y1, z1, c) { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) if (this.has(x, y, z)) this.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); }
-    // (ox, oy, oz): grid point that becomes the part's pivot
-    mesh(ox, oy, oz) {
-      const pos = [], nor = [], col = [];
-      const FACES = [
-        [[1, 0, 0], [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]], 0.82],
-        [[-1, 0, 0], [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]], 0.78],
-        [[0, 1, 0], [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], 1.0],
-        [[0, -1, 0], [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], 0.55],
-        [[0, 0, 1], [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], 0.92],
-        [[0, 0, -1], [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], 0.7],
-      ];
-      const AO = [1, 0.8, 0.66, 0.55];
-      const t = new THREE.Color();
-      for (const [x, y, z, c] of this.m.values()) {
-        const j = 0.94 + ((((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0) % 13) / 100;
-        for (const [n, quad, shade] of FACES) {
-          if (this.has(x + n[0], y + n[1], z + n[2])) continue;
-          const axes = [0, 1, 2].filter((k) => n[k] === 0);
-          const ao = quad.map((q) => {
-            const s0 = q[axes[0]] ? 1 : -1, s1 = q[axes[1]] ? 1 : -1;
-            const e1 = [...n], e2 = [...n], cr = [...n];
-            e1[axes[0]] = s0; e2[axes[1]] = s1; cr[axes[0]] = s0; cr[axes[1]] = s1;
-            const a = this.has(x + e1[0], y + e1[1], z + e1[2]), b = this.has(x + e2[0], y + e2[1], z + e2[2]), c2 = this.has(x + cr[0], y + cr[1], z + cr[2]);
-            return AO[a && b ? 3 : (a ? 1 : 0) + (b ? 1 : 0) + (c2 ? 1 : 0)];
-          });
-          const order = ao[0] + ao[2] > ao[1] + ao[3] ? [0, 1, 2, 0, 2, 3] : [1, 2, 3, 1, 3, 0];
-          for (const k of order) {
-            const q = quad[k];
-            pos.push((x + q[0] - ox) * V, (y + q[1] - oy) * V, (z + q[2] - oz) * V);
-            nor.push(n[0], n[1], n[2]);
-            t.copy(c).multiplyScalar(shade * j * ao[k]);
-            col.push(t.r, t.g, t.b);
-          }
-        }
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-      g.computeBoundingSphere();
-      return g;
-    }
+  // ---------- geometry ----------
+  function paint(g, color) {
+    g = g.index ? g.toNonIndexed() : g;
+    const n = g.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = color.r; a[i * 3 + 1] = color.g; a[i * 3 + 2] = color.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    if (g.attributes.uv) g.deleteAttribute('uv');
+    return g;
   }
-  const lighter = (c, k = 1.25) => c.clone().multiplyScalar(k);
+  function merge(list) {
+    list = list.filter(Boolean);
+    let n = 0; for (const g of list) n += g.attributes.position.count;
+    const p = new Float32Array(n * 3), c = new Float32Array(n * 3);
+    let o = 0;
+    for (const g of list) { p.set(g.attributes.position.array, o * 3); c.set(g.attributes.color.array, o * 3); o += g.attributes.position.count; }
+    const m = new THREE.BufferGeometry();
+    m.setAttribute('position', new THREE.BufferAttribute(p, 3)); m.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    m.computeVertexNormals(); m.computeBoundingSphere();
+    return m;
+  }
+  const T = (g, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => {
+    g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz)));
+    return g;
+  };
+  // tapered limb hanging down from the origin
+  const limb = (r0, r1, len, col, seg = 5, sz = 1) => paint(T(new THREE.CylinderGeometry(r0, r1, len, seg), 0, -len / 2, 0, 0, 0, 0, 1, 1, sz), col);
+  const box = (w, h, d, col, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => paint(T(new THREE.BoxGeometry(w, h, d), x, y, z, rx, ry, rz), col);
+  const cyl = (rt, rb, h, seg, col, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sz = 1) => paint(T(new THREE.CylinderGeometry(rt, rb, h, seg), x, y, z, rx, ry, rz, sx, 1, sz), col);
+  // a flat cloth panel hanging from its top edge (double faced)
+  const cloth = (wTop, wBot, len, col, thick = 0.025) => {
+    const g = new THREE.BufferGeometry();
+    const a = wTop / 2, b = wBot / 2, t = thick / 2;
+    const v = [[-a, 0, t], [a, 0, t], [b, -len, t], [-b, -len, t], [-a, 0, -t], [a, 0, -t], [b, -len, -t], [-b, -len, -t]];
+    const F = [[0, 3, 2, 1], [5, 6, 7, 4], [0, 1, 5, 4], [3, 7, 6, 2], [0, 4, 7, 3], [1, 2, 6, 5]];
+    const pos = [];
+    for (const [i, j, k, l] of F) for (const q of [i, j, k, i, k, l]) pos.push(...v[q]);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    return paint(g, col);
+  };
+  const STEEL = hex('#d8e0ec'), STEEL2 = hex('#7f8a9c'), GOLD = hex('#c9a040'), WOOD = hex('#5a3a24'), BLACK = hex('#16131a'), BONE = hex('#e6e0d0'), RED = hex('#a8242c');
   const darker = (c, k = 0.7) => c.clone().multiplyScalar(k);
-  const STEEL = hex('#dfe6f0'), STEEL2 = hex('#9aa6b8'), GOLD = hex('#e8b84a'), WOOD = hex('#7a5232'), BLACK = hex('#1c1820'), WHITE = hex('#f2efe6'), RED = hex('#c8343a'), PAPER = hex('#f0d878'), EYE = hex('#15121c');
+  const lighter = (c, k = 1.2) => c.clone().multiplyScalar(k);
 
-  // ---------- body plan (cube units; +z faces the camera, +y up) ----------
-  function makeParts(spec, col) {
+  // ---------- body plan ----------
+  // spec: { build: m|f|big|old|thin, hair, hat, weapon, robe: long|short, extra, face, beard, ... colour overrides }
+  function makeBody(spec, col) {
     const build = spec.build || 'm';
-    const K = { m: { w: 8, legH: 16, torH: 11, d: 5, arm: 13 }, f: { w: 7, legH: 16, torH: 10, d: 4, arm: 12 }, big: { w: 11, legH: 14, torH: 13, d: 7, arm: 14 },
-      kid: { w: 7, legH: 10, torH: 8, d: 5, arm: 9 }, old: { w: 8, legH: 14, torH: 11, d: 5, arm: 12 }, thin: { w: 6, legH: 17, torH: 11, d: 4, arm: 13 } }[build];
+    const B = { m: { sw: 1, h: 1, l: 1 }, f: { sw: 0.8, h: 0.95, l: 0.85 }, big: { sw: 1.4, h: 1.12, l: 1.45 }, old: { sw: 0.95, h: 0.96, l: 0.95 }, thin: { sw: 0.85, h: 1.04, l: 0.85 } }[build] || { sw: 1, h: 1, l: 1 };
     const skin = spec.skinColor ? hex(spec.skinColor) : col.skin;
     const hair = spec.hairColor ? hex(spec.hairColor) : col.hair;
     const main = spec.mainColor ? hex(spec.mainColor) : col.main;
     const acc = spec.accColor ? hex(spec.accColor) : col.accent;
-    const pants = spec.pantsColor ? hex(spec.pantsColor) : spec.robe === 'long' ? darker(main, 0.8) : col.pants;
-    const belt = spec.beltColor ? hex(spec.beltColor) : darker(acc, 0.85);
-    const { w: W, legH: LH, torH: TH, d: D, arm: AH } = K;
-    const half = Math.floor(W / 2);
-    const parts = {};
-
-    // legs: trousers, wrapped shins, boots with a toe
-    const lw = build === 'big' ? 4 : 3;
-    const leg = () => {
-      const g = new Grid();
-      const shoe = spec.shoe ? hex(spec.shoe) : BLACK;
-      g.box(0, 3, 0, lw - 1, LH - 1, 2, pants);
-      g.box(0, 3, 0, lw - 1, 5, 2, spec.wrap ? hex(spec.wrap) : lighter(pants, 1.15));
-      g.box(0, 0, 0, lw - 1, 2, 3, shoe);
-      g.box(0, 2, 0, lw - 1, 2, 2, lighter(shoe, 1.6));
-      return g.mesh(lw / 2, LH, 1.5);
-    };
-    const hipY = LH * V;
-    const lx = (lw / 2 + 0.4) * V;
-    if (!spec.float) { parts.legL = { geo: leg(), pivot: [-lx, hipY, 0] }; parts.legR = { geo: leg(), pivot: [lx, hipY, 0] }; }
-
-    // torso: crossed-collar robe, sash, shoulders; skirt for robes; back extras
-    {
-      const g = new Grid();
-      const zf = D - 1;
-      for (let y = 0; y < TH; y++) { const taper = y < 3 ? 1 : 0; g.box(taper, y, 0, W - 1 - taper, y, zf, main); }
-      g.box(-1, TH - 2, 0, W, TH - 1, zf, main);
-      for (let y = TH - 1; y >= 2; y--) {
-        const x = Math.round(half - 1 + (TH - 1 - y) * 0.55);
-        g.set(x, y, zf, acc); g.set(x + 1, y, zf, acc);
-        if (y > TH - 4) for (let k = half - 1 - (TH - 1 - y); k < x; k++) g.set(k, y, zf, spec.inner ? hex(spec.inner) : WHITE);
-      }
-      g.paint(-1, TH - 1, 0, W, TH - 1, zf, (x, y, z) => lighter(g.get(x, y, z), 1.08));
-      g.box(0, 0, -1, W - 1, 1, zf + 1, belt);
-      g.box(half - 1, 0, zf + 1, half, 1, zf + 1, spec.knot ? hex(spec.knot) : GOLD);
-      if (spec.robe) {
-        const L = spec.robe === 'long' ? LH - 2 : Math.round(LH * 0.55);
-        for (let i = 1; i <= L; i++) {
-          const f = Math.floor(i / 4);
-          for (let x = -f; x <= W - 1 + f; x++) for (let z = -f; z <= zf + f; z++) {
-            const edge = x === -f || x === W - 1 + f || z === -f || z === zf + f;
-            if (!edge) continue;
-            if (z === zf + f && x >= half - 1 && x <= half && i > 2) continue; // front slit so legs can stride
-            g.set(x, -i, z, i === L ? acc : main);
-          }
-        }
-        for (let i = 1; i <= L; i++) g.set(half + 1, -i, zf + Math.floor(i / 4), acc);
-      }
-      if (build === 'big') { g.box(-2, TH - 3, -1, 0, TH, zf + 1, darker(main, 0.85)); g.box(W - 1, TH - 3, -1, W + 1, TH, zf + 1, darker(main, 0.85)); }
-      if (spec.extra === 'cape') g.box(-1, -LH + 3, -2, W, TH - 1, -2, (x, y) => (y < -LH + 5 ? acc : darker(acc, 0.9)));
-      if (spec.extra === 'tails') {
-        for (let t = 0; t < 3; t++) {
-          const bx = 1 + t * 2.5;
-          for (let i = 0; i < 12; i++) {
-            const r = i < 3 || i > 9 ? 1 : 2, cx2 = Math.round(bx + (t - 1) * i * 0.35), cy = 1 + Math.round(i * 0.7), cz = -1 - i;
-            g.box(cx2 - r + 1, cy - r + 1, cz, cx2 + r - 1, cy + r - 1, cz, i > 9 ? WHITE : hair);
-          }
-        }
-      }
-      if (spec.extra === 'beads') for (let x = 1; x < W - 1; x++) g.set(x, TH - 1 - (x === 1 || x === W - 2 ? 0 : 1), zf + 1, x % 2 ? hex('#6a2a1a') : hex('#8a4a2a'));
-      if (spec.extra === 'gourd') { g.box(W, 0, 1, W + 1, 2, 2, hex('#c8963c')); g.box(W, 3, 1, W, 4, 1, hex('#c8963c')); }
-      if (spec.extra === 'sheath') g.box(-1, -6, -1, -1, 2, -1, hex('#3a2a2a'));
-      if (spec.extra === 'quiver') { g.box(W - 3, 2, -2, W - 2, TH + 2, -2, WOOD); g.box(W - 3, TH + 3, -2, W - 2, TH + 3, -2, hex('#e8e0c0')); }
-      parts.torso = { geo: g.mesh(W / 2, 0, D / 2), pivot: [0, hipY + V, 0] };
+    const pants = spec.pantsColor ? hex(spec.pantsColor) : darker(spec.robe === 'long' ? main : col.pants, 0.75);
+    const boot = spec.shoe ? hex(spec.shoe) : BLACK;
+    const H = B.h, L = B.l, SW = B.sw;
+    const KNEE = 0.82 * H, HIP = 1.58 * H, WAIST = 1.86 * H, SHO = 2.4 * H, NECK = 2.5 * H;
+    const P = {}; // part: { geo, parent, at:[x,y,z] relative to parent pivot }
+    // legs: thigh (hip→knee) and shin (knee→ankle) with boots
+    const hipX = 0.14 * SW;
+    const thigh = () => merge([limb(0.14 * L, 0.105 * L, HIP - KNEE, pants, 6)]);
+    const shin = () => merge([limb(0.1 * L, 0.078 * L, KNEE - 0.06, pants, 6), cyl(0.105 * L, 0.09 * L, 0.42, 6, boot, 0, -KNEE + 0.27, 0), box(0.15 * L, 0.09, 0.3, boot, 0, -KNEE + 0.07, 0.07), cyl(0.09 * L, 0.09 * L, 0.05, 6, darker(boot, 1.6), 0, -0.36 * H, 0)]);
+    if (!spec.float) {
+      P.thighL = { geo: thigh(), parent: 'root', at: [-hipX, HIP, 0] };
+      P.shinL = { geo: shin(), parent: 'thighL', at: [0, -(HIP - KNEE), 0] };
+      P.thighR = { geo: thigh(), parent: 'root', at: [hipX, HIP, 0] };
+      P.shinR = { geo: shin(), parent: 'thighR', at: [0, -(HIP - KNEE), 0] };
     }
-
-    // head: skull, face pixels, hair styles, hats
+    // torso (pivot at the waist): tapered chest, crossed collar, sash, shoulder line
     {
-      const g = new Grid();
-      const HS = 8, F = HS - 1, ey = 3;
-      g.box(0, 0, 0, HS - 1, HS - 1, HS - 1, skin);
-      g.box(3, -1, 3, 4, -1, 4, darker(skin, 0.9));
-      const face = spec.face || (build === 'f' ? 'girl' : 'boy');
-      const eye = hex(spec.eyes || (face === 'demon' ? '#ffd23a' : '#15121c'));
-      if (face === 'skull') {
-        g.paint(0, 0, 0, HS - 1, HS - 1, HS - 1, hex('#e8e4d8'));
-        g.box(1, 3, F, 2, 4, F, EYE); g.box(5, 3, F, 6, 4, F, EYE); g.set(3, 2, F, EYE); g.set(4, 2, F, EYE);
-        for (let x = 1; x < 7; x += 2) g.set(x, 0, F, EYE);
-      } else if (face === 'mask') {
-        g.box(0, 0, F, HS - 1, 3, F, darker(spec.hoodColor ? hex(spec.hoodColor) : main, 0.6));
-        g.set(1, ey + 1, F, eye); g.set(2, ey + 1, F, eye); g.set(5, ey + 1, F, eye); g.set(6, ey + 1, F, eye);
-      } else {
-        const tall = face === 'old' ? 1 : 2;
-        for (const ex of [1, 5]) {
-          g.box(ex, ey, F, ex + 1, ey + tall - 1, F, eye);
-          if (face !== 'demon' && face !== 'old') g.set(ex + (ex < 4 ? 1 : 0), ey + tall - 1, F, WHITE);
-          if (face === 'demon') g.set(ex + (ex < 4 ? 1 : 0), ey, F, BLACK);
-        }
-        if (face === 'girl') { g.set(0, ey + 2, F, EYE); g.set(7, ey + 2, F, EYE); g.set(1, ey - 1, F, hex('#f08a96')); g.set(6, ey - 1, F, hex('#f08a96')); g.set(3, 1, F, hex('#c06060')); g.set(4, 1, F, hex('#c06060')); }
-        else if (face === 'demon') { g.box(2, 0, F, 5, 1, F, hex('#3a1418')); g.set(2, 1, F, WHITE); g.set(5, 1, F, WHITE); g.box(1, ey + 2, F, 2, ey + 2, F, BLACK); g.box(5, ey + 2, F, 6, ey + 2, F, BLACK); }
-        else {
-          const by = ey + 2 + (face === 'old' ? -1 : 0), brow = face === 'old' ? WHITE : darker(hair, 0.8);
-          g.box(1, by, F, 2, by, F, brow); g.box(5, by, F, 6, by, F, brow);
-          if (spec.angry) { g.set(2, by + 1, F, null); g.set(1, by + 1, F, brow); g.set(6, by + 1, F, brow); }
-          g.box(3, 1, F, 4, 1, F, darker(skin, spec.angry ? 0.6 : 0.72));
-        }
-        if (spec.scar) for (let y = 1; y < 6; y++) g.set(6, y, F, hex('#a03a3a'));
+      const chestH = SHO - WAIST;
+      const g = [
+        cyl(0.35 * SW, 0.23 * L, chestH + 0.08, 6, main, 0, chestH / 2, 0, 0, Math.PI / 6, 0, 1, 0.66),
+        cyl(0.235 * L, 0.25 * L, WAIST - HIP + 0.08, 6, main, 0, -(WAIST - HIP) / 2, 0, 0, Math.PI / 6, 0, 1, 0.7),
+        cyl(0.25 * L, 0.25 * L, 0.12, 6, spec.beltColor ? hex(spec.beltColor) : darker(acc, 0.8), 0, 0.0, 0, 0, Math.PI / 6, 0, 1, 0.74),
+        box(0.06, chestH * 0.95, 0.03, acc, 0.03, chestH * 0.5, 0.19 * SW * 0.62 + 0.02, 0, 0, -0.42),
+        box(0.06, chestH * 0.6, 0.03, spec.inner ? hex(spec.inner) : hex('#d8d2c4'), -0.06, chestH * 0.68, 0.2 * SW * 0.62, 0, 0, 0.42),
+        box(0.74 * SW, 0.12, 0.3 * SW, main, 0, chestH - 0.02, 0),
+      ];
+      if (build === 'big' || spec.armor) g.push(box(0.26 * SW, 0.14, 0.28, spec.armor ? hex(spec.armor) : darker(main, 0.8), -0.36 * SW, chestH - 0.02, 0, 0, 0, 0.35), box(0.26 * SW, 0.14, 0.28, spec.armor ? hex(spec.armor) : darker(main, 0.8), 0.36 * SW, chestH - 0.02, 0, 0, 0, -0.35));
+      if (spec.extra === 'beads') for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; g.push(box(0.06, 0.06, 0.06, hex('#5a2a1a'), Math.cos(a) * 0.17, chestH - 0.04 - Math.max(0, Math.sin(a)) * 0.18, Math.sin(a) * 0.12 + 0.05)); }
+      if (spec.extra === 'sheath' || spec.weapon === 'sword' || spec.weapon === 'blade') g.push(box(0.05, 1.0, 0.07, hex('#2a1c1c'), 0.12, chestH * 0.45, -0.17, 0, 0, 0.7), box(0.12, 0.04, 0.1, GOLD, 0.42, chestH * 0.45 + 0.37, -0.17, 0, 0, 0.7));
+      if (spec.extra === 'quiver') g.push(cyl(0.06, 0.06, 0.6, 6, WOOD, -0.1, chestH * 0.55, -0.18, 0, 0, -0.5));
+      if (spec.extra === 'gourd') g.push(cyl(0.07, 0.09, 0.16, 6, hex('#b8863c'), 0.24 * L, -0.08, 0.1), cyl(0.05, 0.06, 0.1, 6, hex('#b8863c'), 0.24 * L, 0.05, 0.1));
+      P.torso = { geo: merge(g), parent: 'root', at: [0, WAIST, 0] };
+    }
+    // robe tails: one long back flap and two front flaps that stream behind when running
+    if (spec.robe) {
+      const len = spec.robe === 'long' ? (WAIST - 0.25) : (WAIST - KNEE) * 0.85;
+      P.flapB = { geo: merge([cloth(0.42 * L, 0.55 * L, len, main), cloth(0.44 * L, 0.57 * L, 0.06, acc).translate(0, -len + 0.03, -0.001)]), parent: 'torso', at: [0, -0.02, -0.15 * L] };
+      P.flapL = { geo: merge([cloth(0.2 * L, 0.26 * L, len * 0.95, main), cloth(0.21 * L, 0.27 * L, 0.06, acc).translate(0, -len * 0.95 + 0.03, 0.001)]), parent: 'torso', at: [-0.11 * L, -0.02, 0.13 * L] };
+      P.flapR = { geo: merge([cloth(0.2 * L, 0.26 * L, len * 0.95, darker(main, 0.92)), cloth(0.21 * L, 0.27 * L, 0.06, acc).translate(0, -len * 0.95 + 0.03, 0.001)]), parent: 'torso', at: [0.11 * L, -0.02, 0.13 * L] };
+    }
+    if (spec.extra === 'cape') P.cape = { geo: merge([cloth(0.6 * SW, 0.85 * SW, SHO - 0.45, acc), cloth(0.62 * SW, 0.87 * SW, 0.06, GOLD).translate(0, -(SHO - 0.45) + 0.03, -0.002)]), parent: 'torso', at: [0, SHO - WAIST - 0.02, -0.17] };
+    if (spec.extra === 'tails') P.cape = { geo: merge([0, 1, 2].map((i) => T(paint(new THREE.ConeGeometry(0.14, 1.3, 6), hair), (i - 1) * 0.18, -0.62, 0, Math.PI, 0, (i - 1) * 0.35))), parent: 'torso', at: [0, -0.05, -0.2] };
+    // head (pivot at the neck): small skull, sharp eyes, hair and hats
+    {
+      const hs = 0.175;
+      const fz = hs * 0.98;
+      const g = [cyl(0.055, 0.065, 0.12, 6, skin, 0, 0.04, 0), T(paint(new THREE.IcosahedronGeometry(hs, 1), skin), 0, 0.2, 0.01, 0, 0, 0, 0.92, 1.15, 1.0)];
+      const face = spec.face || (build === 'f' ? 'f' : 'm');
+      const eye = hex(spec.eyes || (face === 'demon' ? '#ffcc30' : '#141018'));
+      if (face === 'skull') { g.length = 1; g.push(T(paint(new THREE.IcosahedronGeometry(hs, 1), BONE), 0, 0.2, 0, 0, 0, 0, 0.92, 1.12, 1)); g.push(box(0.05, 0.045, 0.02, BLACK, -0.055, 0.22, fz), box(0.05, 0.045, 0.02, BLACK, 0.055, 0.22, fz), box(0.1, 0.02, 0.02, BLACK, 0, 0.11, fz - 0.01)); }
+      else {
+        // narrow, slightly slanted eyes and a hard brow line
+        g.push(box(0.055, face === 'f' ? 0.024 : 0.016, 0.02, eye, -0.055, 0.215, fz, 0, 0, face === 'f' ? 0.1 : 0.18), box(0.055, face === 'f' ? 0.024 : 0.016, 0.02, eye, 0.055, 0.215, fz, 0, 0, face === 'f' ? -0.1 : -0.18));
+        if (face !== 'f') g.push(box(0.07, 0.014, 0.02, darker(hair, 0.8), -0.06, 0.25, fz - 0.005, 0, 0, 0.28), box(0.07, 0.014, 0.02, darker(hair, 0.8), 0.06, 0.25, fz - 0.005, 0, 0, -0.28));
+        if (face === 'f') g.push(box(0.04, 0.012, 0.02, hex('#9a3a42'), 0, 0.12, fz - 0.02));
+        if (face === 'demon') g.push(box(0.1, 0.03, 0.02, hex('#2a0c10'), 0, 0.12, fz - 0.01), box(0.015, 0.03, 0.02, BONE, -0.035, 0.11, fz), box(0.015, 0.03, 0.02, BONE, 0.035, 0.11, fz));
+        if (face === 'mask') g.push(box(0.3, 0.13, 0.03, darker(spec.hoodColor ? hex(spec.hoodColor) : main, 0.55), 0, 0.13, fz - 0.02));
+        if (spec.scar) g.push(box(0.012, 0.14, 0.02, hex('#8a2a2a'), 0.06, 0.2, fz + 0.005, 0, 0, 0.2));
       }
       const style = spec.hair || 'short';
       if (style !== 'bald' && face !== 'skull') {
-        g.box(-1, HS - 1, -1, HS, HS, HS - 1, hair);
-        g.box(-1, 1, -1, HS, HS - 1, 0, hair);
-        g.box(-1, 3, 0, -1, HS - 1, HS - 2, hair); g.box(HS, 3, 0, HS, HS - 1, HS - 2, hair);
-        for (let x = -1; x <= HS; x++) if (x % 3 !== 0) g.set(x, HS - 1, HS, hair);
-        g.set(-1, 2, HS - 2, hair); g.set(HS, 2, HS - 2, hair);
-        g.paint(-1, HS, -1, HS, HS, HS, (x, y, z) => lighter(g.get(x, y, z), 1.18));
+        g.push(T(paint(new THREE.IcosahedronGeometry(hs * 1.08, 1), hair), 0, 0.24, -0.025, 0, 0, 0, 0.98, 0.95, 1.02));
+        // sharp bangs falling over the forehead
+        for (let i = 0; i < 5; i++) g.push(T(paint(new THREE.ConeGeometry(0.035, 0.14, 4), hair), (i - 2) * 0.05, 0.27, fz - 0.03, Math.PI + 0.25, 0, (i - 2) * 0.18));
+        g.push(T(paint(new THREE.ConeGeometry(0.035, 0.2, 4), hair), -0.15, 0.17, 0.04, Math.PI, 0, -0.1), T(paint(new THREE.ConeGeometry(0.035, 0.2, 4), hair), 0.15, 0.17, 0.04, Math.PI, 0, 0.1));
       }
-      if (style === 'topknot') { g.box(3, HS + 1, 2, 4, HS + 2, 3, hair); g.box(1, HS + 2, 2, 6, HS + 2, 2, GOLD); }
-      if (style === 'long' || style === 'longwhite') g.box(-1, style === 'longwhite' ? -9 : -7, -2, HS, 2, -1, hair);
-      if (style === 'pony') { g.box(3, HS - 2, -2, 4, HS - 1, -2, acc); for (let i = 0; i < 9; i++) g.box(3, HS - 3 - i, -3 - Math.floor(i / 4), 4, HS - 3 - i, -3 - Math.floor(i / 4), hair); }
-      if (style === 'bun') { g.box(0, HS + 1, 1, 1, HS + 2, 2, hair); g.box(6, HS + 1, 1, 7, HS + 2, 2, hair); g.set(1, HS + 2, 3, acc); g.set(6, HS + 2, 3, acc); }
-      if (style === 'wild') for (let i = 0; i < 8; i++) { g.box(i, HS + 1, 1 + (i % 3), i, HS + 2 + (i % 2), 1 + (i % 3), hair); g.set(i + (i < 4 ? -1 : 1), HS + 3, 1, hair); }
+      if (style === 'topknot') g.push(cyl(0.05, 0.06, 0.1, 6, hair, 0, 0.42, -0.04), box(0.16, 0.02, 0.02, GOLD, 0, 0.44, -0.04));
+      if (style === 'bun') g.push(T(paint(new THREE.IcosahedronGeometry(0.07, 0), hair), 0, 0.38, -0.1), box(0.2, 0.015, 0.015, GOLD, 0, 0.38, -0.08, 0, 0.5, 0.3));
+      if (style === 'wild') for (let i = 0; i < 7; i++) g.push(T(paint(new THREE.ConeGeometry(0.05, 0.22, 4), hair), (i - 3) * 0.045, 0.36, -0.06, -0.6 + (i % 2) * 0.3, 0, (i - 3) * 0.3));
       const hat = spec.hat;
-      if (hat === 'band') { g.box(-1, HS - 3, -1, HS, HS - 3, HS, RED); for (let i = 0; i < 6; i++) { g.set(2 - Math.floor(i / 2), HS - 4 - i, -2 - Math.floor(i / 3), RED); g.set(5 + Math.floor(i / 3), HS - 4 - i, -2 - Math.floor(i / 2), RED); } }
-      if (hat === 'straw') for (let ring = 0; ring < 4; ring++) { const r = 8 - ring * 2.2; for (let x = -9; x <= 16; x++) for (let z = -9; z <= 16; z++) { const dd = Math.hypot(x - 3.5, z - 3.5); if (dd <= r && dd > r - 2.6) g.set(x, HS + ring, z, ring % 2 ? hex('#b89850') : hex('#d4b46a')); } }
-      if (hat === 'gat') for (let x = -6; x <= 13; x++) for (let z = -6; z <= 13; z++) { const dd = Math.hypot(x - 3.5, z - 3.5); if (dd <= 9.5) g.set(x, HS + 1, z, BLACK); if (dd <= 3) g.box(x, HS + 2, z, x, HS + 5, z, BLACK); }
-      if (hat === 'hood') { const hc = spec.hoodColor ? hex(spec.hoodColor) : darker(main, 0.75); g.box(-1, -1, -2, HS, HS + 1, -1, hc); g.box(-1, 0, -1, -1, HS + 1, HS, hc); g.box(HS, 0, -1, HS, HS + 1, HS, hc); g.box(-1, HS, -1, HS, HS + 1, HS, hc); }
-      if (hat === 'crown') { g.box(2, HS + 1, 2, 5, HS + 3, 5, GOLD); g.box(-1, HS + 2, 3, HS, HS + 2, 3, GOLD); g.set(3, HS + 4, 3, RED); }
+      if (hat === 'band') g.push(cyl(hs * 1.06, hs * 1.06, 0.035, 8, RED, 0, 0.27, -0.01));
+      if (hat === 'straw') g.push(cyl(0.02, 0.46, 0.16, 12, hex('#b89a5a'), 0, 0.41, 0), cyl(0.46, 0.46, 0.015, 12, hex('#8a6e3a'), 0, 0.33, 0));
+      if (hat === 'gat') g.push(cyl(0.44, 0.44, 0.012, 16, BLACK, 0, 0.36, 0), cyl(0.1, 0.12, 0.18, 10, BLACK, 0, 0.45, 0));
+      if (hat === 'hood') g.push(T(paint(new THREE.IcosahedronGeometry(hs * 1.3, 1), spec.hoodColor ? hex(spec.hoodColor) : darker(main, 0.7)), 0, 0.22, -0.05, 0, 0, 0, 1, 1.12, 1.05));
+      if (hat === 'crown') g.push(box(0.1, 0.09, 0.14, GOLD, 0, 0.42, -0.02), box(0.24, 0.015, 0.015, GOLD, 0, 0.44, -0.02, 0, Math.PI / 2, 0));
+      if (hat === 'guan') g.push(box(0.12, 0.1, 0.16, BLACK, 0, 0.42, -0.03), box(0.3, 0.015, 0.015, GOLD, 0, 0.41, -0.03));
       if (hat === 'horns' || hat === 'horn1') {
-        const hc = hex(spec.hornColor || '#f2e8d0');
-        for (const bx of hat === 'horn1' ? [3] : [0, 7]) for (let i = 0; i < 5; i++) g.set(bx + (hat === 'horn1' ? 0 : bx < 3 ? -Math.floor(i / 2) : Math.floor(i / 2)), HS + 1 + i, 3, i > 3 ? WHITE : hc);
+        const hc = hex(spec.hornColor || '#e6dcc4');
+        if (hat === 'horn1') g.push(T(paint(new THREE.ConeGeometry(0.045, 0.24, 5), hc), 0, 0.45, 0.02));
+        else g.push(T(paint(new THREE.ConeGeometry(0.05, 0.3, 5), hc), -0.12, 0.42, 0, 0, 0, 0.5), T(paint(new THREE.ConeGeometry(0.05, 0.3, 5), hc), 0.12, 0.42, 0, 0, 0, -0.5));
       }
-      if (hat === 'ears') for (const bx of [0, 6]) { g.box(bx, HS + 1, 3, bx + 1, HS + 2, 4, hair); g.set(bx + (bx ? 1 : 0), HS + 3, 3, hair); g.set(bx + (bx ? 0 : 1), HS + 1, 5, hex('#f0a0b0')); }
-      if (hat === 'helmet') { g.box(-1, HS - 2, -1, HS, HS + 1, HS, hex('#4a4450')); g.box(3, HS + 2, 2, 4, HS + 4, 4, RED); g.box(-1, HS - 2, HS, HS, HS - 2, HS, GOLD); }
-      if (hat === 'qing') { g.box(-1, HS, -1, HS, HS + 2, HS, hex('#2a2c3a')); g.box(3, HS + 3, 3, 4, HS + 3, 4, RED); for (let y = 0; y < 5; y++) g.box(3, y, HS, 4, y, HS, PAPER); g.set(3, 2, HS, RED); }
-      if (hat === 'guan') { g.box(2, HS + 1, 1, 5, HS + 2, 5, BLACK); g.box(-1, HS + 1, 3, HS, HS + 1, 3, GOLD); }
-      if (spec.beard) { const bc = hex(spec.beard); g.box(1, -4, F, 6, 1, F, bc); g.box(2, -6, F, 5, -5, F, bc); g.box(0, 2, F, 1, 3, F, bc); g.box(6, 2, F, 7, 3, F, bc); }
-      parts.head = { geo: g.mesh(HS / 2, -1, HS / 2), pivot: [0, hipY + V * (TH + 2), 0] };
+      if (hat === 'ears') g.push(T(paint(new THREE.ConeGeometry(0.06, 0.16, 4), hair), -0.1, 0.42, 0, 0, 0, 0.25), T(paint(new THREE.ConeGeometry(0.06, 0.16, 4), hair), 0.1, 0.42, 0, 0, 0, -0.25));
+      if (hat === 'helmet') g.push(T(paint(new THREE.IcosahedronGeometry(hs * 1.15, 1), hex('#3a3540')), 0, 0.27, -0.01, 0, 0, 0, 1, 0.85, 1), cyl(0.012, 0.012, 0.18, 4, RED, 0, 0.48, -0.02));
+      if (hat === 'qing') g.push(cyl(0.15, 0.17, 0.12, 8, hex('#22242e'), 0, 0.38, 0), box(0.08, 0.2, 0.01, hex('#e8d070'), 0, 0.2, fz + 0.01));
+      if (spec.beard) g.push(T(paint(new THREE.ConeGeometry(0.08, 0.32, 5), hex(spec.beard)), 0, -0.02, fz - 0.04, Math.PI));
+      P.head = { geo: merge(g), parent: 'torso', at: [0, NECK - WAIST, 0] };
+      // long hair / ponytail / headband ribbons stream behind the head
+      const streams = [];
+      if (style === 'long' || style === 'longwhite') streams.push(cloth(0.26, 0.2, style === 'longwhite' ? 0.95 : 0.75, hair, 0.05));
+      if (style === 'pony') streams.push(T(paint(new THREE.CylinderGeometry(0.045, 0.02, 0.7, 5), hair), 0, -0.35, 0), cyl(0.05, 0.05, 0.05, 6, acc, 0, 0, 0));
+      if (hat === 'band') streams.push(T(cloth(0.04, 0.03, 0.55, RED, 0.01), -0.03, 0, 0, 0, 0, 0.15), T(cloth(0.04, 0.03, 0.45, RED, 0.01), 0.03, 0, 0, 0, 0, -0.15));
+      if (spec.extra === 'scarf') streams.push(cloth(0.12, 0.08, 0.9, acc, 0.02));
+      if (streams.length) P.hairS = { geo: merge(streams), parent: 'head', at: [0, style === 'pony' ? 0.36 : 0.3, -0.16] };
     }
-
-    // arms: sleeve flaring at the cuff, hand, held weapon
-    const arm = (right) => {
-      const g = new Grid();
-      g.box(0, 3, 0, 2, AH - 1, 2, main);
-      g.box(0, AH - 2, 0, 2, AH - 1, 2, lighter(main, 1.06));
-      if (spec.robe || spec.sleeves) { g.box(-1, 2, -1, 3, 4, 3, main); g.box(-1, 2, -1, 3, 2, 3, acc); }
-      else g.box(0, 3, 0, 2, 3, 2, acc);
-      g.box(0, 0, 0, 2, 2, 2, skin);
-      if (spec.bracer) g.box(0, 3, 0, 2, 5, 2, hex(spec.bracer));
-      const w = spec.weapon, hz = 3;
-      if ((w === 'sword' && right) || w === 'twin') {
-        g.box(1, 1, hz - 2, 1, 1, hz - 1, hex('#3a2a2a'));
-        g.box(0, 1, hz, 2, 1, hz, GOLD); g.box(1, 0, hz, 1, 2, hz, GOLD);
-        for (let i = 1; i <= 15; i++) { g.set(1, 1, hz + i, i === 15 ? STEEL2 : STEEL); if (i < 14) g.set(1, 2, hz + i, STEEL2); }
-        if (spec.tassel) g.box(1, -2, hz - 2, 1, 0, hz - 2, RED);
-      }
-      if (w === 'blade' && right) {
-        g.box(1, 1, hz - 3, 1, 1, hz - 1, hex('#3a2a2a')); g.box(0, 0, hz, 2, 3, hz, hex('#5a4a3a'));
-        for (let i = 1; i <= 17; i++) g.box(1, 0, hz + i, 1, i > 15 ? 2 : 3, hz + i, i % 5 === 0 ? STEEL2 : STEEL);
-      }
-      if (w === 'staff' && right) { g.box(1, -14, 1, 1, 16, 1, WOOD); g.box(1, 16, 1, 1, 17, 1, GOLD); g.box(1, -15, 1, 1, -14, 1, GOLD); }
-      if (w === 'spear' && right) { g.box(1, -12, 1, 1, 20, 1, WOOD); g.box(1, 21, 1, 1, 24, 1, STEEL); g.set(0, 21, 1, STEEL); g.set(2, 21, 1, STEEL); g.box(1, 19, 2, 1, 20, 2, RED); }
-      if (w === 'fan' && right) { const fc = spec.fanColor ? hex(spec.fanColor) : WHITE; for (let a = 0; a < 7; a++) for (let r = 1; r < 7; r++) { const t = (a / 6 - 0.5) * 1.6; g.set(1 + Math.round(Math.sin(t) * r), Math.round(Math.cos(t) * r) - 1, hz, r === 6 ? acc : fc); } }
-      if (w === 'bell' && right) { g.box(1, -3, 1, 1, 0, 1, GOLD); g.box(0, -6, 0, 2, -4, 2, GOLD); g.box(-1, -6, -1, 3, -6, 3, GOLD); g.box(1, -7, 1, 1, -7, 1, RED); }
-      if (w === 'talisman' && right) { g.box(0, -6, hz - 1, 2, -1, hz - 1, PAPER); g.box(1, -5, hz - 1, 1, -2, hz - 1, RED); }
-      if (w === 'club' && right) { for (let i = 0; i < 13; i++) { const r = i > 7 ? 1 : 0; g.box(1 - r, 1 - r, hz + i - 2, 1 + r, 1 + r, hz + i - 2, i > 7 ? hex(spec.clubColor || '#b88a3a') : WOOD); } g.set(1, 3, hz + 8, STEEL); g.set(-1, 1, hz + 9, STEEL); g.set(3, 1, hz + 10, STEEL); }
-      if (w === 'axe' && right) { g.box(1, 1, hz - 2, 1, 1, hz + 8, WOOD); g.box(1, -2, hz + 6, 1, 4, hz + 8, STEEL); g.box(1, -3, hz + 7, 1, 5, hz + 7, STEEL2); }
-      if (w === 'bow' && !right) for (let i = -9; i <= 9; i++) { g.set(1, 1 + i, hz + Math.round(3 - Math.abs(i) * 0.33), WOOD); if (Math.abs(i) < 9) g.set(1, 1 + i, hz - 1, hex('#e8e0c0')); }
-      if (w === 'flask' && right) { g.box(0, -4, 1, 2, -1, 3, hex('#5ac04a')); g.box(1, 0, 2, 1, 0, 2, hex('#8a6a4a')); }
-      if (w === 'needle' && right) for (let i = 0; i < 3; i++) g.box(i, -6, hz, i, -1, hz, STEEL);
-      if (w === 'claw') for (let i = 0; i < 3; i++) g.box(i, -3, hz - 1, i, 0, hz - 1, STEEL);
-      return g.mesh(1.5, AH, 1.5);
-    };
-    const shx = (W / 2 + 1.5) * V, shy = hipY + V * (TH - 0.5);
-    parts.armL = { geo: arm(false), pivot: [-shx, shy, 0] };
-    parts.armR = { geo: arm(true), pivot: [shx, shy, 0] };
-    return { parts, height: hipY + V * (TH + 10) };
+    // arms: upper arm and forearm with a wide sleeve; weapons ride in the right hand
+    {
+      const ua = 0.5 * H, fa = 0.46 * H, shX = 0.34 * SW + 0.06;
+      const upper = () => merge([limb(0.11 * L, 0.09 * L, ua, main, 6), T(paint(new THREE.IcosahedronGeometry(0.125 * L, 0), main), 0, -0.02, 0)]);
+      const fore = (right) => {
+        const g = [limb(0.088 * L, 0.07 * L, fa, spec.bracer ? hex(spec.bracer) : main, 6), box(0.11 * L, 0.12, 0.1, skin, 0, -fa - 0.04, 0.01)];
+        if (spec.robe || spec.sleeves) g.push(cyl(0.08, 0.15 * L, fa * 0.6, 6, main, 0, -fa * 0.55, 0), cyl(0.15 * L, 0.155 * L, 0.04, 6, acc, 0, -fa * 0.86, 0));
+        const w = spec.weapon, hy = -fa - 0.05;
+        // blades point forward-down from the fist; when the arm trails back they stream behind
+        if ((w === 'sword' && right) || w === 'twin') g.push(box(0.03, 0.03, 0.18, hex('#2a1c1c'), 0, hy, 0.02), box(0.14, 0.025, 0.04, GOLD, 0, hy, 0.12), box(0.035, 0.012, 1.0, STEEL, 0, hy, 0.64), box(0.018, 0.016, 0.98, STEEL2, 0.012, hy, 0.63), T(paint(new THREE.ConeGeometry(0.025, 0.08, 4), STEEL), 0, hy, 1.17, Math.PI / 2));
+        if (spec.tassel && right) g.push(box(0.02, 0.18, 0.02, RED, 0, hy - 0.1, -0.08));
+        if (w === 'blade' && right) g.push(box(0.035, 0.035, 0.26, hex('#2a1c1c'), 0, hy, 0.02), box(0.08, 0.18, 1.15, STEEL, 0, hy - 0.04, 0.75), box(0.082, 0.04, 1.1, STEEL2, 0, hy + 0.06, 0.73));
+        if (w === 'staff' && right) g.push(cyl(0.025, 0.025, 2.4, 6, WOOD, 0, hy + 0.2, 0.05, 0.25), cyl(0.032, 0.032, 0.08, 6, GOLD, 0, hy + 1.35, 0.35, 0.25));
+        if (w === 'spear' && right) g.push(cyl(0.022, 0.022, 2.6, 6, WOOD, 0, hy + 0.3, 0.05, 0.2), T(paint(new THREE.ConeGeometry(0.04, 0.3, 4), STEEL), 0, hy + 1.6, 0.33, 0.2), box(0.03, 0.1, 0.03, RED, 0, hy + 1.38, 0.3));
+        if (w === 'fan' && right) g.push(T(paint(new THREE.CylinderGeometry(0.3, 0.3, 0.012, 10, 1, false, -0.9, 1.8), spec.fanColor ? hex(spec.fanColor) : hex('#e8e4da')), 0, hy - 0.05, 0.1, Math.PI / 2, 0, 0));
+        if (w === 'bell' && right) g.push(cyl(0.01, 0.01, 0.2, 4, GOLD, 0, hy - 0.1, 0.03), T(paint(new THREE.ConeGeometry(0.07, 0.1, 8), GOLD), 0, hy - 0.24, 0.03));
+        if (w === 'talisman' && right) g.push(box(0.1, 0.22, 0.008, hex('#e8d070'), 0, hy - 0.12, 0.06), box(0.02, 0.15, 0.01, RED, 0, hy - 0.12, 0.066));
+        if (w === 'club' && right) g.push(cyl(0.035, 0.09, 1.0, 6, spec.clubColor ? hex(spec.clubColor) : hex('#8a6a3a'), 0, hy, 0.5, Math.PI / 2), T(paint(new THREE.ConeGeometry(0.03, 0.08, 4), STEEL), 0.08, hy, 0.85, 0, 0, -Math.PI / 2));
+        if (w === 'axe' && right) g.push(cyl(0.02, 0.02, 0.8, 5, WOOD, 0, hy, 0.35, Math.PI / 2), box(0.02, 0.24, 0.18, STEEL, 0, hy + 0.08, 0.68));
+        if (w === 'bow' && !right) g.push(T(paint(new THREE.TorusGeometry(0.5, 0.018, 4, 14, Math.PI * 0.9), WOOD), 0, hy, 0.12, 0, Math.PI / 2, Math.PI * 0.55));
+        if (w === 'flask' && right) g.push(cyl(0.05, 0.08, 0.16, 6, hex('#4aa03a'), 0, hy - 0.08, 0.04));
+        if (w === 'needle' && right) for (let i = 0; i < 3; i++) g.push(box(0.008, 0.008, 0.26, STEEL, (i - 1) * 0.025, hy, 0.14));
+        if (w === 'claw') for (let i = 0; i < 3; i++) g.push(box(0.012, 0.012, 0.2, STEEL, (i - 1) * 0.03, hy - 0.02, 0.12));
+        return merge(g);
+      };
+      P.upperL = { geo: upper(), parent: 'torso', at: [-shX, SHO - WAIST - 0.05, 0] };
+      P.foreL = { geo: fore(false), parent: 'upperL', at: [0, -ua, 0] };
+      P.upperR = { geo: upper(), parent: 'torso', at: [shX, SHO - WAIST - 0.05, 0] };
+      P.foreR = { geo: fore(true), parent: 'upperR', at: [0, -ua, 0] };
+    }
+    return { P, height: NECK + 0.45 };
   }
 
-  // ---------- instanced type ----------
+  // ---------- instancing + skeleton pose ----------
+  const ORDER = ['torso', 'head', 'hairS', 'flapB', 'flapL', 'flapR', 'cape', 'upperL', 'foreL', 'upperR', 'foreR', 'thighL', 'shinL', 'thighR', 'shinR'];
   function makeType(spec, col, cap) {
-    const { parts, height } = makeParts(spec, col);
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const { P, height } = makeBody(spec, col);
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
     const meshes = {};
-    for (const [k, p] of Object.entries(parts)) {
-      const m = new THREE.InstancedMesh(p.geo, mat, cap);
+    for (const k of ORDER) {
+      if (!P[k]) continue;
+      const m = new THREE.InstancedMesh(P[k].geo, mat, cap);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       m.count = 0; m.frustumCulled = false; m.castShadow = true;
       m.setColorAt(0, new THREE.Color(1, 1, 1));
@@ -294,8 +242,9 @@ window.Rig = (() => {
     for (const m of Object.values(meshes)) group.add(m);
     const free = [];
     let used = 0;
-    const M = new THREE.Matrix4(), R = new THREE.Matrix4(), Pm = new THREE.Matrix4(), tmp = new THREE.Matrix4();
-    const Q = new THREE.Quaternion(), E = new THREE.Euler(), Vv = new THREE.Vector3(), Sv = new THREE.Vector3(), col3 = new THREE.Color();
+    const W = {}; for (const k of ORDER) W[k] = new THREE.Matrix4();
+    W.root = new THREE.Matrix4();
+    const Q = new THREE.Quaternion(), E = new THREE.Euler(), Vv = new THREE.Vector3(), Sv = new THREE.Vector3(), L = new THREE.Matrix4(), col3 = new THREE.Color();
     const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
     return {
       group, height, spec,
@@ -310,34 +259,48 @@ window.Rig = (() => {
         free.push(i);
         for (const m of Object.values(meshes)) { m.setMatrixAt(i, hidden); m.instanceMatrix.needsUpdate = true; }
       },
-      // st: { x, y, z, yaw, s, phase, move, atk, hurt, dead, t, tint }
+      // st: { x, y, z, yaw, s, phase, move (0..1), atk (0..1 swing progress), hurt, dead, t, tint }
       pose(i, st) {
         if (i < 0) return;
-        const mv = st.move || 0, ph = st.phase || 0, atk = st.atk || 0, hurt = st.hurt || 0, t = st.t || 0;
-        const bob = spec.float ? 0.35 + Math.sin(t * 3) * 0.12 : Math.abs(Math.sin(ph)) * 0.1 * mv + Math.sin(t * 2.2) * 0.012;
-        E.set(-hurt * 0.35 - (st.dead || 0) * 1.45, st.yaw || 0, 0, 'YXZ');
-        Q.setFromEuler(E);
-        M.compose(Vv.set(st.x, st.y + bob, st.z), Q, Sv.setScalar(st.s || 1));
-        const lean = 0.18 * mv - hurt * 0.25;
-        const set = (k, rx, ry = 0, rz = 0) => {
-          const m = meshes[k]; if (!m) return;
-          const p = parts[k];
-          Pm.makeTranslation(p.pivot[0], p.pivot[1], p.pivot[2]);
-          R.makeRotationFromEuler(E.set(rx, ry, rz, 'XYZ'));
-          tmp.multiplyMatrices(M, Pm).multiply(R);
-          m.setMatrixAt(i, tmp);
-          m.instanceMatrix.needsUpdate = true;
+        const mv = st.move || 0, ph = st.phase || 0, hurt = st.hurt || 0, t = st.t || 0;
+        const atk = st.atk > 0 && st.atk < 1 ? st.atk : 0;
+        const s = Math.sin(ph), c2 = Math.cos(ph);
+        const run = mv;
+        const bob = spec.float ? 0.4 + Math.sin(t * 3) * 0.1 : Math.abs(Math.cos(ph)) * 0.08 * run;
+        const wind = Math.sin(t * 3.1) * 0.08 + Math.sin(t * 5.3) * 0.04;
+        // swing: wind-up behind (0→0.35) then a fast cut across (0.35→1)
+        const cut = atk ? (atk < 0.35 ? -atk / 0.35 : -1 + (atk - 0.35) / 0.65 * 2.2) : 0;
+        const R = {
+          torso: [0.32 * run + (spec.build === 'old' ? 0.18 : 0) - hurt * 0.4 + (atk ? 0.15 : 0), s * 0.18 * run + cut * 0.5, 0],
+          head: [-0.22 * run + Math.sin(t * 2) * 0.02, -s * 0.12 * run - cut * 0.25, 0],
+          hairS: [0.25 + run * 1.0 + wind, 0, Math.sin(t * 4) * 0.1],
+          flapB: [0.12 + run * 0.95 + wind * 0.8, 0, 0],
+          flapL: [-0.05 + Math.max(0, -s) * 0.6 * run + run * 0.35 + wind * 0.5, 0, 0.08],
+          flapR: [-0.05 + Math.max(0, s) * 0.6 * run + run * 0.35 + wind * 0.5, 0, -0.08],
+          cape: [0.1 + run * 1.1 + wind, 0, 0],
+          // left arm pumps; sword arm trails back while running, then cuts on attack
+          upperL: [s * 0.9 * run + (spec.weapon === 'bow' ? -1.3 : 0) + (spec.pose === 'zombie' ? -1.5 : 0) + (spec.float ? -0.3 : 0), 0, 0.12],
+          foreL: [-0.6 - 0.5 * run + (spec.pose === 'zombie' ? 0.2 : 0), 0, 0],
+          upperR: [atk ? -1.6 + cut * -1.4 : (spec.weapon === 'sword' || spec.weapon === 'blade' || spec.weapon === 'twin' ? 0.7 * run - s * 0.3 * run + 0.15 : -s * 0.9 * run) + (spec.pose === 'zombie' ? -1.5 : 0) + (spec.weapon === 'staff' || spec.weapon === 'spear' ? -0.3 : 0), atk ? cut * 0.6 : 0, -0.12 - (atk ? 0.4 : 0)],
+          foreR: [atk ? -0.25 : -0.35 - 0.3 * run, 0, 0],
+          thighL: [-s * 0.95 * run - (atk ? 0.3 : 0), 0, 0.03],
+          shinL: [Math.max(0, s) * 1.3 * run + 0.08 + (atk ? 0.3 : 0), 0, 0],
+          thighR: [s * 0.95 * run + (atk ? 0.35 : 0), 0, -0.03],
+          shinR: [Math.max(0, -s) * 1.3 * run + 0.08, 0, 0],
         };
-        const sw = Math.sin(ph) * mv;
-        const stride = spec.robe === 'long' ? 0.6 : 0.85;
-        set('torso', lean, Math.sin(ph) * 0.12 * mv);
-        set('head', -lean * 0.5 + Math.sin(t * 2.2) * 0.025);
-        const swing = atk > 0 ? -2.5 * Math.sin(Math.min(1, atk) * Math.PI) : 0;
-        const zombie = spec.pose === 'zombie' ? -1.45 : 0, flt = spec.float ? -0.4 : 0;
-        set('armL', -sw * 0.9 + zombie + flt + (spec.weapon === 'bow' ? -1.2 : 0), 0, 0.08);
-        set('armR', sw * 0.9 + zombie + flt + swing + (spec.weapon === 'staff' || spec.weapon === 'spear' ? -0.25 : 0), 0, -0.08);
-        set('legL', sw * stride);
-        set('legR', -sw * stride);
+        // root
+        E.set(-(st.dead || 0) * 1.4, st.yaw || 0, 0, 'YXZ');
+        Q.setFromEuler(E);
+        W.root.compose(Vv.set(st.x, st.y + bob, st.z), Q, Sv.setScalar(st.s || 1));
+        for (const k of ORDER) {
+          const p = P[k]; if (!p) continue;
+          const r = R[k] || [0, 0, 0];
+          Q.setFromEuler(E.set(r[0], r[1], r[2], 'XYZ'));
+          L.compose(Vv.set(p.at[0], p.at[1], p.at[2]), Q, Sv.set(1, 1, 1));
+          W[k].multiplyMatrices(W[p.parent], L);
+          meshes[k].setMatrixAt(i, W[k]);
+          meshes[k].instanceMatrix.needsUpdate = true;
+        }
         if (st.tint !== undefined) {
           col3.copy(st.tint || col3.setRGB(1, 1, 1));
           for (const m of Object.values(meshes)) { m.setColorAt(i, col3); m.instanceColor.needsUpdate = true; }
@@ -354,5 +317,5 @@ window.Rig = (() => {
     if (!cache[id]) cache[id] = load(src).then((im) => makeType(spec, analyse(im), cap));
     return cache[id];
   }
-  return { get, analyse, V };
+  return { get, analyse };
 })();
