@@ -193,7 +193,7 @@ import { createSound } from './sfx.js';
     buildHeightGrid();
     // sky + fog
     const SKY = new THREE.Color(pal.fog);
-    scene.background = SKY; scene.fog = new THREE.Fog(SKY, 48, 125);
+    scene.background = SKY; scene.fog = new THREE.Fog(SKY, 48, 125); if (typeof camZoom === 'number') setZoom(camZoom);
     hemi.groundColor.set(si === 3 ? '#2a1a28' : '#5a4a36'); hemi.intensity = si === 3 ? 0.8 : 1.15; sun.intensity = si === 3 ? 0.9 : 1.6;
     {
       const c = document.createElement('canvas'); c.width = 4; c.height = 256;
@@ -332,6 +332,17 @@ import { createSound } from './sfx.js';
   // ---------- 입력 ----------
   const keys = {};
   let wantJump = false, wantUlt = false, camYaw = 0, camMode = IS_TOUCH ? 'fixed' : 'chase';
+  // view distance: mouse wheel / +− keys / pinch / the 🔍 buttons; remembered in the shared settings
+  const ZOOM_MIN = 0.6, ZOOM_MAX = 2.6;
+  let camZoom = clamp(M.settings.zoom ?? 1.25, ZOOM_MIN, ZOOM_MAX), zoomSaveT = null;
+  function setZoom(z) {
+    camZoom = clamp(z, ZOOM_MIN, ZOOM_MAX);
+    // wider views see further: push the fog and the sun's shadow box out with the camera
+    if (scene.fog) { scene.fog.near = 48 * Math.max(1, camZoom); scene.fog.far = 125 * Math.max(1, camZoom * 0.9); }
+    const r = 26 * Math.max(1, camZoom * 0.85); Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r }); sun.shadow.camera.updateProjectionMatrix();
+    clearTimeout(zoomSaveT); zoomSaveT = setTimeout(() => { M.settings.zoom = +camZoom.toFixed(2); M.saveProgress(); }, 400);
+  }
+  addEventListener('wheel', (e) => { if (!running || e.target.closest?.('.overlay')) return; e.preventDefault(); setZoom(camZoom * Math.exp(e.deltaY * 0.0012)); }, { passive: false });
   addEventListener('keydown', (e) => {
     keys[e.code] = true;
     SND.ensure();
@@ -340,12 +351,25 @@ import { createSound } from './sfx.js';
     if (e.code === 'Space') { wantJump = true; e.preventDefault(); }
     if (e.code === 'KeyQ' && !e.repeat) wantUlt = true;
     if (e.code === 'KeyV') toggleCam();
+    if (e.code === 'Minus' || e.code === 'NumpadSubtract') setZoom(camZoom / 1.15);
+    if (e.code === 'Equal' || e.code === 'NumpadAdd') setZoom(camZoom * 1.15);
     if (e.code === 'Escape') togglePause();
   });
   addEventListener('keyup', (e) => { keys[e.code] = false; });
   const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, look = { id: null, lx: 0 };
   const stickEl = $('stick'), knob = stickEl.firstElementChild;
   const cv = renderer.domElement;
+  const pinch = new Map(); let pinchD = 0;
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') { pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size === 2) { const [a, b] = [...pinch.values()]; pinchD = Math.hypot(a[0] - b[0], a[1] - b[1]); } } });
+  addEventListener('pointermove', (e) => {
+    if (!pinch.has(e.pointerId)) return;
+    pinch.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pinch.size !== 2 || !pinchD) return;
+    const [a, b] = [...pinch.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    setZoom(camZoom * pinchD / Math.max(20, d)); pinchD = d;
+  });
+  const endPinch = (e) => { pinch.delete(e.pointerId); if (pinch.size < 2) pinchD = 0; };
+  addEventListener('pointerup', endPinch); addEventListener('pointercancel', endPinch);
   cv.addEventListener('pointerdown', (e) => {
     const touchStick = e.pointerType !== 'mouse' && (camMode === 'fixed' || e.clientX < innerWidth * 0.55);
     if (touchStick && stick.id === null) {
@@ -364,7 +388,9 @@ import { createSound } from './sfx.js';
   addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
   $('jumpBtn').addEventListener('pointerdown', (e) => { wantJump = true; e.stopPropagation(); });
   $('ultBtn').addEventListener('pointerdown', (e) => { wantUlt = true; e.stopPropagation(); });
-  if (IS_TOUCH) { $('jumpBtn').style.display = 'block'; $('ultBtn').style.display = 'block'; $('hint').textContent = '아무 곳이나 끌어서 이동 · 경공 = 점프(2단) · 필살 = 필살기'; }
+  $('zoomIn').addEventListener('pointerdown', (e) => { setZoom(camZoom / 1.2); e.stopPropagation(); });
+  $('zoomOut').addEventListener('pointerdown', (e) => { setZoom(camZoom * 1.2); e.stopPropagation(); });
+  if (IS_TOUCH) { $('jumpBtn').style.display = 'block'; $('ultBtn').style.display = 'block'; $('hint').textContent = '아무 곳이나 끌어서 이동 · 경공 = 점프(2단) · 필살 = 필살기 · 두 손가락/🔍로 시야'; }
   function toggleCam() {
     camMode = camMode === 'chase' ? 'fixed' : 'chase';
     if (camMode === 'fixed') camYaw = 0;
@@ -1515,7 +1541,7 @@ import { createSound } from './sfx.js';
   const proj = new THREE.Vector3();
   function updateCamera(dt) {
     const fixed = camMode === 'fixed';
-    const far = camera.aspect < 1 ? 1.3 : 1, dist = (fixed ? 12.5 : 10.5) * far, ht = (fixed ? 11 : 5.8) * far;
+    const far = (camera.aspect < 1 ? 1.3 : 1) * camZoom, dist = (fixed ? 12.5 : 10.5) * far, ht = (fixed ? 11 : 5.8) * far;
     camPos.set(P.x - fwdX * dist, P.y + ht, P.z - fwdZ * dist);
     const cg = H(camPos.x, camPos.z) + 1.5; if (camPos.y < cg) camPos.y = cg;
     camera.position.lerp(camPos, 1 - Math.exp(-dt * 8));

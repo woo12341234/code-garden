@@ -40,6 +40,8 @@
   #ultBtn { width: 60px; height: 60px; font-size: 13px; }
   #ultBtn.ready { border-color: #ffe08a; box-shadow: 0 0 18px rgba(255, 210, 100, .8); }
   #menuBtn { position: absolute; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 14px); padding: 7px 11px; font-size: 13px; }
+  #zoom { position: absolute; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 56px); display: flex; flex-direction: column; gap: 6px; }
+  #zoom .btn { padding: 5px 8px; font-size: 12px; }
   #hint { position: absolute; left: 12px; bottom: max(10px, env(safe-area-inset-bottom)); font-size: 11px; opacity: .65; text-shadow: 0 1px 2px #000; }
   #stick { position: absolute; width: 112px; height: 112px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); background: rgba(255,255,255,.06); display: none; transform: translate(-50%,-50%); }
   #stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: rgba(255,255,255,.4); }
@@ -139,10 +141,11 @@
   <div id="buffs"></div>
   <div id="combo"></div>
   <div id="banner"></div>
-  <div id="hint">WASD 이동 · Space 경공(2단 점프) · Q 필살기 · V 카메라 · Esc 정지</div>
+  <div id="hint">WASD 이동 · Space 경공(2단 점프) · Q 필살기 · V 카메라 · 휠/+− 시야 · Esc 정지</div>
   <div id="stick"><i></i></div>
   <div id="ctl"><button id="ultBtn" class="btn">필살</button><button id="jumpBtn" class="btn">경공</button></div>
   <button id="menuBtn" class="btn">Ⅱ</button>
+  <div id="zoom"><button id="zoomIn" class="btn">🔍+</button><button id="zoomOut" class="btn">🔍−</button></div>
 </div>
 <div id="flash"></div>
 <div id="toast"></div>
