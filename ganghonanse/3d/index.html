@@ -66,7 +66,60 @@
   #heroInfo { min-height: 40px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   a.btn { text-decoration: none; }
+  #gold { color: #e8eef6; }
+  #combo { position: absolute; right: max(14px, env(safe-area-inset-right)); top: 30%; font-size: 26px; font-weight: 900; color: #ffd76b; text-shadow: 0 2px 0 #3a1a10, 0 0 12px rgba(255,160,60,.6); font-style: italic; }
+  #buffs { position: absolute; left: max(10px, env(safe-area-inset-left)); top: calc(max(6px, env(safe-area-inset-top)) + 104px); display: flex; gap: 6px; font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+  #buffs span { display: flex; align-items: center; gap: 2px; background: var(--glass); border-radius: 8px; padding: 2px 5px; }
+  .pi { width: 20px; height: 20px; image-rendering: pixelated; vertical-align: middle; }
+  #toast { position: fixed; top: 16%; left: 50%; transform: translate(-50%, -20px); background: linear-gradient(180deg, rgba(60,40,18,.95), rgba(30,20,10,.95)); border: 1px solid #ffd06a; border-radius: 12px; padding: 8px 16px; text-align: center; opacity: 0; transition: .3s; pointer-events: none; z-index: 30; max-width: 86vw; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast b { display: block; color: var(--gold); } #toast small { opacity: .85; }
+  #luSub { font-size: 13px; opacity: .8; margin-top: -8px; text-align: center; }
+  #luTools { display: flex; gap: 8px; } .tool { font-size: 13px; padding: 6px 10px; } .btn.sel { border-color: var(--gold); box-shadow: 0 0 10px rgba(255,217,138,.5); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .card .pi, .card > span.pi { width: 40px; height: 40px; grid-row: span 3; font-size: 30px; }
+  .card i.relic { color: #ffd06a; font-style: normal; }
+  .card.maxed { opacity: .6; } .card:disabled { cursor: default; }
+  .card.shop:not(:disabled):hover, .card:not(:disabled):hover { border-color: var(--gold); }
+  /* gacha */
+  #gacha { z-index: 20; background: rgba(6,6,10,.82); }
+  #gacha .gsrc { font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 2px; }
+  #gacha .orb { --gc: #d8d2c2; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, var(--gc) 35%, rgba(0,0,0,0) 70%); box-shadow: 0 0 60px var(--gc); animation: orb 0.5s infinite alternate; transition: background .2s; }
+  #gacha.bump .orb { transform: scale(1.35); }
+  @keyframes orb { from { transform: scale(.92) rotate(-4deg); } to { transform: scale(1.06) rotate(4deg); } }
+  #gacha .gcard { --gc: #d8d2c2; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 26px; border-radius: 16px; border: 2px solid var(--gc); background: linear-gradient(180deg, rgba(40,40,52,.98), rgba(18,18,26,.98)); box-shadow: 0 0 40px var(--gc); animation: pop .35s; max-width: 300px; text-align: center; }
+  #gacha .gcard .ggrade { color: var(--gc); font-weight: 900; letter-spacing: 4px; } #gacha .gcard .gicon { width: 64px; height: 64px; font-size: 48px; image-rendering: pixelated; }
+  #gacha .gcard b { font-size: 20px; } #gacha .gcard em { color: #8ef0c0; font-style: normal; font-weight: 700; } #gacha .gcard small { opacity: .5; }
+  #gacha.g3, #gacha.g4 { background: radial-gradient(circle, rgba(120,60,10,.6), rgba(6,6,10,.9)); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  /* start & lobby */
+  #start { justify-content: flex-start; padding-top: max(18px, env(safe-area-inset-top)); }
+  #seal { display: inline-block; background: #b8322a; color: #ffe; font-size: 14px; padding: 2px 5px; border-radius: 4px; transform: rotate(-8deg); margin-left: 6px; cursor: pointer; vertical-align: middle; }
+  .chip { padding: 6px 10px; font-size: 13px; border-radius: 10px; }
+  #heat { display: flex; gap: 8px; align-items: center; font-weight: 700; }
+  #diffDesc, #purse { font-size: 12px; opacity: .8; }
+  #dailyBtn small { display: block; font-size: 10px; opacity: .8; font-weight: 500; }
+  .hero.locked img { filter: brightness(0) opacity(.5); }
+  #lobby { z-index: 15; justify-content: flex-start; background: rgba(10,12,16,.95); }
+  body:not(.playing) #hud { display: none; }
+  #lobbyTabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; } .tab { padding: 6px 10px; font-size: 13px; }
+  #lobbyBody { width: min(96vw, 820px); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  #lobbyBody h3 { margin: 6px 0 0; color: var(--gold); font-size: 15px; align-self: flex-start; }
+  .glist { display: flex; flex-direction: column; gap: 6px; width: 100%; } .glist.two { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .grow { --gc: #999; display: flex; gap: 10px; align-items: center; background: rgba(30,36,46,.92); border: 1px solid var(--gc); border-radius: 10px; padding: 8px 10px; }
+  .grow > div { flex: 1; display: flex; flex-direction: column; } .grow small { font-size: 12px; opacity: .85; } .grow .dim, .dim { opacity: .6; }
+  .grow.locked { opacity: .55; } .grow.done { border-color: #8ef0c0; } .grow .pi { width: 32px; height: 32px; font-size: 26px; }
+  .attend { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; }
+  .aday { background: rgba(30,36,46,.92); border: 1px solid var(--line); border-radius: 10px; padding: 6px; text-align: center; font-size: 11px; display: flex; flex-direction: column; }
+  .aday.got { opacity: .45; } .aday.today { border-color: var(--gold); box-shadow: 0 0 10px rgba(255,217,138,.5); }
+  .dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; width: 100%; }
+  .dx { --gc: var(--line); background: rgba(30,36,46,.92); border: 1px solid var(--gc); border-radius: 10px; padding: 4px; text-align: center; font-size: 10px; }
+  .dx img, .dx .pi { width: 48px; height: 48px; image-rendering: pixelated; object-fit: contain; font-size: 36px; } .dx.unk img, .dx.unk .pi { filter: brightness(0) opacity(.4); }
+  #overScore .score { font-size: 22px; text-align: center; } #overScore .score b { color: var(--gold); font-size: 30px; } .rank { color: #ff9a5a; font-weight: 900; }
+  #overScore .gains { font-size: 13px; text-align: center; opacity: .9; } #overScore .hot { color: #ff8a4a; font-weight: 700; }
   @media (max-width: 640px) {
+    .card { width: 100%; max-width: 360px; }
+    .attend { grid-template-columns: repeat(4, 1fr); }
     #top { justify-content: flex-end; padding-right: 58px; gap: 10px; }
     #stage { text-align: right; padding-right: 58px; top: calc(max(6px, env(safe-area-inset-top)) + 34px); }
     #boss { top: calc(max(6px, env(safe-area-inset-top)) + 118px); }
@@ -78,11 +131,13 @@
 <canvas id="fx2d"></canvas>
 <div id="hud">
   <div id="xpbar" class="bar"><i></i></div>
-  <div id="top"><span id="lv">Lv 1</span><b id="time">0:00</b><span id="kills">처치 0</span></div>
+  <div id="top"><span id="lv">Lv 1</span><b id="time">0:00</b><span id="kills">처치 0</span><span id="gold">은자 0</span></div>
   <div id="stage"></div>
   <div id="boss"><span id="bossName"></span><div class="bar"><i></i></div></div>
   <div id="me"><img id="portrait" alt=""><div class="col"><div class="nm" id="meName"></div><div id="hpbar" class="bar"><i></i></div><div id="ultbar" class="bar"><i></i></div></div></div>
   <div id="weps"></div>
+  <div id="buffs"></div>
+  <div id="combo"></div>
   <div id="banner"></div>
   <div id="hint">WASD 이동 · Space 경공(2단 점프) · Q 필살기 · V 카메라 · Esc 정지</div>
   <div id="stick"><i></i></div>
@@ -90,21 +145,32 @@
   <button id="menuBtn" class="btn">Ⅱ</button>
 </div>
 <div id="flash"></div>
+<div id="toast"></div>
 <div id="start" class="overlay on">
-  <h1>강호난세 3D</h1>
-  <p>언덕을 달리고 경공으로 뛰어올라라. 절벽 위 보물과 각 장의 두목이 기다린다.</p>
+  <h1>강호난세 3D<span id="seal">難世</span></h1>
+  <p id="purse"></p>
+  <div class="row">
+    <button class="btn tab" data-lobby="shop">수련장</button><button class="btn tab" data-lobby="sect">문파</button><button class="btn tab" data-lobby="gear">장비</button>
+    <button class="btn tab" data-lobby="attend">출석·방치</button><button class="btn tab" data-lobby="quest">의뢰</button><button class="btn tab" data-lobby="achv">업적</button>
+    <button class="btn tab" data-lobby="dex">도감</button><button class="btn tab" data-lobby="record">기록</button><button class="btn tab" data-lobby="settings">설정</button>
+  </div>
   <div class="heroes" id="heroes"></div>
   <p id="heroInfo"></p>
-  <div class="row"><button class="btn main" id="go">출전</button><a class="btn" href="../">2D 판으로</a></div>
+  <div class="row" id="diffs"></div>
+  <div id="heat"></div>
+  <p id="diffDesc"></p>
+  <div class="row"><button class="btn main" id="go">출전</button><button class="btn" id="dailyBtn">일일 도전</button><a class="btn" href="../">2D 판으로</a></div>
 </div>
-<div id="levelup" class="overlay"><h2 id="luTitle">깨달음</h2><div class="cards" id="cards"></div></div>
+<div id="levelup" class="overlay"><h2 id="luTitle">깨달음</h2><p id="luSub"></p><div class="cards" id="cards"></div><div id="luTools"></div></div>
+<div id="gacha" class="overlay" onclick="void 0"><div class="gsrc"></div><div class="orb"></div><div class="gcard"></div></div>
+<div id="lobby" class="overlay"><div id="lobbyTabs"></div><p id="lobbyPurse"></p><div id="lobbyBody"></div><button class="btn main" id="lobbyClose">닫기</button></div>
 <div id="pause" class="overlay">
   <h1>정지</h1>
   <div class="row"><button class="btn main" id="resume">계속</button><button class="btn" id="camBtn">카메라: 고정</button><button class="btn" id="fxBtn">이펙트: 높음</button></div>
-  <div class="row"><button class="btn" onclick="location.reload()">처음으로</button></div>
+  <div class="row"><button class="btn" id="retire">무사 귀환 (은자 챙기고 끝내기)</button><button class="btn" onclick="location.reload()">처음으로</button></div>
 </div>
 <div id="clear" class="overlay"><h1 id="clearTitle"></h1><p id="clearTxt"></p><div class="row"><button class="btn main" id="nextBtn">다음 장으로</button></div></div>
-<div id="over" class="overlay"><h1 id="overTitle">패배</h1><p id="overTxt"></p><div class="row"><button class="btn main" onclick="location.reload()">다시</button><a class="btn" href="../">2D 판으로</a></div></div>
+<div id="over" class="overlay"><h1 id="overTitle">패배</h1><p id="overTxt"></p><div id="overScore"></div><div class="row"><button class="btn main" onclick="location.reload()">다시</button><a class="btn" href="../">2D 판으로</a></div></div>
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 <script type="module" src="game3d.js"></script>
 </body>

@@ -208,6 +208,7 @@ export function spawnChar(id, scale = 1) {
     update(dt) { if (oneShot > 0) oneShot -= dt; mixer.update(dt); },
     flash(on) { mat.emissive.copy(on ? new THREE.Color(0xffffff) : baseEmissive); mat.emissiveIntensity = on ? 0.9 : 1; },
     tint(color) { mat.color.set(color || 0xffffff); },
+    setLook(k) { mat.emissive.set(k === 'wind' ? '#802010' : baseEmissive); },
     dispose() { holder.removeFromParent(); mat.dispose(); mixer.stopAllAction(); },
   };
   ch.play('idle', 0);
