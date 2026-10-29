@@ -214,3 +214,73 @@ export function spawnChar(id, scale = 1) {
   return ch;
 }
 export function kindHeight(id) { return buildKind(id).height * (kinds[id].spec.scale || 1); }
+
+// ---------- crowds: many foes of one kind share a few animated "puppet" skeletons ----------
+// Each foe is a SkinnedMesh in 'detached' bind mode bound to a puppet's skeleton that sits at the origin, so
+// the mesh's own transform places it in the world. Puppets run at staggered phases; per frame the cost is a
+// handful of mixers per kind instead of one per foe, and the skinning matrices upload once per puppet.
+const crowds = {};
+const RUN_PHASES = 2;
+function crowdOf(id) {
+  if (crowds[id]) return crowds[id];
+  const t = buildKind(id), sp = kinds[id].spec;
+  let geo = null; t.root.traverse((c) => { if (c.name === 'body') geo = c.geometry; });
+  const base = { vertexColors: true, flatShading: true, transparent: !!sp.opacity, opacity: sp.opacity || 1 };
+  const mats = {
+    normal: new THREE.MeshLambertMaterial({ ...base, emissive: sp.emissive || 0x000000 }),
+    flash: new THREE.MeshLambertMaterial({ ...base, emissive: 0xffffff, emissiveIntensity: 0.85 }),
+    elite: new THREE.MeshLambertMaterial({ ...base, color: 0xffd890, emissive: 0x3a2400 }),
+    wind: new THREE.MeshLambertMaterial({ ...base, emissive: 0x6a0c0c }),
+  };
+  const puppets = {};
+  const mk = (state, names, phase, speed = 1) => {
+    const root = SkeletonUtils.clone(t.root);
+    let skel = null; root.traverse((c) => { if (c.isSkinnedMesh) { skel = c.skeleton; c.visible = false; } });
+    const mixer = new THREE.AnimationMixer(root);
+    const clip = findClip(t.clips, names);
+    if (clip) { const a = mixer.clipAction(clip); a.play(); a.time = clip.duration * phase; a.timeScale = speed; }
+    root.updateMatrixWorld(true);
+    return { root, skel, mixer };
+  };
+  for (let i = 0; i < RUN_PHASES; i++) (puppets.run ??= []).push(mk('run', ANIMS.run, i / RUN_PHASES));
+  puppets.idle = [mk('idle', ANIMS.idle, 0)];
+  puppets.slash = [mk('slash', ANIMS.slash, 0, 1.2)];
+  const h = t.height;
+  const sphere = new THREE.Sphere(new THREE.Vector3(0, h * 0.5, 0), h * 0.75);
+  return (crowds[id] = { geo, mats, puppets, height: h, sphere, scale: kinds[id].spec.scale || 1 });
+}
+export function updateCrowds(dt) {
+  for (const c of Object.values(crowds)) for (const list of Object.values(c.puppets)) for (const p of list) { p.mixer.update(dt); p.root.updateMatrixWorld(true); }
+}
+export function spawnCrowdChar(id, scale = 1) {
+  const c = crowdOf(id);
+  const mesh = new THREE.SkinnedMesh(c.geo, c.mats.normal);
+  mesh.bindMode = 'detached';
+  const s = c.scale * scale;
+  mesh.scale.setScalar(s);
+  mesh.boundingSphere = c.sphere.clone();
+  mesh.frustumCulled = true;
+  mesh.castShadow = true;
+  const holder = new THREE.Group(); holder.add(mesh);
+  const pick = (state) => { const list = c.puppets[state] || c.puppets.idle; return list[(Math.random() * list.length) | 0]; };
+  let cur = null, look = 'normal', oneShot = 0;
+  const bindTo = (state) => { const p = pick(state); if (cur === p) return; cur = p; mesh.bind(p.skel, new THREE.Matrix4()); };
+  bindTo('run');
+  const ch = {
+    obj: holder, mesh, height: c.height * s, crowd: true,
+    mat: { emissive: { set: () => {} }, color: { set: () => {} } }, // compatibility no-ops
+    play(name) {
+      if (name === 'run' || name === 'idle') { if (oneShot <= 0) bindTo(name); return; }
+      if (name === 'die') { oneShot = 99; bindTo('idle'); return; }
+      if (name === 'hit') return;
+      bindTo(name === 'punch' ? 'punch' : 'slash'); oneShot = 0.55;
+    },
+    busy() { return oneShot > 0; },
+    update(dt) { if (oneShot > 0 && oneShot < 50) { oneShot -= dt; if (oneShot <= 0) bindTo('run'); } },
+    setLook(k) { if (k !== look) { look = k; mesh.material = c.mats[k] || c.mats.normal; } },
+    flash(on) { ch.setLook(on ? 'flash' : ch.base || 'normal'); },
+    tint(color) { if (color) { ch.base = 'elite'; ch.setLook('elite'); } },
+    dispose() { holder.removeFromParent(); },
+  };
+  return ch;
+}

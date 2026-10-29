@@ -2,7 +2,8 @@
 // Rules run on the x/z plane with a height function H(x, z); characters are rigged low-poly models
 // (chars.js) and the scene is drawn at low resolution and scaled up with hard pixels.
 import * as THREE from 'three';
-import { loadBases, defineKind, spawnChar, kindHeight } from './chars.js';
+import { loadBases, defineKind, spawnChar, spawnCrowdChar, updateCrowds } from './chars.js';
+import { mergeGeometries } from './lib/BufferGeometryUtils.js';
 import { HERO_KINDS, FOE_KINDS } from './kinds.js';
 import { createFX } from './fx.js';
 import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js';
@@ -78,6 +79,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   renderer.setPixelRatio(1 / PIXEL);
   renderer.domElement.style.imageRendering = 'pixelated';
   renderer.shadowMap.enabled = !IS_TOUCH;
+  renderer.debug.checkShaderErrors = false;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -128,7 +130,31 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     const s = hillSeed;
     return 3.2 * Math.sin(x * 0.045 + s) * Math.cos(z * 0.038 - s * 0.7) + 2.2 * Math.sin((x + z) * 0.021 + 1.3 + s) + 1.1 * Math.sin(x * 0.11 + z * 0.07 + s * 2) + 0.5 * Math.cos(z * 0.16 - x * 0.05);
   }
+  // gameplay reads heights from a precomputed grid (bilinear); the exact formula only fills the grid
+  const HRES = 1, HN = WORLD * 2 / HRES + 1;
+  let HG = null;
   function H(x, z) {
+    if (!HG) return Hx(x, z);
+    const fx = clamp((x + WORLD) / HRES, 0, HN - 1.001), fz = clamp((z + WORLD) / HRES, 0, HN - 1.001);
+    const ix = fx | 0, iz = fz | 0, tx = fx - ix, tz = fz - iz, i = iz * HN + ix;
+    const a = HG[i] + (HG[i + 1] - HG[i]) * tx, b = HG[i + HN] + (HG[i + HN + 1] - HG[i + HN]) * tx;
+    return a + (b - a) * tz;
+  }
+  function buildHeightGrid() {
+    HG = null;
+    const g = new Float32Array(HN * HN);
+    for (let j = 0; j < HN; j++) for (let i = 0; i < HN; i++) g[j * HN + i] = Hx(-WORLD + i * HRES, -WORLD + j * HRES);
+    HG = g;
+  }
+  // obstacles bucketed into a coarse grid so walkers only test their neighbours
+  const OCELL = 6;
+  let OGRID = new Map();
+  const okey = (cx, cz) => cx * 4096 + cz;
+  function buildObstGrid() {
+    OGRID = new Map();
+    for (const ob of OBST) { const k = okey(Math.floor(ob.x / OCELL), Math.floor(ob.z / OCELL)); if (!OGRID.has(k)) OGRID.set(k, []); OGRID.get(k).push(ob); }
+  }
+  function Hx(x, z) {
     let h = hills(x, z);
     for (const p of PLATEAUS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 2) h += p.h * smooth(p.r + 1.6, p.r, d); }
     for (const b of BASINS) { const d2 = ((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r); if (d2 < 4) h -= b.d * Math.exp(-d2 * 1.6); }
@@ -159,6 +185,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     }
     for (let i = 0; i < 2; i++) BASINS.push({ x: (rnd() - 0.5) * 220, z: (rnd() - 0.5) * 220, r: 16 + rnd() * 10, d: 6 + rnd() * 2 });
     BASINS = BASINS.filter((b) => Math.hypot(b.x, b.z) > b.r + 20);
+    buildHeightGrid();
     // sky + fog
     const SKY = new THREE.Color(pal.fog);
     scene.background = SKY; scene.fog = new THREE.Fog(SKY, 48, 125);
@@ -208,12 +235,13 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     };
     const free = (x, z) => H(x, z) > WATER_Y + 0.4 && Math.hypot(x, z) > 10 && !PLATEAUS.some((p) => Math.abs(Math.hypot(x - p.x, z - p.z) - p.r) < 3.5);
     const N = IS_TOUCH ? 200 : 280;
+    const propBucket = [], glowBucket = [];
     for (let i = 0; i < N; i++) {
       const x = (rnd() - 0.5) * 2 * (WORLD - 16), z = (rnd() - 0.5) * 2 * (WORLD - 16);
       if (!free(x, z)) continue;
       const kind = pal.props[Math.floor(rnd() * pal.props.length)];
       const g = new THREE.Group(); g.position.set(x, H(x, z), z); g.rotation.y = rnd() * 6.28;
-      const add = (geo2, mat, px, py, pz, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo2, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+      const add = (geo2, mat, px, py, pz, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo2, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); g.add(m); return m; };
       if (kind === 'pine') {
         const s = 1 + rnd() * 0.6;
         add(PROP_GEO.trunk, M.trunk, 0, 1, 0);
@@ -240,8 +268,13 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
       } else if (kind === 'grave') {
         add(PROP_GEO.box, M.grave, 0, 0.7, 0, 0.9, 1.4, 0.3); OBST.push({ x, z, r: 0.5 });
       }
-      world.add(g);
+      // bake this prop into the shared buckets (one merged mesh per world instead of hundreds of draw calls)
+      g.updateMatrixWorld(true);
+      g.traverse((m) => { if (!m.isMesh) return; const gg = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); gg.applyMatrix4(m.matrixWorld); const n = gg.attributes.position.count, col = new Float32Array(n * 3), c0 = m.material.color; for (let i = 0; i < n; i++) { col[i * 3] = c0.r; col[i * 3 + 1] = c0.g; col[i * 3 + 2] = c0.b; } gg.setAttribute('color', new THREE.BufferAttribute(col, 3)); if (gg.attributes.uv) gg.deleteAttribute('uv'); (m.material.isMeshBasicMaterial ? glowBucket : propBucket).push(gg); });
     }
+    buildObstGrid();
+    if (propBucket.length) { const pm = new THREE.Mesh(mergeGeometries(propBucket), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); pm.castShadow = pm.receiveShadow = true; world.add(pm); }
+    if (glowBucket.length) world.add(new THREE.Mesh(mergeGeometries(glowBucket), new THREE.MeshBasicMaterial({ vertexColors: true })));
     // 경공대 + chests
     const padGeo = new THREE.TorusGeometry(1.4, 0.18, 6, 20).rotateX(Math.PI / 2), padCore = new THREE.CircleGeometry(1.2, 18).rotateX(-Math.PI / 2);
     const padMat = new THREE.MeshBasicMaterial({ color: '#7fe3ff', opacity: 0.85, ...ADD }), padCoreMat = new THREE.MeshBasicMaterial({ color: '#3aa6d8', opacity: 0.4, ...ADD });
@@ -266,8 +299,9 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
 
   // ---------- 배우 (3D 캐릭터) ----------
   const CHAR_SCALE = 1.45; // CC0 models are ~1.8 m; heroes stand ~2.6 units like the old sprites
-  function makeActor(kind, scale = 1, tint) {
-    const ch = spawnChar(kind, CHAR_SCALE * scale);
+  function makeActor(kind, scale = 1, tint, crowd = false) {
+    const ch = crowd ? spawnCrowdChar(kind, CHAR_SCALE * scale) : spawnChar(kind, CHAR_SCALE * scale);
+    ch.obj.rotation.order = 'YXZ';
     if (tint) ch.tint(tint);
     scene.add(ch.obj);
     const sh = new THREE.Mesh(shadowGeo, shadowMat); sh.renderOrder = 1; sh.visible = !renderer.shadowMap.enabled; scene.add(sh);
@@ -439,7 +473,16 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   function impact(sec = 0.06) { flashT = Math.max(flashT, sec); }
 
   // ---------- 무공 (arts.js) ----------
-  const nearestN = (n, range, x = P.x, z = P.z) => enemies.filter((e) => !e.dead && (e.x - x) ** 2 + (e.z - z) ** 2 < range * range).sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) - ((b.x - x) ** 2 + (b.z - z) ** 2)).slice(0, n);
+  let nearCache = null, nearFrame = -1, frameNo = 0;
+  function nearestN(n, range, x = P.x, z = P.z) {
+    if (x === P.x && z === P.z) {
+      if (nearFrame !== frameNo) { nearFrame = frameNo; nearCache = enemies.map((e) => ({ e, d2: (e.x - x) ** 2 + (e.z - z) ** 2 })).sort((a, b) => a.d2 - b.d2); }
+      const out = [], r2 = range * range;
+      for (const c of nearCache) { if (c.d2 >= r2 || out.length >= n) break; if (!c.e.dead) out.push(c.e); }
+      return out;
+    }
+    return enemies.filter((e) => !e.dead && (e.x - x) ** 2 + (e.z - z) ** 2 < range * range).sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) - ((b.x - x) ** 2 + (b.z - z) ** 2)).slice(0, n);
+  }
   const nearest = (range) => nearestN(1, range)[0];
   const inRadius = (x, z, R, fn) => { for (const e of enemies) if (!e.dead && Math.hypot(e.x - x, e.z - z) < R + e.r) fn(e); };
   function lineHits(x0, z0, x1, z1, width, fn) {
@@ -516,7 +559,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
       const a = opts.a ?? rand(0, 6.28), d = opts.d ?? rand(24, 34), x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d;
       if (Math.abs(x) > WORLD - 10 || Math.abs(z) > WORLD - 10 || H(x, z) < WATER_Y - 1.2) { if (opts.a !== undefined) return null; continue; }
       const mul = (1 + stageTime / 160 + si * 0.9) * (opts.elite ? 6 : 1);
-      const act = makeActor(T.key, opts.elite ? 1.3 : 1, opts.elite ? '#ffd890' : null);
+      const act = makeActor(T.key, opts.elite ? 1.3 : 1, opts.elite ? '#ffd890' : null, true);
       const e = { T, x, z, y: H(x, z) + (T.fly || 0), hp: T.hp * (T.boss ? 1 + si * 0.25 : mul), max: 0, flash: 0, kx: 0, kz: 0, stun: 0, cd: rand(1, 3), phase: rand(0, 6),
         a: act, r: Math.max(0.45, T.r / PX * 1.1) * (opts.elite ? 1.3 : 1), h: act.h, elite: !!opts.elite, dmg: T.dmg * (1 + si * 0.35) * (opts.elite ? 1.5 : 1), spd: (T.spd / PX) * (opts.elite ? 0.9 : 1) };
       e.max = e.hp;
@@ -566,19 +609,19 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   const orbGeo = new THREE.OctahedronGeometry(0.3, 0), orbMat = new THREE.MeshBasicMaterial({ color: '#7ff0c8' }), orbMid = new THREE.MeshBasicMaterial({ color: '#6ab8ff' }), orbBig = new THREE.MeshBasicMaterial({ color: '#ffd76a' });
 
   // 적 공격: 원거리 탄 / 돌진 / 보스 내려찍기
-  const eshotGeo = new THREE.SphereGeometry(0.35, 8, 6);
+  const eshotGeo = new THREE.SphereGeometry(0.35, 8, 6), eshotMats = {};
+  const eshotMat = (c) => eshotMats[c] || (eshotMats[c] = new THREE.MeshBasicMaterial({ color: c }));
   function enemyShoot(e, color = '#ff5a8a') {
     const sy = e.y + e.h * 0.45, a = Math.atan2(P.z - e.z, P.x - e.x), spd = 11;
-    const m = new THREE.Mesh(eshotGeo, new THREE.MeshBasicMaterial({ color })); m.add(glowSprite(color, 1.4)); scene.add(m);
+    const m = new THREE.Mesh(eshotGeo, eshotMat(color)); scene.add(m);
+    FXS.sprite(e.x, sy, e.z, { tex: 'glow', color, size: 1.6, life: 3, fade: 'hold', follow: (() => { const o = { x: 0, y: 0, z: 0 }; return () => { o.x = m.position.x; o.y = m.position.y; o.z = m.position.z; if (!m.parent) o.y = -99; return o; }; })() });
     eshots.push({ m, x: e.x, y: sy, z: e.z, vx: Math.cos(a) * spd, vz: Math.sin(a) * spd, life: 3, dmg: e.dmg * 0.8 });
   }
   function bossAttack(e) {
     // telegraphed slam at the hero's feet: jump to dodge it
     const x = P.x, z = P.z, R = 4.5 + si * 0.6, y = H(x, z);
-    const warn = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff3030', transparent: true, opacity: 0.25, depthWrite: false }));
-    const edge = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff5050', transparent: true, opacity: 0.9, depthWrite: false }));
-    warn.add(edge); warn.position.set(x, y + 0.2, z);
-    addFx(warn, 1.0, (f, k) => { warn.scale.setScalar(R * Math.min(1, k * 1.6)); warn.material.opacity = 0.15 + 0.25 * Math.abs(Math.sin(k * 20)); });
+    FXS.ground(x, y, z, { tex: 'glow', color: '#ff2020', size: R * 2.2, life: 1.0, fade: 'hold', opacity: 0.45, blend: 'normal', order: 1 });
+    FXS.ground(x, y, z, { tex: 'ring', color: '#ff5050', size: R * 0.4, grow: 5, life: 1.0, fade: 'hold', growEase: 'lin' });
     e.slamAt = { t: 1.0, x, z, R };
     text(e.x, e.y + e.h + 1, e.z, '!', '#ff5050', 40, 0.8, true);
   }
@@ -699,7 +742,8 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     return (g1 - H(x0, z0)) / d < 1.5 && g1 - footY < 0.9;
   }
   function moveXZ(o, dx, dz, footY, r) {
-    for (const ob of OBST) {
+    const cx0 = Math.floor((o.x + dx) / OCELL), cz0 = Math.floor((o.z + dz) / OCELL);
+    for (let gx = cx0 - 1; gx <= cx0 + 1; gx++) for (let gz = cz0 - 1; gz <= cz0 + 1; gz++) for (const ob of OGRID.get(okey(gx, gz)) || []) {
       const ex = o.x + dx - ob.x, ez = o.z + dz - ob.z;
       if (Math.abs(ex) > ob.r + r || Math.abs(ez) > ob.r + r) continue;
       const d = Math.hypot(ex, ez), m = ob.r + r;
@@ -714,6 +758,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
   let fwdX = 0, fwdZ = -1, rgtX = 1, rgtZ = 0;
   function update(dt) {
+    frameNo++;
     time += dt; stageTime += dt;
     wordCd = Math.max(0, wordCd - dt);
     // input → camera-relative movement
@@ -734,7 +779,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
       P.vy = P.jump * (P.jumps ? 0.85 : 1); P.jumps++; P.air = true; P.inv = Math.max(P.inv, 0.25);
       if (P.jumps === 2) actorAnim(P.actor, 'roll', 1.6);
       burst(P.x, P.y + 0.3, P.z, '#e8f4ff', 10, 4, 0.35);
-      if (P.jumps === 2) ringWave(P.x, P.y, P.z, 1.6, '#cfefff', 0.3, 0.3);
+      if (P.jumps === 2) FXS.shockwave(P.x, P.y, P.z, 1.8, '#cfefff', { life: 0.3 });
     }
     wantJump = false;
     if (wantUlt) { wantUlt = false; ultimate(); }
@@ -774,6 +819,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     P.actor.ch.obj.visible = !(P.inv > 0.3 && (time * 20) % 2 < 1);
     if (P.atkCd > 0) P.atkCd -= dt;
 
+    updateCrowds(dt);
     for (const [id, w] of Object.entries(P.weapons)) WEAPONS[id].update(w, dt);
     ARTS.update(dt);
     FXS.update(dt);
@@ -795,7 +841,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
 
     // spawning: denser over the chapter, a surrounding wave at 2:30, elites, the boss at 5:00
     spawnT -= dt;
-    const cap = IS_TOUCH ? 130 : 180;
+    const cap = IS_TOUCH ? (lowFx ? 80 : 100) : 170;
     if (spawnT <= 0 && !boss) {
       spawnT = Math.max(0.2, 0.75 - stageTime / 320);
       const n = 2 + Math.floor(stageTime / 50) + si;
@@ -828,7 +874,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
         if (e.cd <= 0 && d < 22) { e.cd = rand(2.2, 3.2); enemyShoot(e, e.T.key === 'archer' ? '#e8d8a0' : e.T.key === 'poisoner' ? '#7ae05a' : '#ff5a8a'); }
       } else if (e.T.ai === 'charger') {
         if (e.dash > 0) { e.dash -= dt; spd *= 3.2; dx = e.dx; dz = e.dz; }
-        else if (e.wind > 0) { e.wind -= dt; spd = 0; e.a.ch.mat.emissive.set('#6a0c0c'); if (e.wind <= 0) { e.dash = 0.6; e.dx = dx; e.dz = dz; e.a.ch.mat.emissive.set(0); actorAnim(e.a, 'slash', 1.4); } }
+        else if (e.wind > 0) { e.wind -= dt; spd = 0; e.a.ch.setLook('wind'); if (e.wind <= 0) { e.dash = 0.6; e.dx = dx; e.dz = dz; e.a.ch.setLook(e.elite ? 'elite' : 'normal'); actorAnim(e.a, 'slash', 1.4); } }
         else if (e.cd <= 0 && d < 12) { e.cd = rand(3, 4.5); e.wind = 0.5; }
       }
       if (e.T.hop) spd *= 0.4 + 1.2 * Math.max(0, Math.sin(time * 5 + e.phase));
@@ -836,7 +882,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
         if (e.cd <= 0) { e.cd = Math.max(2.6, 5 - si * 0.6); bossAttack(e); }
         if (e.slamAt && (e.slamAt.t -= dt) <= 0) {
           const s = e.slamAt; e.slamAt = null;
-          ringWave(s.x, H(s.x, s.z), s.z, s.R * 1.1, '#ff6a50', 0.45, 0.3); cracks(s.x, H(s.x, s.z), s.z, s.R, '#ff5030'); shake = Math.max(shake, 0.8);
+          FXS.explode(s.x, H(s.x, s.z), s.z, s.R, '#ff6a50'); FXS.ground(s.x, H(s.x, s.z), s.z, { tex: 'crack', color: '#ff5030', size: s.R * 2.2, life: 1.0, fade: 'out' }); shake = Math.max(shake, 0.8);
           if (Math.hypot(P.x - s.x, P.z - s.z) < s.R && P.y - H(P.x, P.z) < 1.2) damagePlayer(e.dmg * 1.4);
           if (Math.random() < 0.6) for (let i = 0; i < 4 + si * 2; i++) spawn(pickEnemy(), { a: rand(0, 6.28), d: rand(6, 10) + 0 });
         }
@@ -865,7 +911,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
       }
     }
     enemies = enemies.filter((e) => !e.dead);
-    for (const c of corpses) { c.t -= dt; c.a.ch.update(dt); if (c.t < 0.3) c.a.ch.obj.position.y = c.y - (0.3 - c.t) * 2; }
+    for (const c of corpses) { c.t -= dt; c.a.ch.update(dt); c.a.ch.obj.rotation.x = -Math.min(1.45, (1.1 - c.t) * 5); if (c.t < 0.3) c.a.ch.obj.position.y = c.y - (0.3 - c.t) * 2; }
     while (corpses.length && corpses[0].t <= 0) dropActor(corpses.shift().a);
     for (const s of eshots) {
       s.x += s.vx * dt; s.z += s.vz * dt; s.life -= dt; s.m.position.set(s.x, s.y, s.z);
@@ -1028,6 +1074,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   const charsReady = loadBases().then(() => {
     for (const [k, spec] of Object.entries(HERO_KINDS)) defineKind(k, spec);
     for (const [k, spec] of Object.entries(FOE_KINDS)) defineKind(k, spec);
+    FXS.warm(renderer, camera);
     $('go').disabled = false; $('go').textContent = '출전';
   }).catch((err) => { $('go').textContent = '모델을 불러오지 못했어요'; console.error(err); });
   $('go').onclick = () => {
@@ -1045,6 +1092,10 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
   };
   window.__dbg = {
     get P() { return P; }, get enemies() { return enemies; }, WEAPONS, EVOS, grant, start: () => $('go').click(),
+    perf(n) { const t0 = performance.now(); for (let i = 0; i < n; i++) { sparkBudget = 6; update(1 / 60); updateCamera(1 / 60); } const t1 = performance.now(); renderer.info.reset(); renderer.render(scene, camera); return { msPerUpdate: +((t1 - t0) / n).toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, enemies: enemies.length, fx: FXS.count() }; },
+    programs() { return renderer.info.programs.length; },
+    perfStep() { sparkBudget = 6; update(1 / 60); updateCamera(1 / 60); },
+    swarm(n) { for (let i = 0; i < n; i++) spawn(pickEnemy(), { d: 8 + (i % 20) }); },
     setStageTime: (t) => (stageTime = t), evolveAll: () => { for (const [id, w] of Object.entries(P.weapons)) if (EVOS[id]) { EVOS[id].apply(w); w.evolved = true; } refreshWeps(); },
     step(n) { for (let i = 0; i < n && running; i++) { sparkBudget = 6; if (modal) { document.querySelector('#cards .card, #nextBtn')?.click(); } update(1 / 60); } return { t: stageTime, si, kills, lv: P.lv, hp: Math.round(P.hp), n: enemies.length, fx: fxs.length }; },
   };
@@ -1058,6 +1109,7 @@ import { createArts, HERO_DATA, PASSIVES, PASSIVE_BY_ID, SECTS } from './arts.js
     if (running && !paused && !modal) update(dt);
     if (running) { updateCamera(dt); hud(); }
     else { idleA += dt * 0.08; camera.position.set(Math.sin(idleA) * 55, 28, Math.cos(idleA) * 55); camera.lookAt(0, 0, 0); world.userData.dome.position.set(camera.position.x, 0, camera.position.z); }
+    renderer.info.autoReset = true;
     renderer.render(scene, camera);
     drawOverlay(running && !paused && !modal ? dt : 0);
   }

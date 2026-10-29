@@ -72,16 +72,21 @@ export function createArts(G) {
 
   // ---------- visuals for flying things ----------
   const planeGeo = new THREE.PlaneGeometry(1, 1);
+  // projectile visuals are pooled: their materials live for the whole session (no allocation or shader churn)
+  const vpool = {};
+  function fromPool(key, make) { const list = vpool[key] || (vpool[key] = []); const o = list.pop() || make(); o.userData.pkey = key; return o; }
   function flatMesh(tex, color, w, h, add = true) {
-    const m = new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({ map: FX.TEX[tex], color, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: false }));
-    m.rotation.order = 'YXZ'; m.scale.set(w, h, 1); m.renderOrder = 3;
+    const m = fromPool('f' + add, () => new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: false })));
+    m.material.map = FX.TEX[tex]; m.material.color.set(color); m.material.opacity = 1;
+    m.rotation.set(0, 0, 0); m.rotation.order = 'YXZ'; m.scale.set(w, h, 1); m.renderOrder = 3;
     scene.add(m); return m;
   }
   function spriteObj(tex, color, size, add = true) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: FX.TEX[tex], color, transparent: true, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: false }));
+    const s = fromPool('s' + add, () => new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: false })));
+    s.material.map = FX.TEX[tex]; s.material.color.set(color); s.material.opacity = 1; s.material.rotation = 0;
     s.scale.setScalar(size); s.renderOrder = 3; scene.add(s); return s;
   }
-  const kill3 = (o) => { if (!o) return; scene.remove(o); o.material?.dispose(); };
+  const kill3 = (o) => { if (!o) return; scene.remove(o); if (o.userData.pkey) vpool[o.userData.pkey].push(o); };
 
   // projectile: { x,y,z,vx,vz,vy, life, dmg, r, pierce, kind, vis(mesh|sprite), glow, trail, color, onHit, spin, ... }
   function shoot(o) {
@@ -349,13 +354,14 @@ export function createArts(G) {
       puff: (zz, dt) => { if ((zz.pt = (zz.pt || 0) - dt) > 0) return; zz.pt = G.lowFx() ? 0.3 : 0.15; const a = rnd(0, TAU), r = rnd(0, zz.R); FX.sprite(zz.x + Math.cos(a) * r, G.H(zz.x, zz.z) + 0.4, zz.z + Math.sin(a) * r, { tex: 'smoke', color, blend: 'normal', size: zz.R * rnd(0.8, 1.3), life: 1.0, vel: [0, 0.4, 0], grow: 1.3, fade: 'hold', opacity: 0.42 }); } });
     FX.ground(x, G.H(x, z), z, { tex: 'ring', color, size: R * 2, life, fade: 'hold', opacity: 0.35, order: 1 });
   }
+  const shardGeo = new THREE.ConeGeometry(0.25, 1.6, 5), shardMat = new THREE.MeshLambertMaterial({ color: '#d8f0ff', emissive: '#4a7aa0', transparent: true, opacity: 0.95 });
   function icicleDrop(x, z, R, dmg, color = '#aee6ff') {
     const y = G.H(x, z);
     FX.ground(x, y, z, { tex: 'ring', color, size: R * 2, life: 0.4, opacity: 0.5, fade: 'lin' });
-    const shard = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.6, 5), new THREE.MeshLambertMaterial({ color: '#d8f0ff', emissive: '#4a7aa0', transparent: true, opacity: 0.95 }));
+    const shard = new THREE.Mesh(shardGeo, shardMat);
     shard.rotation.x = Math.PI; scene.add(shard);
     let t = 0;
-    const fall = () => { t += 1 / 60; const k = Math.min(1, t / 0.32); shard.position.set(x, y + 0.8 + (1 - k * k) * 12, z); if (k < 1) later(1 / 60, fall); else { scene.remove(shard); shard.geometry.dispose(); shard.material.dispose(); FX.shockwave(x, y, z, R * 1.2, color, { life: 0.35 }); FX.ground(x, y, z, { tex: 'flake', color, size: R * 2.2, life: 1.2, fade: 'out', opacity: 0.8, order: 1 }); for (let i = 0; i < (G.lowFx() ? 3 : 7); i++) { const a = rnd(0, TAU); FX.sprite(x, y + 0.5, z, { tex: 'flake', color: '#ffffff', size: 0.45, life: 0.5, vel: [Math.cos(a) * 5, rnd(3, 6), Math.sin(a) * 5], grav: 14, fade: 'out', spin: 6 }); } G.inRadius(x, z, R, (e) => { G.hurt(e, dmg, 0, 0, { color }); e.chill = Math.max(e.chill || 0, 1.5); }); } };
+    const fall = () => { t += 1 / 60; const k = Math.min(1, t / 0.32); shard.position.set(x, y + 0.8 + (1 - k * k) * 12, z); if (k < 1) later(1 / 60, fall); else { scene.remove(shard); FX.shockwave(x, y, z, R * 1.2, color, { life: 0.35 }); FX.ground(x, y, z, { tex: 'flake', color, size: R * 2.2, life: 1.2, fade: 'out', opacity: 0.8, order: 1 }); for (let i = 0; i < (G.lowFx() ? 3 : 7); i++) { const a = rnd(0, TAU); FX.sprite(x, y + 0.5, z, { tex: 'flake', color: '#ffffff', size: 0.45, life: 0.5, vel: [Math.cos(a) * 5, rnd(3, 6), Math.sin(a) * 5], grav: 14, fade: 'out', spin: 6 }); } G.inRadius(x, z, R, (e) => { G.hurt(e, dmg, 0, 0, { color }); e.chill = Math.max(e.chill || 0, 1.5); }); } };
     fall();
   }
   function swordDrop(x, z, R, dmg, color, size = 2) {

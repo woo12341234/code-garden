@@ -80,9 +80,26 @@ export function createFX(scene, opts = {}) {
   const blendOf = (b) => (b === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending);
   const ease = { out: (k) => 1 - (1 - k) * (1 - k), in: (k) => k * k, flash: (k) => (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88), lin: (k) => k };
 
+  // object pools: materials are never disposed, so shader programs stay compiled (no mid-fight hitches)
+  const pools = { sprite: [], plane: [], ground: [] };
+  function acquire(kind, o) {
+    let obj = pools[kind].pop();
+    if (!obj) {
+      if (kind === 'sprite') obj = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false }));
+      else obj = new THREE.Mesh(kind === 'ground' ? groundGeo : planeGeo, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      obj.userData.kind = kind;
+    }
+    const m = obj.material;
+    m.map = TEX[o.tex || 'glow']; m.color.set(o.color || '#ffffff'); m.opacity = o.opacity ?? 1;
+    const bl = blendOf(o.blend); if (m.blending !== bl) { m.blending = bl; m.needsUpdate = true; }
+    if (kind === 'sprite') m.rotation = o.rot ?? (o.spin ? rnd(0, TAU) : 0);
+    obj.rotation.set(0, 0, 0); obj.rotation.order = 'XYZ'; obj.scale.set(1, 1, 1);
+    return obj;
+  }
+  function release(obj) { scene.remove(obj); pools[obj.userData.kind].push(obj); }
   // base element: o = { tex, color, size, life, grow (end scale mult), spin, fade ('out'|'flash'|...), vel, drag, grav, delay, opacity, blend }
   function add(obj, o) {
-    if (live.length >= cap()) { obj.material.dispose(); return null; }
+    if (live.length >= cap()) { release(obj); return null; }
     obj.renderOrder = o.order ?? 3;
     obj.visible = !o.delay;
     scene.add(obj);
@@ -96,18 +113,17 @@ export function createFX(scene, opts = {}) {
   const FX = {
     TEX,
     sprite(x, y, z, o) {
-      const m = new THREE.SpriteMaterial({ map: TEX[o.tex || 'glow'], color: o.color || '#ffffff', transparent: true, opacity: o.opacity ?? 1, blending: blendOf(o.blend), depthWrite: false, rotation: o.rot ?? (o.spin ? rnd(0, TAU) : 0), fog: false });
-      const s = new THREE.Sprite(m); s.position.set(x, y, z); s.scale.setScalar(o.size || 1);
+      const s = acquire('sprite', o); s.position.set(x, y, z); s.scale.setScalar(o.size || 1);
       if (o.aspect) s.scale.x *= o.aspect;
       return add(s, o);
     },
     ground(x, y, z, o) {
-      const m = new THREE.Mesh(groundGeo, mat(o)); m.position.set(x, y + (o.lift ?? 0.12), z); m.scale.setScalar(o.size || 1); m.rotation.y = o.yaw || 0;
+      const m = acquire('ground', o); m.position.set(x, y + (o.lift ?? 0.12), z); m.scale.setScalar(o.size || 1); m.rotation.y = o.yaw || 0;
       return add(m, o);
     },
     // a plane lying in the ground plane but lifted, turned to `yaw` (world angle a = atan2(dz, dx)); tilt raises it toward the camera
     plane(x, y, z, o) {
-      const m = new THREE.Mesh(planeGeo, mat(o)); m.position.set(x, y, z);
+      const m = acquire('plane', o); m.position.set(x, y, z);
       m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (o.tilt || 0), -(o.yaw || 0), o.roll || 0);
       m.scale.set(o.w || o.size || 1, o.h || o.size || 1, 1);
       return add(m, o);
@@ -134,10 +150,17 @@ export function createFX(scene, opts = {}) {
         const f = o.fade || 'flash';
         const vis = f === 'out' ? 1 - ease.in(k) : f === 'hold' ? (k < 0.75 ? Math.min(1, k / 0.08) : (1 - k) / 0.25) : f === 'lin' ? 1 - k : ease.flash(k);
         e.obj.material.opacity = (o.opacity ?? 1) * vis;
-        if (k >= 1) { scene.remove(e.obj); e.obj.material.dispose(); live.splice(i, 1); }
+        if (k >= 1) { release(e.obj); live.splice(i, 1); }
       }
     },
-    clear() { for (const e of live) { scene.remove(e.obj); e.obj.material.dispose(); } live.length = 0; },
+    clear() { for (const e of live) release(e.obj); live.length = 0; },
+    // compile every effect shader up front: one of each pooled kind in both blend modes
+    warm(renderer, camera) {
+      const tmp = [];
+      for (const kind of ['sprite', 'plane', 'ground']) for (const blend of ['add', 'normal']) { const o = acquire(kind, { blend }); o.position.set(0, -50, 0); scene.add(o); tmp.push(o); }
+      renderer.compile(scene, camera);
+      for (const o of tmp) release(o);
+    },
     count: () => live.length,
 
     // ---------- presets ----------
@@ -190,7 +213,7 @@ export function createFX(scene, opts = {}) {
       for (let i = 1; i <= 7; i++) {
         const t = i / 7, nx = i === 7 ? x : x + rnd(-1.4, 1.4) * (1 - t), ny = y + 22 * (1 - t), nz = i === 7 ? z : z + rnd(-1.4, 1.4) * (1 - t);
         const L = Math.hypot(nx - px, ny - py, nz - pz);
-        const m = new THREE.Mesh(planeGeo, mat({ tex: 'streak', color }));
+        const m = acquire('plane', { tex: 'streak', color });
         m.position.set((px + nx) / 2, (py + ny) / 2, (pz + nz) / 2);
         m.lookAt(m.position.x + (nx - px), m.position.y + (ny - py), m.position.z + (nz - pz)); m.rotateY(Math.PI / 2);
         m.scale.set(L * 1.1, 0.9, 1);
