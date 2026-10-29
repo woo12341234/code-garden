@@ -478,7 +478,7 @@ import { createSound } from './sfx.js';
   function text(x, y, z, s, color, size = 16, life = 0.75, big = false) { if (texts.length < (lowFx ? 40 : 90)) texts.push({ x, y, z, s, color, size, life, max: life, big, jx: rand(-0.4, 0.4) }); }
   let wordCd = 0;
   function word(kind, x, y, z, big = false) { if (wordCd > 0) return; wordCd = big ? 0.15 : 0.35; text(x, y + 2.5, z, pick(WORDS[kind]), '#fff3c8', big ? 34 : 24, 0.7, true); }
-  function impact(sec = 0.06) { flashT = Math.max(flashT, sec); }
+  function impact(sec = 0.06) { if (M.settings.flash !== false) flashT = Math.min(0.12, Math.max(flashT, sec)); }
 
   // ---------- 무공 (arts.js) ----------
   let nearCache = null, nearFrame = -1, frameNo = 0;
@@ -706,7 +706,18 @@ import { createSound } from './sfx.js';
   // ---------- 선택 창 (레벨업·보물함·비전서·갈림길·기연 공용) ----------
   const modalQ = [];
   function queue(fn, front = false) { if (front) modalQ.unshift(fn); else modalQ.push(fn); pump(); }
-  function pump() { if (modal || !running || !modalQ.length || M.gachaOpen()) return; modal = true; modalQ.shift()(); }
+  function pump() {
+    if (modal || !running || !modalQ.length || M.gachaOpen()) return;
+    modal = true;
+    try { modalQ.shift()(); } catch (err) { console.error(err); modal = false; }
+  }
+  // watchdog: "modal" with no window on screen means a window failed to open; unstick the run
+  let stuckT = 0;
+  function modalWatch(dt) {
+    const shown = M.gachaOpen() || ['levelup', 'clear', 'pause'].some((id) => $(id).classList.contains('on'));
+    stuckT = running && modal && !shown ? stuckT + dt : 0;
+    if (stuckT > 1) { stuckT = 0; modal = false; pump(); }
+  }
   function endModal() { modal = false; setTimeout(pump, 140); }
   const cardImg = (o) => (o.img ? `<img src="${A(o.img)}">` : M.icon(o.icon || '✨'));
   // opts: { img | icon, title, st, desc, cls, pick }; tools: show reroll/skip/banish (level-up only)
@@ -1571,7 +1582,6 @@ import { createSound } from './sfx.js';
       g2.fillStyle = 'rgba(255, 215, 110, .85)'; g2.beginPath(); g2.moveTo(12, 0); g2.lineTo(-6, -7); g2.lineTo(-6, 7); g2.closePath(); g2.fill();
       g2.restore();
     }
-    if (flashT > 0) { flashT -= dt; $('flash').style.opacity = 1; } else $('flash').style.opacity = 0;
   }
   // DOM writes only when a value changes (layout work adds up on phones)
   const hudCache = {};
@@ -1684,14 +1694,19 @@ import { createSound } from './sfx.js';
     step(n) { for (let i = 0; i < n && running; i++) { sparkBudget = 6; if (M.gachaOpen()) { M.gachaAdvance(); M.gachaAdvance(); } if (modal) { const c = $('clear').classList.contains('on') ? $('nextBtn') : document.querySelector('#cards .card'); c?.click(); } else update(1 / 60); } return { t: stageTime, si, kills, lv: P.lv, hp: Math.round(P.hp), n: enemies.length, fx: fxs.length }; },
   };
 
-  let last = performance.now(), idleA = 0;
+  let last = performance.now(), idleA = 0, flashOn = false, frameErr = 0;
   function frame(now) {
     requestAnimationFrame(frame);
     let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    // the inverted impact frame runs on wall time, so a pause, a card pick or game over can never freeze it on screen
+    const fl = flashT > 0 && running && !paused && !modal;
+    if (flashT > 0) flashT = running && !paused && !modal ? flashT - dt : 0;
+    if (fl !== flashOn) { flashOn = fl; $('flash').style.opacity = fl ? 1 : 0; }
     sparkBudget = lowFx ? 6 : 14;
     if (hitStopT > 0) { hitStopT -= dt; dt *= 0.08; }
-    if (running && !paused && !modal) update(dt);
-    if (running) { updateCamera(dt); hud(); }
+    // one bad frame must not stall the whole run: log it and keep going
+    if (running && !paused && !modal) { try { update(dt); } catch (err) { console.error(err); if (!frameErr++) M.toast('오류가 나서 한 프레임을 건너뛰었어요', String(err.message || err).slice(0, 60)); } }
+    if (running) { updateCamera(dt); hud(); modalWatch(dt); }
     else { idleA += dt * 0.08; camera.position.set(Math.sin(idleA) * 55, 28, Math.cos(idleA) * 55); camera.lookAt(0, 0, 0); world.userData.dome.position.set(camera.position.x, 0, camera.position.z); }
     renderer.info.autoReset = true;
     renderer.render(scene, camera);
