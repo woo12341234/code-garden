@@ -1,5 +1,9 @@
 // 강호난세 3D: the 2D game's heroes, foes, chapters and techniques in a real 3D world (Three.js).
-// Rules run on the x/z plane with a height function H(x, z); sprites stand as billboards.
+// Rules run on the x/z plane with a height function H(x, z); characters are rigged low-poly models
+// (chars.js) and the scene is drawn at low resolution and scaled up with hard pixels.
+import * as THREE from 'three';
+import { loadBases, defineKind, spawnChar, kindHeight } from './chars.js';
+import { HERO_KINDS, FOE_KINDS } from './kinds.js';
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -76,8 +80,13 @@
   const STAGE_LEN = 300;
 
   // ---------- 렌더러 ----------
-  const renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, IS_TOUCH ? 1.5 : 2));
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  // Megabonk-style: render at a fraction of the screen and let CSS blow the pixels up
+  let PIXEL = IS_TOUCH ? 2.4 : 2.6;
+  renderer.setPixelRatio(1 / PIXEL);
+  renderer.domElement.style.imageRendering = 'pixelated';
+  renderer.shadowMap.enabled = !IS_TOUCH;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.prepend(renderer.domElement);
@@ -90,8 +99,11 @@
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.3, 300);
   addEventListener('resize', resize); resize();
-  const hemi = new THREE.HemisphereLight('#e8f2ff', '#5a4a36', 1.15); scene.add(hemi);
-  const sun = new THREE.DirectionalLight('#fff1d6', 1.6); sun.position.set(60, 90, 30); scene.add(sun); scene.add(sun.target);
+  const hemi = new THREE.HemisphereLight('#d8e4f4', '#4a3e30', 0.95); scene.add(hemi);
+  const sun = new THREE.DirectionalLight('#ffe2b8', 2.1); sun.position.set(60, 90, 30); scene.add(sun); scene.add(sun.target);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 260 }); sun.shadow.bias = -0.0015;
+  // cool rim light from behind for crisp silhouettes
+  const rim = new THREE.DirectionalLight('#9ec4ff', 1.3); scene.add(rim); scene.add(rim.target);
 
   // shared textures
   const loader = new THREE.TextureLoader();
@@ -194,7 +206,7 @@
     }
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.computeVertexNormals();
-    world.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+    { const gm = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); gm.receiveShadow = true; world.add(gm); }
     const water = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshLambertMaterial({ color: pal.water, transparent: true, opacity: 0.72, emissive: si === 3 ? '#3a0a10' : '#000000' }));
     water.rotation.x = -Math.PI / 2; water.position.y = WATER_Y; world.add(water);
     // props
@@ -209,7 +221,7 @@
       if (!free(x, z)) continue;
       const kind = pal.props[Math.floor(rnd() * pal.props.length)];
       const g = new THREE.Group(); g.position.set(x, H(x, z), z); g.rotation.y = rnd() * 6.28;
-      const add = (geo2, mat, px, py, pz, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo2, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); g.add(m); return m; };
+      const add = (geo2, mat, px, py, pz, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo2, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
       if (kind === 'pine') {
         const s = 1 + rnd() * 0.6;
         add(PROP_GEO.trunk, M.trunk, 0, 1, 0);
@@ -260,23 +272,31 @@
     }
   }
 
-  // ---------- 빌보드 배우 ----------
-  function makeActor(key, scale, tint) {
-    const mat = new THREE.SpriteMaterial({ map: tex(key), transparent: true, alphaTest: 0.4 });
-    if (tint) mat.color.set(tint);
-    const sp = new THREE.Sprite(mat); sp.center.set(0.5, 0.1); sp.scale.set(scale, scale, 1);
-    const sh = new THREE.Mesh(shadowGeo, shadowMat); sh.scale.setScalar(scale * 0.55); sh.renderOrder = 1;
-    scene.add(sp); scene.add(sh);
-    return { sp, sh, key, faceL: false, scale };
+  // ---------- 배우 (3D 캐릭터) ----------
+  const CHAR_SCALE = 1.45; // CC0 models are ~1.8 m; heroes stand ~2.6 units like the old sprites
+  function makeActor(kind, scale = 1, tint) {
+    const ch = spawnChar(kind, CHAR_SCALE * scale);
+    if (tint) ch.tint(tint);
+    scene.add(ch.obj);
+    const sh = new THREE.Mesh(shadowGeo, shadowMat); sh.renderOrder = 1; sh.visible = !renderer.shadowMap.enabled; scene.add(sh);
+    return { ch, sh, kind, yaw: 0, h: ch.height, scale: ch.height * 0.45, state: '' };
   }
-  function placeActor(a, x, y, z, gy, faceL) {
-    a.sp.position.set(x, y, z);
+  // dx/dz: facing direction; moving: 0..1 drives run vs idle
+  function placeActor(a, x, y, z, gy, dx, dz, moving, dt, runSpeed = 1) {
+    a.ch.obj.position.set(x, y, z);
+    if (dx || dz) {
+      const want = Math.atan2(dx, dz);
+      let d = want - a.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      a.yaw += d * Math.min(1, dt * 12);
+      a.ch.obj.rotation.y = a.yaw;
+    }
+    if (!a.ch.busy()) { const st = moving > 0.1 ? 'run' : 'idle'; if (st !== a.state) { a.ch.play(st); a.state = st; } }
+    a.ch.update(dt * (a.state === 'run' ? runSpeed : 1));
     a.sh.position.set(x, gy + 0.06, z);
-    a.sh.scale.setScalar(a.scale * 0.55 * (1 - clamp((y - gy) / 8, 0, 0.7)));
-    if (faceL !== a.faceL) { a.faceL = faceL; a.sp.material.map = tex(a.key, faceL); }
+    a.sh.scale.setScalar(a.scale * (1 - clamp((y - gy) / 8, 0, 0.7)));
   }
-  function setActorKey(a, key, scale) { a.key = key; a.sp.material.map = tex(key, a.faceL); if (scale) { a.scale = scale; a.sp.scale.set(scale, scale, 1); } }
-  function dropActor(a) { scene.remove(a.sp); scene.remove(a.sh); a.sp.material.dispose(); }
+  function actorAnim(a, name, speed = 1) { a.ch.play(name, 0.08, speed); a.state = name; }
+  function dropActor(a) { a.ch.dispose(); scene.remove(a.sh); }
 
   // ---------- 입력 ----------
   const keys = {};
@@ -325,6 +345,7 @@
 
   // ---------- 상태 ----------
   let heroIdx = 0;
+  let corpses = [];
   let P, enemies = [], shots = [], eshots = [], orbs = [], heals = [], fxs = [], texts = [], parts = [];
   let time = 0, stageTime = 0, si = 0, kills = 0, spawnT = 0, waveDone = false, bossOut = false, boss = null;
   let running = false, paused = false, modal = false, bannerT = 0, shake = 0, flashT = 0;
@@ -746,15 +767,26 @@
     }
   }
   function phantom(x0, y0, z0, x1, y1, z1, col, delay) {
-    const g = new THREE.Group();
-    const look = heroLook();
-    const ghosts = [0, 1, 2].map((k) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(look, x1 < x0), color: col, transparent: true, opacity: 0.8 - k * 0.25, blending: k ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false })); s.center.set(0.5, 0.1); s.scale.set(P.actor.scale, P.actor.scale, 1); g.add(s); return s; });
+    const ghosts = [0, 1].map((k) => {
+      const g = makeActor(heroKey(), 1);
+      g.ch.mat.transparent = true; g.ch.mat.depthWrite = false; g.ch.mat.emissive.set(col); g.ch.mat.emissiveIntensity = 0.8; g.ch.mat.opacity = 0;
+      g.sh.visible = false; actorAnim(g, 'slash', 2.2);
+      g.yaw = Math.atan2(x1 - x0, z1 - z0); g.ch.obj.rotation.y = g.yaw;
+      return g;
+    });
     const streak = beamLine(x0, y0 + 1.2, z0, x1, y1 + 1.2, z1, col, 0.18, 0.45 + delay);
     streak.visible = false;
-    addFx(g, 0.45 + delay, (f, k) => {
-      const t = clamp((f.max - f.life - delay) / 0.16, 0, 1);
-      g.visible = streak.visible = f.max - f.life >= delay;
-      ghosts.forEach((s, i) => { const tt = Math.max(0, t - i * 0.15); s.position.set(x0 + (x1 - x0) * tt, y0 + (y1 - y0) * tt, z0 + (z1 - z0) * tt); s.material.opacity = (0.85 - i * 0.25) * (1 - k); });
+    const holder = new THREE.Group();
+    addFx(holder, 0.45 + delay, (f, k) => {
+      const age = f.max - f.life, t = clamp((age - delay) / 0.16, 0, 1);
+      streak.visible = age >= delay;
+      ghosts.forEach((g, i) => {
+        const tt = Math.max(0, t - i * 0.18);
+        g.ch.obj.position.set(x0 + (x1 - x0) * tt, y0 + (y1 - y0) * tt, z0 + (z1 - z0) * tt);
+        g.ch.mat.opacity = age < delay ? 0 : (0.75 - i * 0.3) * (1 - k);
+        g.ch.update(1 / 60);
+      });
+      if (f.life <= 0.02) ghosts.forEach((g) => dropActor(g));
     });
   }
   function drain(e, col) {
@@ -779,11 +811,10 @@
   const heroKey = () => HEROES[heroIdx][0];
   const tierOf = (lv) => (lv >= 22 ? 4 : lv >= 15 ? 3 : lv >= 10 ? 2 : lv >= 5 ? 1 : 0);
   const heroLook = () => (P.tier ? `${heroKey()}_t${P.tier}` : heroKey());
-  const HERO_SCALE = 2.5;
   function newPlayer() {
     return { x: 0, z: 0, y: 0, vy: 0, lx: 0, lz: 0, hp: 120, maxHp: 120, speed: 8.6, jump: 13, jumps: 0, maxJumps: 2, air: false, inv: 0, lv: 1, xp: 0, next: 6,
       magnet: 4.5, faceL: false, bob: 0, haste: 1, area: 1, dmgMul: 1, armor: 1, regen: 0, extra: 0, crit: 0.05, ult: 0, tier: 0,
-      weapons: {}, passives: {}, actor: null, stomping: false };
+      weapons: {}, passives: {}, actor: null, stomping: false, atkCd: 0 };
   }
   function grant(id) {
     const w = P.weapons[id];
@@ -797,17 +828,16 @@
   }
 
   // ---------- 적 ----------
-  const ENEMY_SCALE = (T) => T.size / PX;
+  const FOE_SCALE = { kid: 1 };
   function spawn(key, opts = {}) {
     const T = ENEMIES[key];
     for (let tries = 0; tries < 10; tries++) {
       const a = opts.a ?? rand(0, 6.28), d = opts.d ?? rand(24, 34), x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d;
       if (Math.abs(x) > WORLD - 10 || Math.abs(z) > WORLD - 10 || H(x, z) < WATER_Y - 1.2) { if (opts.a !== undefined) return null; continue; }
       const mul = (1 + stageTime / 160 + si * 0.9) * (opts.elite ? 6 : 1);
-      const sc = ENEMY_SCALE(T) * (opts.elite ? 1.35 : 1);
+      const act = makeActor(T.key, opts.elite ? 1.3 : 1, opts.elite ? '#ffd890' : null);
       const e = { T, x, z, y: H(x, z) + (T.fly || 0), hp: T.hp * (T.boss ? 1 + si * 0.25 : mul), max: 0, flash: 0, kx: 0, kz: 0, stun: 0, cd: rand(1, 3), phase: rand(0, 6),
-        a: makeActor(T.key, sc, opts.elite ? '#ffd27a' : null), r: Math.max(0.45, T.r / PX * 1.1) * (opts.elite ? 1.3 : 1), h: sc, elite: !!opts.elite, dmg: T.dmg * (1 + si * 0.35) * (opts.elite ? 1.5 : 1), spd: (T.spd / PX) * (opts.elite ? 0.9 : 1) };
-      if (T.alpha) { e.a.sp.material.transparent = true; e.a.sp.material.opacity = T.alpha; }
+        a: act, r: Math.max(0.45, T.r / PX * 1.1) * (opts.elite ? 1.3 : 1), h: act.h, elite: !!opts.elite, dmg: T.dmg * (1 + si * 0.35) * (opts.elite ? 1.5 : 1), spd: (T.spd / PX) * (opts.elite ? 0.9 : 1) };
       e.max = e.hp;
       enemies.push(e);
       return e;
@@ -842,7 +872,9 @@
       orbs.push({ m, x: ox, z: oz, y: H(ox, oz) + 0.6, v: xp });
     }
     if (Math.random() < (e.elite ? 1 : 0.012)) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshLambertMaterial({ color: '#ff8fb4', emissive: '#501020' })); scene.add(m); heals.push({ m, x: e.x, z: e.z }); }
-    dropActor(e.a);
+    actorAnim(e.a, 'die'); e.a.ch.flash(false);
+    corpses.push({ a: e.a, t: 1.1, y: e.y });
+    if (corpses.length > (IS_TOUCH ? 10 : 24)) { const c = corpses.shift(); dropActor(c.a); }
     if (e === boss) bossDown();
   }
   const orbGeo = new THREE.OctahedronGeometry(0.3, 0), orbMat = new THREE.MeshBasicMaterial({ color: '#7ff0c8' }), orbMid = new THREE.MeshBasicMaterial({ color: '#6ab8ff' }), orbBig = new THREE.MeshBasicMaterial({ color: '#ffd76a' });
@@ -927,7 +959,8 @@
       const t = tierOf(P.lv);
       if (t !== P.tier) {
         P.tier = t;
-        setActorKey(P.actor, heroLook(), HERO_SCALE * (t === 4 ? 32 / 24 : 1));
+        // higher realms glow: a warm inner light, gold at the summit
+        P.actor.ch.mat.emissive.set(['#000000', '#0c0806', '#1a1008', '#2a1a08', '#3a2a08'][t]); P.actor.ch.mat.userData.base = undefined;
         $('portrait').src = A(`${heroLook()}.png`);
         banner(t === 4 ? '문주의 위엄' : '모습이 바뀌었다!', ['', '강호인', '일류고수', '절정고수', '천하제일'][t]);
         burst(P.x, chest(), P.z, '#ffe08a', 50, 10, 0.8); impact(0.06);
@@ -952,6 +985,8 @@
   }
   function clearField() {
     for (const e of enemies) dropActor(e.a);
+    for (const c of corpses) dropActor(c.a);
+    corpses = [];
     enemies = [];
     for (const s of [...shots, ...eshots]) scene.remove(s.m);
     for (const o of [...orbs, ...heals]) scene.remove(o.m);
@@ -1008,6 +1043,7 @@
     const g = H(P.x, P.z);
     if (wantJump && P.jumps < P.maxJumps) {
       P.vy = P.jump * (P.jumps ? 0.85 : 1); P.jumps++; P.air = true; P.inv = Math.max(P.inv, 0.25);
+      if (P.jumps === 2) actorAnim(P.actor, 'roll', 1.6);
       burst(P.x, P.y + 0.3, P.z, '#e8f4ff', 10, 4, 0.35);
       if (P.jumps === 2) ringWave(P.x, P.y, P.z, 1.6, '#cfefff', 0.3, 0.3);
     }
@@ -1045,10 +1081,16 @@
     P.ult = Math.min(100, P.ult + dt * 0.8);
     P.bob += dt * (il > 0.1 && !P.air ? 12 : 0);
     const bob = !P.air && il > 0.1 ? Math.abs(Math.sin(P.bob)) * 0.16 : 0;
-    placeActor(P.actor, P.x, P.y + bob, P.z, g, P.faceL);
-    P.actor.sp.material.opacity = P.inv > 0.3 && (time * 20) % 2 < 1 ? 0.5 : 1;
+    placeActor(P.actor, P.x, P.y, P.z, g, mx, mz, il, dt, P.speed / 6.2);
+    P.actor.ch.obj.visible = !(P.inv > 0.3 && (time * 20) % 2 < 1);
+    if (P.atkCd > 0) P.atkCd -= dt;
 
-    for (const [id, w] of Object.entries(P.weapons)) WEAPONS[id].update(w, dt);
+    for (const [id, w] of Object.entries(P.weapons)) {
+      const before = w.t;
+      WEAPONS[id].update(w, dt);
+      // a technique just fired: swing the blade when standing, keep running otherwise
+      if (w.t > before + 0.05 && P.atkCd <= 0 && il < 0.2 && !P.air) { actorAnim(P.actor, 'slash', 1.7); P.atkCd = 0.55; }
+    }
     for (const s of shots) {
       s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; s.life -= dt;
       s.m.position.set(s.x, s.y, s.z);
@@ -1097,7 +1139,7 @@
         if (e.cd <= 0 && d < 22) { e.cd = rand(2.2, 3.2); enemyShoot(e, e.T.key === 'archer' ? '#e8d8a0' : e.T.key === 'poisoner' ? '#7ae05a' : '#ff5a8a'); }
       } else if (e.T.ai === 'charger') {
         if (e.dash > 0) { e.dash -= dt; spd *= 3.2; dx = e.dx; dz = e.dz; }
-        else if (e.wind > 0) { e.wind -= dt; spd = 0; e.a.sp.material.color.set('#ff8080'); if (e.wind <= 0) { e.dash = 0.6; e.dx = dx; e.dz = dz; } }
+        else if (e.wind > 0) { e.wind -= dt; spd = 0; e.a.ch.mat.emissive.set('#6a0c0c'); if (e.wind <= 0) { e.dash = 0.6; e.dx = dx; e.dz = dz; e.a.ch.mat.emissive.set(0); actorAnim(e.a, 'slash', 1.4); } }
         else if (e.cd <= 0 && d < 12) { e.cd = rand(3, 4.5); e.wind = 0.5; }
       }
       if (e.T.hop) spd *= 0.4 + 1.2 * Math.max(0, Math.sin(time * 5 + e.phase));
@@ -1116,15 +1158,13 @@
       e.kx *= 0.86; e.kz *= 0.86;
       const ng = H(e.x, e.z);
       e.y = e.T.fly ? Math.max(e.y + (ng + e.T.fly + Math.sin(time * 3 + e.phase) * 0.4 - e.y) * dt * 3, ng + 0.3) : ng + (e.T.hop ? Math.max(0, Math.sin(time * 5 + e.phase)) * 0.6 : 0);
+      const wasFlash = e.flash > 0;
       e.flash = Math.max(0, e.flash - dt);
-      if (!(e.wind > 0)) e.a.sp.material.color.set(e.flash > 0 ? '#ffffff' : e.elite ? '#ffd27a' : '#ffffff');
-      e.a.sp.material.color.multiplyScalar(e.flash > 0 ? 4 : 1);
-      placeActor(e.a, e.x, e.y, e.z, ng, dx * rgtX + dz * rgtZ < 0);
-      // see-through when standing between the camera and the hero
-      const fw = (e.x - P.x) * fwdX + (e.z - P.z) * fwdZ, side = Math.abs((e.x - P.x) * rgtX + (e.z - P.z) * rgtZ);
-      const hide = camMode === 'chase' && fw < -0.5 && side < 3.5;
-      e.a.sp.material.opacity = hide ? 0.35 : e.T.alpha || 1; e.a.sh.visible = !hide;
-      if (P.inv <= 0 && d < e.r + 0.6 && Math.abs(P.y - e.y) < e.h * 0.6 + 0.4 && !(P.air && P.y > e.y + e.h * 0.7)) damagePlayer(e.dmg);
+      if (wasFlash !== e.flash > 0) e.a.ch.flash(e.flash > 0);
+      // far foes animate at half rate to save time on phones
+      const far = d > 30 && (Math.floor(time * 60) + e.phase * 10) % 2 < 1;
+      placeActor(e.a, e.x, e.y, e.z, ng, spd >= 0 ? dx : -dx, spd >= 0 ? dz : -dz, Math.min(1, Math.abs(spd) / 2), far ? 0 : dt * (IS_TOUCH && d > 30 ? 2 : 1), Math.max(0.6, Math.abs(spd) / 3.2));
+      if (P.inv <= 0 && d < e.r + 0.6 && Math.abs(P.y - e.y) < e.h * 0.6 + 0.4 && !(P.air && P.y > e.y + e.h * 0.7)) { damagePlayer(e.dmg); actorAnim(e.a, e.T.boss ? 'slash' : 'punch', 1.3); }
     }
     // separation (grid-free, but only nearby pairs)
     for (let i = 0; i < enemies.length; i++) {
@@ -1136,6 +1176,8 @@
       }
     }
     enemies = enemies.filter((e) => !e.dead);
+    for (const c of corpses) { c.t -= dt; c.a.ch.update(dt); if (c.t < 0.3) c.a.ch.obj.position.y = c.y - (0.3 - c.t) * 2; }
+    while (corpses.length && corpses[0].t <= 0) dropActor(corpses.shift().a);
     for (const s of eshots) {
       s.x += s.vx * dt; s.z += s.vz * dt; s.life -= dt; s.m.position.set(s.x, s.y, s.z);
       if (P.inv <= 0 && Math.hypot(P.x - s.x, P.z - s.z) < 0.8 && Math.abs(chest() - 0.5 - s.y) < 1.2) { damagePlayer(s.dmg); s.life = 0; }
@@ -1199,7 +1241,7 @@
   const proj = new THREE.Vector3();
   function updateCamera(dt) {
     const fixed = camMode === 'fixed';
-    const far = camera.aspect < 1 ? 1.35 : 1, dist = (fixed ? 17 : 14) * far, ht = (fixed ? 15 : 8) * far;
+    const far = camera.aspect < 1 ? 1.3 : 1, dist = (fixed ? 12.5 : 10.5) * far, ht = (fixed ? 11 : 5.8) * far;
     camPos.set(P.x - fwdX * dist, P.y + ht, P.z - fwdZ * dist);
     const cg = H(camPos.x, camPos.z) + 1.5; if (camPos.y < cg) camPos.y = cg;
     camera.position.lerp(camPos, 1 - Math.exp(-dt * 8));
@@ -1207,7 +1249,8 @@
     camLook.set(P.x + fwdX * (fixed ? 1.5 : 4), P.y + (fixed ? 0.8 : 1.8), P.z + fwdZ * (fixed ? 1.5 : 4));
     camera.lookAt(camLook);
     world.userData.dome.position.set(camera.position.x, 0, camera.position.z);
-    sun.position.set(P.x + 60, 90, P.z + 30); sun.target.position.set(P.x, 0, P.z);
+    sun.position.set(P.x + 40, P.y + 60, P.z + 20); sun.target.position.set(P.x, P.y, P.z);
+    rim.position.set(P.x + fwdX * 40, P.y + 25, P.z + fwdZ * 40); rim.target.position.set(P.x, P.y, P.z);
   }
   function drawOverlay(dt) {
     g2.clearRect(0, 0, fx2d.width, fx2d.height);
@@ -1281,9 +1324,16 @@
   selectHero(0);
   buildWorld(0);
   P = newPlayer();
+  // load the CC0 character models, then open the gates
+  $('go').disabled = true; $('go').textContent = '불러오는 중…';
+  const charsReady = loadBases().then(() => {
+    for (const [k, spec] of Object.entries(HERO_KINDS)) defineKind(k, spec);
+    for (const [k, spec] of Object.entries(FOE_KINDS)) defineKind(k, spec);
+    $('go').disabled = false; $('go').textContent = '출전';
+  }).catch((err) => { $('go').textContent = '모델을 불러오지 못했어요'; console.error(err); });
   $('go').onclick = () => {
     $('start').classList.remove('on');
-    P.actor = makeActor(heroKey(), HERO_SCALE);
+    P.actor = makeActor(heroKey(), 1);
     P.y = H(0, 0); running = true;
     grant(HEROES[heroIdx][3]);
     $('portrait').src = A(`${heroKey()}.png`);
