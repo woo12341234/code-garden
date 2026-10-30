@@ -79,7 +79,7 @@ import { createSound } from './sfx.js';
 
   // ---------- 렌더러 ----------
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-  // Megabonk-style: render at a fraction of the screen and let CSS blow the pixels up
+  // Retro low-res look: render at a fraction of the screen and let CSS blow the pixels up
   let PIXEL = IS_TOUCH ? 2.0 : 2.2;
   renderer.setPixelRatio(1 / PIXEL);
   renderer.domElement.style.imageRendering = 'pixelated';

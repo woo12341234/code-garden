@@ -1,0 +1,7 @@
+/* Bundled fonts (SIL Open Font License 1.1, see OFL-*.txt). Subset to the game's text plus the 2,350 common Hangul
+   syllables so nothing is fetched from third-party servers. The brush font is a renamed subset of Nanum Brush Script
+   (the OFL reserves the "Nanum" name for unmodified copies). */
+@font-face { font-family: 'Gowun Batang'; src: url('GowunBatang-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Gowun Batang'; src: url('GowunBatang-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'GH Brush'; src: url('GHBrush-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Noto Sans KR'; src: url('NotoSansKR.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }

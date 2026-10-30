@@ -140,7 +140,7 @@ export const REALMS = [
 ];
 export const RANKS = {
   none: ['낭인', '무명고수', '강호인', '협객', '대협', '일대종사', '무림명숙', '천하제일인'],
-  hwasan: ['삼대제자', '이대제자', '일대제자', '매화검수', '장로', '태상장로', '장문인', '화산검선'],
+  hwasan: ['삼대제자', '이대제자', '일대제자', '매화검객', '장로', '태상장로', '장문인', '화산검선'],
   mudang: ['속가제자', '삼대제자', '이대제자', '일대제자', '장로', '태상장로', '장문인', '무당진인'],
   sorim: ['행자', '사미승', '비구', '나한', '달마원 수좌', '장로', '방장', '생불'],
   gaebang: ['일결제자', '삼결제자', '오결제자', '칠결제자', '구결장로', '집법장로', '방주', '천하제일걸'],
@@ -516,10 +516,13 @@ let sound = () => {};
 export function setSound(fn) { sound = fn; }
 // The orb flashes up through the grades before the card turns over (the "it's going gold!" beat).
 let gacha = null;
+export const GEAR_ODDS = '확률: 일반 55% · 희귀 28% · 영웅 12% · 전설 4.5% · 신화 0.5%';
+export const ITEM_ODDS = '확률: 일반 45.9% · 희귀 29.9% · 영웅 16% · 전설 7% · 신화 1.2% (행운이 높으면 영웅 이상↑ · 8번 연속 희귀 이하면 다음은 영웅 이상 확정)';
 export function showGacha(src, roll, onClose) {
   const res = roll();
   const el = $('gacha'), orb = el.querySelector('.orb'), card = el.querySelector('.gcard');
   el.querySelector('.gsrc').textContent = src;
+  el.querySelector('.godds').textContent = roll === rollGear ? GEAR_ODDS : src === '마인의 거래' ? '전설 등급 확정' : ITEM_ODDS;
   card.style.display = 'none'; orb.style.display = '';
   el.className = 'overlay on g0';
   orb.style.setProperty('--gc', GRADES[0].color);
@@ -574,7 +577,7 @@ export function openLobby(tab = 'shop') {
     body.innerHTML = `<p>${progress.sectName ? `「${progress.sectName}」 ` : ''}명성으로 문파 건물을 지어요</p><div class="cards">${SECT_BUILDINGS.map((b) => { const lv = sectLevel(b.id), max = lv >= b.max; return card(b.icon, b.name, '★'.repeat(lv) + '☆'.repeat(b.max - lv), `${b.desc}<br><i>${max ? '완공' : `명성 ${buildCost(b)}`}</i>`, b.id, !max && (progress.fame || 0) >= buildCost(b), max ? 'maxed' : ''); }).join('')}</div>`;
     body.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { const B = SECT_BUILDINGS.find((x) => x.id === b.dataset.k); const c = buildCost(B); if ((progress.fame || 0) < c || sectLevel(B.id) >= B.max) return; progress.fame -= c; progress.sect[B.id] = sectLevel(B.id) + 1; saveProgress(); sound('chest'); rerender(); }));
   } else if (tab === 'gear') {
-    body.innerHTML = `<div class="row"><button class="btn main" id="gOpen" ${progress.gearBoxes > 0 ? '' : 'disabled'}>장비 상자 열기 (${progress.gearBoxes || 0})</button><button class="btn" id="gBuy" ${progress.gold >= GEAR_COST ? '' : 'disabled'}>은자 ${GEAR_COST}냥으로 뽑기</button></div>
+    body.innerHTML = `<div class="row"><button class="btn main" id="gOpen" ${progress.gearBoxes > 0 ? '' : 'disabled'}>장비 상자 열기 (${progress.gearBoxes || 0})</button><button class="btn" id="gBuy" ${progress.gold >= GEAR_COST ? '' : 'disabled'}>은자 ${GEAR_COST}냥으로 뽑기</button></div><p class="dim">${GEAR_ODDS} · 슬롯 4종 각 25% · 은자는 게임 안에서만 얻는 재화예요</p>
       <div class="glist">${GEAR.map((G) => { const inv = gearInv(G.id), g = gearBest(G.id), mg = inv.findIndex((n, i) => i < 4 && n >= 3);
         return `<div class="grow" style="--gc:${g >= 0 ? GRADES[g].color : '#999'}">${icon(G.icon)}<div><b>${g >= 0 ? `${G.slot} · ${G.names[g]} (${GRADES[g].name})` : `${G.slot} · 없음`}</b><small>${g >= 0 ? G.desc(G.val[g]) : '장비 상자에서 얻을 수 있어요'}</small><small class="dim">보관: ${inv.map((n, i) => `${GRADES[i].name} ${n}`).join(' · ')}</small></div>${mg >= 0 ? `<button class="btn" data-m="${G.id}:${mg}">합성 ${GRADES[mg].name}3→${GRADES[mg + 1].name}</button>` : ''}</div>`; }).join('')}</div>`;
     $('gOpen').onclick = () => { if (!(progress.gearBoxes > 0)) return; progress.gearBoxes--; saveProgress(); showGacha('장비 상자', rollGear, rerender); };

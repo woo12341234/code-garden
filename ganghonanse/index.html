@@ -12,9 +12,7 @@
 <link rel="icon" href="assets/app/icon-192.png">
 <link rel="apple-touch-icon" href="assets/app/icon-180.png">
 <title>강호난세</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Brush+Script&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -89,6 +87,7 @@
       <button id="quest-btn" class="btn ghost">의뢰</button>
       <button id="achv-btn" class="btn ghost">업적</button>
       <a id="mode3d-btn" class="btn ghost" href="3d/">3D 판</a>
+      <button class="btn ghost" onclick="ghNotice()">안내·저작권</button>
     </div>
     <p id="daily-info" class="hint"></p>
     <div class="settings tool-row"></div>
@@ -130,6 +129,7 @@
       </div>
       <div id="gear-list"></div>
       <p class="hint">장비 상자는 장을 돌파할 때마다, 그리고 출석 보상으로 얻어요.</p>
+      <p class="hint">뽑기 확률: 일반 55% · 희귀 28% · 영웅 12% · 전설 4.5% · 신화 0.5% (무기·의복·장신구·신발 중 하나, 각 25%)</p>
     </div>
   </div>
 
@@ -165,6 +165,7 @@
         <div class="gacha-tag"></div>
       </div>
     </div>
+    <p class="hint gacha-odds"></p>
     <p class="hint">터치 · Space · A 로 계속</p>
   </div>
 
@@ -201,6 +202,7 @@
     </div>
   </div>
 </div>
+<script src="notice.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

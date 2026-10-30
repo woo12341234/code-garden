@@ -2927,7 +2927,7 @@
   ];
   const RANKS = {
     none: ['낭인', '무명고수', '강호인', '협객', '대협', '일대종사', '무림명숙', '천하제일인'],
-    hwasan: ['삼대제자', '이대제자', '일대제자', '매화검수', '장로', '태상장로', '장문인', '화산검선'],
+    hwasan: ['삼대제자', '이대제자', '일대제자', '매화검객', '장로', '태상장로', '장문인', '화산검선'],
     mudang: ['속가제자', '삼대제자', '이대제자', '일대제자', '장로', '태상장로', '장문인', '무당진인'],
     sorim: ['행자', '사미승', '비구', '나한', '달마원 수좌', '장로', '방장', '생불'],
     gaebang: ['일결제자', '삼결제자', '오결제자', '칠결제자', '구결장로', '집법장로', '방주', '천하제일걸'],
@@ -4253,9 +4253,13 @@
   const reviveCost = () => 150 * (stageIdx + 1);
   let gacha = null;
   // roll() returns { g, icon, name, desc, tag }; onClose runs after the card is dismissed.
+  // Odds shown on every pull (in-game currency only, never real money).
+  const GEAR_ODDS = '확률: 일반 55% · 희귀 28% · 영웅 12% · 전설 4.5% · 신화 0.5%';
+  const ITEM_ODDS = '확률: 일반 45.9% · 희귀 29.9% · 영웅 16% · 전설 7% · 신화 1.2% (행운이 높으면 영웅 이상↑ · 8번 연속 희귀 이하면 다음은 영웅 이상 확정)';
   function showGacha(src, roll = () => pullItem(), onClose = closeChoice) {
     const res = roll();
     const el = $('gacha-screen');
+    el.querySelector('.gacha-odds').textContent = roll === rollGear ? GEAR_ODDS : src === '마인의 거래' ? '전설 등급 확정' : ITEM_ODDS;
     const orb = el.querySelector('.gacha-orb');
     const card = el.querySelector('.gacha-card');
     el.querySelector('.gacha-src').textContent = src || '요괴 보따리';
@@ -6133,7 +6137,7 @@
         ctx.rotate(f.rot);
         ctx.scale(pop, pop);
         ctx.globalAlpha = Math.min(1, a * 2.5);
-        ctx.font = `${f.big ? 52 : 34}px "Nanum Brush Script", "Gowun Batang", serif`;
+        ctx.font = `${f.big ? 52 : 34}px "GH Brush", "Gowun Batang", serif`;
         ctx.textAlign = 'center';
         ctx.lineJoin = 'round';
         ctx.lineWidth = f.big ? 10 : 7;

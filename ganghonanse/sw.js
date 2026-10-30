@@ -1,6 +1,6 @@
 // Offline cache for the installable web app: serve from cache instantly, refresh it in the background.
-const CACHE = 'yokai-survivors-v1';
-const CORE = ['./', './index.html', './style.css', './game.js', './manifest.webmanifest', './assets/app/icon-192.png'];
+const CACHE = 'yokai-survivors-v2';
+const CORE = ['./', './index.html', './style.css', './game.js', './manifest.webmanifest', './assets/app/icon-192.png', './fonts/fonts.css', './notice.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
