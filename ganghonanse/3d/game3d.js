@@ -398,8 +398,41 @@ import { createSound } from './sfx.js';
   }
   $('camBtn').textContent = '카메라: ' + (camMode === 'chase' ? '추적(회전)' : '고정');
   $('camBtn').onclick = toggleCam;
-  $('fxBtn').onclick = () => { lowFx = !lowFx; $('fxBtn').textContent = '이펙트: ' + (lowFx ? '가볍게' : '높음'); };
+  $('fxBtn').onclick = () => { lowFx = !lowFx; M.settings.lowfx3d = lowFx; M.saveProgress(); $('fxBtn').textContent = '이펙트: ' + (lowFx ? '가볍게' : '높음'); };
+  if (M.settings.lowfx3d !== undefined) lowFx = M.settings.lowfx3d;
   $('fxBtn').textContent = '이펙트: ' + (lowFx ? '가볍게' : '높음');
+  // 화질: fixed render scales, or 자동 — the pixel size drifts with the measured frame time
+  const BASE_PIXEL = PIXEL, GFX = { auto: '자동', high: '높음', mid: '보통', low: '낮음' };
+  let gfx = M.settings.gfx3d || 'auto', frameAvg = 16, gfxT = 0;
+  function setPixel(px) {
+    px = clamp(px, BASE_PIXEL * 0.75, BASE_PIXEL * 1.6);
+    if (Math.abs(px - PIXEL) < 0.01) return;
+    PIXEL = px; renderer.setPixelRatio(1 / PIXEL); resize();
+  }
+  function applyGfx() {
+    $('gfxBtn').textContent = '화질: ' + GFX[gfx];
+    if (gfx !== 'auto') setPixel(BASE_PIXEL * { high: 0.75, mid: 1, low: 1.45 }[gfx]);
+  }
+  $('gfxBtn').onclick = () => { const k = Object.keys(GFX); gfx = k[(k.indexOf(gfx) + 1) % k.length]; M.settings.gfx3d = gfx; M.saveProgress(); applyGfx(); };
+  $('shadowBtn').onclick = () => { M.settings.shadow3d = !renderer.shadowMap.enabled; M.saveProgress(); applyShadow(); };
+  function applyShadow() {
+    const on = M.settings.shadow3d ?? !IS_TOUCH;
+    renderer.shadowMap.enabled = on; sun.castShadow = on;
+    scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
+    $('shadowBtn').textContent = '그림자: ' + (on ? '켬' : '끔');
+    // the blob shadows under actors stand in when real shadows are off
+    for (const a of [P?.actor, ...enemies.map((e) => e.a), ...disciples.map((d) => d.a)]) if (a?.sh) a.sh.visible = !on;
+  }
+  applyGfx();
+  // called once per frame with the real frame time; reacts slowly so it never flickers
+  function autoGfx(realDt) {
+    if (gfx !== 'auto' || !running || paused || modal) return;
+    frameAvg += (realDt * 1000 - frameAvg) * 0.05;
+    if ((gfxT -= realDt) > 0) return;
+    if (frameAvg > 24) { setPixel(PIXEL * 1.12); gfxT = 1.5; }
+    else if (frameAvg < 15 && PIXEL > BASE_PIXEL) { setPixel(PIXEL / 1.08); gfxT = 4; }
+    else gfxT = 1;
+  }
   $('menuBtn').onclick = () => togglePause();
   $('resume').onclick = () => togglePause(false);
 
@@ -407,6 +440,7 @@ import { createSound } from './sfx.js';
   let heroIdx = 0;
   let corpses = [];
   let P, enemies = [], shots = [], eshots = [], orbs = [], fxs = [], texts = [], parts = [], coinChain = 0, coinAt = -9;
+  const sepList = [];
   let clearing = false, time = 0, stageTime = 0, si = 0, kills = 0, spawnT = 0, waveDone = false, bossOut = false, boss = null;
   let running = false, paused = false, modal = false, bannerT = 0, shake = 0, flashT = 0;
 
@@ -501,7 +535,7 @@ import { createSound } from './sfx.js';
   }
   // webtoon onomatopoeia + damage numbers, drawn on the 2D overlay
   const WORDS = { cut: ['촤악!', '서걱!', '슈칵!'], hit: ['퍽!', '쾅!', '콰앙!!'] };
-  function text(x, y, z, s, color, size = 16, life = 0.75, big = false) { if (texts.length < (lowFx ? 40 : 90)) texts.push({ x, y, z, s, color, size, life, max: life, big, jx: rand(-0.4, 0.4) }); }
+  function text(x, y, z, s, color, size = 16, life = 0.75, big = false) { if (texts.length >= (lowFx ? 40 : 90)) return null; const t = { x, y, z, s, color, size, life, max: life, big, jx: rand(-0.4, 0.4) }; texts.push(t); return t; }
   let wordCd = 0;
   function word(kind, x, y, z, big = false) { if (wordCd > 0) return; wordCd = big ? 0.15 : 0.35; text(x, y + 2.5, z, pick(WORDS[kind]), '#fff3c8', big ? 34 : 24, 0.7, true); }
   function impact(sec = 0.06) { if (M.settings.flash !== false) flashT = Math.min(0.12, Math.max(flashT, sec)); }
@@ -642,7 +676,17 @@ import { createSound } from './sfx.js';
     e.hp -= dmg; e.flash = 0.1;
     if (!e.T.boss) { e.kx += kx; e.kz += kz; }
     if (sparkBudget > 0 && (!o.quiet || crit)) { sparkBudget--; FXS.hit(e.x + rand(-0.3, 0.3), e.y + e.h * rand(0.35, 0.65), e.z + rand(-0.3, 0.3), o.color || '#ffffff', crit || o.big); }
-    if (M.settings.nums && ((texts.length < 60 && !o.quiet) || crit)) text(e.x, e.y + e.h * 0.9, e.z, Math.round(dmg) + (crit ? '!' : ''), crit ? '#ffcf4a' : o.quiet ? '#c8ffb0' : '#ffffff', crit ? 20 : 15, 0.6);
+    if (M.settings.nums && (!o.quiet || crit)) {
+      // hits landing on the same foe within a blink add up into one number instead of a pile
+      const lt = e.numT;
+      if (lt && lt.life > 0 && lt.life > lt.max - 0.22) {
+        lt.val += dmg; lt.crit = lt.crit || crit; lt.s = Math.round(lt.val) + (lt.crit ? '!' : '');
+        if (lt.crit) { lt.color = '#ffcf4a'; lt.size = Math.min(30, 20 + Math.log10(lt.val + 1) * 2); }
+      } else if (texts.length < 60 || crit) {
+        const t = text(e.x, e.y + e.h * 0.9, e.z, Math.round(dmg) + (crit ? '!' : ''), crit ? '#ffcf4a' : '#ffffff', crit ? 20 : 15, 0.6);
+        if (t) { t.val = dmg; t.crit = crit; e.numT = t; }
+      }
+    }
     if (!o.quiet || crit) sfx(crit ? 'crit' : 'hit');
     if (e.T.gold && Math.random() < 0.25) dropPickup('eunja', e.x + rand(-1, 1), e.z + rand(-1, 1), 2);
     if (e.hp <= 0) kill(e);
@@ -669,8 +713,7 @@ import { createSound } from './sfx.js';
       const ox = e.x + (n > 1 ? rand(-3, 3) : 0), oz = e.z + (n > 1 ? rand(-3, 3) : 0);
       const xp = e.T.xp * (1 + si * 0.5) * (big ? 1.2 : 1) * (e.xpMul || 1);
       if (orbs.length > 300) { orbs[orbs.length - 1].v += xp; continue; }
-      const m = new THREE.Mesh(orbGeo, xp >= 15 ? orbBig : xp >= 8 ? orbMid : orbMat); scene.add(m);
-      orbs.push({ m, x: ox, z: oz, y: H(ox, oz) + 0.6, v: xp });
+      orbs.push({ tier: xp >= 15 ? 2 : xp >= 8 ? 1 : 0, x: ox, z: oz, y: H(ox, oz) + 0.6, v: xp });
     }
     actorAnim(e.a, 'die'); e.a.ch.flash(false);
     corpses.push({ a: e.a, t: 1.1, y: e.y });
@@ -700,7 +743,24 @@ import { createSound } from './sfx.js';
     }
     if (e === boss) bossDown();
   }
-  const orbGeo = new THREE.OctahedronGeometry(0.3, 0), orbMat = new THREE.MeshBasicMaterial({ color: '#7ff0c8' }), orbMid = new THREE.MeshBasicMaterial({ color: '#6ab8ff' }), orbBig = new THREE.MeshBasicMaterial({ color: '#ffd76a' });
+  // XP orbs: one instanced draw per colour tier instead of a mesh (and a draw call) per orb
+  const orbGeo = new THREE.OctahedronGeometry(0.3, 0), ORB_CAP = 320;
+  const orbIM = ['#7ff0c8', '#6ab8ff', '#ffd76a'].map((c) => {
+    const im = new THREE.InstancedMesh(orbGeo, new THREE.MeshBasicMaterial({ color: c }), ORB_CAP);
+    im.count = 0; im.frustumCulled = false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(im); return im;
+  });
+  const orbM4 = new THREE.Matrix4(), orbQ = new THREE.Quaternion(), orbP = new THREE.Vector3(), orbS = new THREE.Vector3(1, 1, 1), orbAxis = new THREE.Vector3(0, 1, 0);
+  function drawOrbs() {
+    const n = [0, 0, 0];
+    orbQ.setFromAxisAngle(orbAxis, time * 3);
+    for (const o of orbs) {
+      const im = orbIM[o.tier], i = n[o.tier]++;
+      if (i >= ORB_CAP) continue;
+      orbP.set(o.x, o.y + Math.sin(time * 4 + o.x) * 0.15, o.z);
+      im.setMatrixAt(i, orbM4.compose(orbP, orbQ, orbS));
+    }
+    orbIM.forEach((im, t) => { im.count = Math.min(ORB_CAP, n[t]); im.instanceMatrix.needsUpdate = true; });
+  }
 
   // 적 공격: 원거리 탄 / 돌진 / 보스 내려찍기
   const eshotGeo = new THREE.SphereGeometry(0.35, 8, 6), eshotMats = {};
@@ -711,9 +771,9 @@ import { createSound } from './sfx.js';
     FXS.sprite(e.x, sy, e.z, { tex: 'glow', color, size: 1.6, life: 3, fade: 'hold', follow: (() => { const o = { x: 0, y: 0, z: 0 }; return () => { o.x = m.position.x; o.y = m.position.y; o.z = m.position.z; if (!m.parent) o.y = -99; return o; }; })() });
     eshots.push({ m, x: e.x, y: sy, z: e.z, vx: Math.cos(a) * spd, vz: Math.sin(a) * spd, life: 3, dmg: e.dmg * 0.8 });
   }
-  function bossAttack(e) {
-    // telegraphed slam at the hero's feet: jump to dodge it
-    const x = P.x, z = P.z, R = 4.5 + si * 0.6, y = H(x, z);
+  function bossAttack(e, lead = false) {
+    // telegraphed slam at the hero's feet (or where they're heading): jump to dodge it
+    const x = P.x + (lead ? (P.mvx || 0) * 0.5 + rand(-2, 2) : 0), z = P.z + (lead ? (P.mvz || 0) * 0.5 + rand(-2, 2) : 0), R = 4.5 + si * 0.6, y = H(x, z);
     FXS.ground(x, y, z, { tex: 'glow', color: '#ff2020', size: R * 2.2, life: 1.0, fade: 'hold', opacity: 0.45, blend: 'normal', order: 1 });
     FXS.ground(x, y, z, { tex: 'ring', color: '#ff5050', size: R * 0.4, grow: 5, life: 1.0, fade: 'hold', growEase: 'lin' });
     e.slamAt = { t: 1.0, x, z, R };
@@ -934,8 +994,7 @@ import { createSound } from './sfx.js';
     corpses = [];
     enemies = [];
     for (const s2 of [...shots, ...eshots]) scene.remove(s2.m);
-    for (const o of orbs) scene.remove(o.m);
-    shots = []; eshots = []; orbs = [];
+    shots = []; eshots = []; orbs = []; drawOrbs();
     clearEvents();
     ARTS.clear(); FXS.clear();
   }
@@ -1272,13 +1331,14 @@ import { createSound } from './sfx.js';
     wordCd = Math.max(0, wordCd - dt);
     // input → camera-relative movement
     if (camMode === 'chase') { if (keys.KeyE) camYaw -= dt * 2.2; }
-    let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + stick.x;
-    let iz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + stick.y;
+    let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + stick.x + pad.x;
+    let iz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + stick.y + pad.y;
     const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
     fwdX = -Math.sin(camYaw); fwdZ = -Math.cos(camYaw); rgtX = Math.cos(camYaw); rgtZ = -Math.sin(camYaw);
     if (P.boostT > 0) P.boostT -= dt;
     const spdNow = P.speed * (P.boostT > 0 ? 1.4 : 1) * (P.buffs.swift > 0 ? 1.35 : 1);
     const mx = (rgtX * ix - fwdX * iz) * spdNow, mz = (rgtZ * ix - fwdZ * iz) * spdNow;
+    P.mvx = mx; P.mvz = mz;
     if (P.flameTrail && il > 0.1 && (P.trailT = (P.trailT || 0) - dt) <= 0) { P.trailT = 0.22; ARTS.poison(P.x, P.z, 1.1 * P.area, 5 + P.lv * 1.2, 1.6, '#ff6a2a'); }
     if (Math.abs(ix) > 0.1) P.faceL = ix < 0;
     P.lx *= P.air ? 0.995 : 0.8; P.lz *= P.air ? 0.995 : 0.8;
@@ -1398,12 +1458,22 @@ import { createSound } from './sfx.js';
       }
       if (e.T.hop) spd *= 0.4 + 1.2 * Math.max(0, Math.sin(time * 5 + e.phase));
       if (e.T.boss) {
-        if (e.cd <= 0) { e.cd = Math.max(2.2, 5 - si * 0.6 - (diff.heat >= 7 ? 0.6 : 0)); bossAttack(e); }
+        // below half health the boss goes berserk: faster, slams twice as often, calls more minions
+        if (!e.enraged && e.hp < e.max * 0.5) {
+          e.enraged = true; e.spd *= 1.3; e.cd = 0.6; e.a.ch.base = 'wind'; e.a.ch.setLook('wind');
+          banner(`${e.T.name} 광폭화!`, '공격이 거세진다 · 붉은 원을 피하세요'); sfx('boss'); shake = Math.max(shake, 1);
+          FXS.pillar(e.x, e.y, e.z, '#ff3020', 20, 2.6, 0.8); FXS.shockwave(e.x, e.y, e.z, 8, '#ff5030');
+        }
+        if (e.cd <= 0) {
+          e.cd = Math.max(2.2, 5 - si * 0.6 - (diff.heat >= 7 ? 0.6 : 0)) * (e.enraged ? 0.6 : 1);
+          bossAttack(e);
+          if (e.enraged) setTimeout(() => { if (!e.dead && running) bossAttack(e, true); }, 450);
+        }
         if (e.slamAt && (e.slamAt.t -= dt) <= 0) {
           const s = e.slamAt; e.slamAt = null;
           FXS.explode(s.x, H(s.x, s.z), s.z, s.R, '#ff6a50'); sfx('boom'); FXS.ground(s.x, H(s.x, s.z), s.z, { tex: 'crack', color: '#ff5030', size: s.R * 2.2, life: 1.0, fade: 'out' }); shake = Math.max(shake, 0.8);
           if (Math.hypot(P.x - s.x, P.z - s.z) < s.R && P.y - H(P.x, P.z) < 1.2) damagePlayer(e.dmg * 1.4);
-          if (Math.random() < 0.6) for (let i = 0; i < 4 + si * 2; i++) spawn(pickEnemy(), { a: rand(0, 6.28), d: rand(6, 10) + 0 });
+          if (Math.random() < (e.enraged ? 0.8 : 0.6)) for (let i = 0; i < (4 + si * 2) * (e.enraged ? 1.5 : 1); i++) spawn(pickEnemy(), { a: rand(0, 6.28), d: rand(6, 10) + 0 });
         }
         if (Math.random() < dt * 0.3) enemyShoot(e, '#ff7a3a');
       }
@@ -1420,11 +1490,16 @@ import { createSound } from './sfx.js';
       placeActor(e.a, e.x, e.y, e.z, ng, spd >= 0 ? dx : -dx, spd >= 0 ? dz : -dz, Math.min(1, Math.abs(spd) / 2), far ? 0 : dt * (IS_TOUCH && d > 30 ? 2 : 1), Math.max(0.6, Math.abs(spd) / 3.2));
       if (e.dmg > 0 && P.inv <= 0 && d < e.r + 0.6 && Math.abs(P.y - e.y) < e.h * 0.6 + 0.4 && !(P.air && P.y > e.y + e.h * 0.7)) { damagePlayer(e.dmg); actorAnim(e.a, e.T.boss ? 'slash' : 'punch', 1.3); }
     }
-    // separation (grid-free, but only nearby pairs)
-    for (let i = 0; i < enemies.length; i++) {
-      const a = enemies[i]; if (a.dead) continue;
-      for (let j = i + 1; j < enemies.length; j++) {
-        const b = enemies[j]; if (b.dead) continue;
+    // separation: sort along x and sweep, so only neighbours within reach are compared (not every pair)
+    sepList.length = 0;
+    let rMax = 0;
+    for (const e of enemies) if (!e.dead) { sepList.push(e); if (e.r > rMax) rMax = e.r; }
+    sepList.sort((p1, p2) => p1.x - p2.x);
+    for (let i = 0; i < sepList.length; i++) {
+      const a = sepList[i], reach = a.r + rMax;
+      for (let j = i + 1; j < sepList.length; j++) {
+        const b = sepList[j];
+        if (b.x - a.x > reach) break;
         const dx = a.x - b.x, dz = a.z - b.z, m = a.r + b.r; if (Math.abs(dx) > m || Math.abs(dz) > m) continue;
         const d = Math.hypot(dx, dz); if (d < m && d > 1e-3) { const p = (m - d) * 0.25, wa = a.T.boss || a.T.prop ? 0 : 1, wb = b.T.boss || b.T.prop ? 0 : 1; a.x += (dx / d) * p * wa; a.z += (dz / d) * p * wa; b.x -= (dx / d) * p * wb; b.z -= (dz / d) * p * wb; }
       }
@@ -1443,15 +1518,15 @@ import { createSound } from './sfx.js';
     for (const o of orbs) {
       const d = Math.hypot(P.x - o.x, P.z - o.z);
       if (d < P.magnet || o.pull) { o.pull = true; const k = Math.min(1, dt * 14 / Math.max(d, 0.5)) * 1.6; o.x += (P.x - o.x) * k; o.z += (P.z - o.z) * k; o.y += (chest() - 0.3 - o.y) * k; }
-      o.m.position.set(o.x, o.y + Math.sin(time * 4 + o.x) * 0.15, o.z); o.m.rotation.y += dt * 3;
       if (d < 1.2) {
-        o.got = true; scene.remove(o.m); gainXp(o.v);
+        o.got = true; gainXp(o.v);
         coinChain = time - coinAt < 0.4 ? coinChain + 1 : 0; coinAt = time; sfx('coin', coinChain);
         if (P.arc.has('diamond')) { P.hp = Math.min(P.maxHp, P.hp + 0.4); P.inv = Math.max(P.inv, 0.12); }
       }
     }
     orbs = orbs.filter((o) => !o.got);
-    if (orbs.length > 260) { const old = orbs.splice(0, 60); let v = 0; for (const o of old) { v += o.v; scene.remove(o.m); } const o = orbs[0]; if (o) o.v += v; }
+    if (orbs.length > 260) { const old = orbs.splice(0, 60); let v = 0; for (const o of old) v += o.v; const o = orbs[0]; if (o) o.v += v; }
+    drawOrbs();
     // effects & particles
     for (const f of fxs) {
       f.life -= dt;
@@ -1530,11 +1605,88 @@ import { createSound } from './sfx.js';
     setTimeout(() => $('over').classList.add('on'), kind === 'dead' ? 900 : 200);
   }
   const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  // 정지 화면: this run's whole build and the numbers behind it
+  function buildPanel() {
+    const pct = (v) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
+    const h = HEROES[heroIdx];
+    const weps = Object.entries(P.weapons).map(([id, w]) => `<span class="bi${w.evolved ? ' evo' : ''}" title="${w.evolved ? EVOS[id].name : WEAPONS[id].name}"><img src="${A(`icons/${w.evolved ? 'e' : 'w'}_${WEAPONS[id].icon.slice(2)}.png`)}"><b>${w.evolved ? '각성' : 'Lv' + w.level}</b></span>`).join('');
+    const pas = Object.entries(P.passives).map(([id, lv]) => `<span class="bi" title="${PASSIVE_BY_ID[id].name}"><img src="${A(`icons/${PASSIVE_BY_ID[id].icon}.png`)}"><b>${lv}</b></span>`).join('');
+    const items = Object.entries(P.items).map(([id, n]) => { const it = M.ITEMS.find((x) => x.id === id); return `<span class="bi" style="--gc:${M.GRADES[it.g].color}" title="${it.name}: ${it.desc}">${M.icon(it.icon)}<b>${n > 1 ? '×' + n : ''}</b></span>`; }).join('');
+    const tags = [...[...P.arc].map((id) => { const a = M.ARCANA.find((x) => x.id === id); return `<span class="tag arc" title="${a.desc}">${M.icon(a.icon)} ${a.name}</span>`; }),
+      ...[...P.relics].map((id) => { const r = M.RELICS.find((x) => x.id === id); return `<span class="tag rel" title="${r.desc}">📿 ${r.name}</span>`; }),
+      ...P.gems.map((id) => { const g = M.GEMS.find((x) => x.id === id); return `<span class="tag gem" title="${g.desc}">${M.icon('💎')} ${g.name}</span>`; })].join('');
+    const stats = [['피해', pct(P.dmgMul - 1)], ['대기시간', pct(P.haste - 1)], ['치명타', Math.round(P.crit * 100) + '%'], ['치명 피해', '×' + P.critMul.toFixed(1)], ['범위', pct(P.area - 1)],
+      ['이동 속도', P.speed.toFixed(1)], ['받는 피해', pct(P.armor - 1)], ['재생', P.regen.toFixed(1) + '/초'], ['발사 +', P.extra], ['관통 +', P.pierce], ['행운', P.luck.toFixed(1)], ['은자', '×' + (P.greed * diff.gold).toFixed(2)]];
+    $('build').innerHTML = `<p><b>${h.name}</b> · ${M.REALMS[P.realm].name} ${M.rankOf(h, P.realm)} · Lv ${P.lv} · [${diff.name}] · 처치 ${kills} · 최대 ${P.maxCombo}연격</p>
+      <div class="brow">${weps}${pas}</div>${items ? `<div class="brow">${items}</div>` : ''}${tags ? `<div class="brow">${tags}</div>` : ''}
+      <div class="stats">${stats.map(([k, v]) => `<span>${k} <b>${v}</b></span>`).join('')}</div>`;
+  }
   function togglePause(v) {
     if (!running) return;
     if (modal && !paused) return;
     paused = v ?? !paused;
+    if (paused) buildPanel();
     $('pause').classList.toggle('on', paused);
+  }
+
+  // ---------- 게임패드 (표준 배치: A 경공 · B/X 필살 · LB/RB 시야 · 오른쪽 스틱 카메라 · Start 정지) ----------
+  const pad = { x: 0, y: 0, prev: [], dir: 0, sel: 0 };
+  function pollPad(dt) {
+    const gp = [...(navigator.getGamepads?.() || [])].find((g) => g && g.connected);
+    if (!gp) { pad.x = pad.y = 0; return; }
+    const dz = (v) => (Math.abs(v) > 0.18 ? v : 0);
+    const down = (i) => !!gp.buttons[i]?.pressed, hit = (i) => down(i) && !pad.prev[i];
+    pad.x = dz(gp.axes[0] || 0); pad.y = dz(gp.axes[1] || 0);
+    // left/right as a one-shot for menus (stick or d-pad)
+    const dir = gp.axes[0] > 0.6 || down(15) ? 1 : gp.axes[0] < -0.6 || down(14) ? -1 : 0, step = dir && dir !== pad.dir ? dir : 0; pad.dir = dir;
+    const on = (id) => $(id).classList.contains('on');
+    SND.ensure();
+    if (M.gachaOpen()) { if (hit(0) || hit(1)) M.gachaAdvance(); }
+    else if (on('levelup')) {
+      const cards = [...$('cards').children];
+      if (step) pad.sel = (pad.sel + step + cards.length) % cards.length;
+      pad.sel = Math.min(pad.sel, cards.length - 1);
+      cards.forEach((c, i) => c.classList.toggle('gpsel', i === pad.sel));
+      if (hit(0)) { cards[pad.sel]?.click(); pad.sel = 0; }
+      if (hit(2)) $('luTools').children[0]?.click();
+    } else if (on('clear')) { if (hit(0)) $('nextBtn').click(); }
+    else if (on('start')) { if (hit(0) && !$('go').disabled) $('go').click(); }
+    else if (on('over')) { if (hit(0)) location.reload(); }
+    else if (running) {
+      if (hit(0)) wantJump = true;
+      if (hit(1) || hit(3)) wantUlt = true;
+      if (hit(9)) togglePause();
+      if (hit(4)) setZoom(camZoom / 1.15);
+      if (hit(5)) setZoom(camZoom * 1.15);
+      if (camMode === 'chase') camYaw -= dz(gp.axes[2] || 0) * dt * 2.6;
+    }
+    gp.buttons.forEach((b, i) => (pad.prev[i] = b.pressed));
+  }
+  addEventListener('gamepadconnected', () => M.toast('🎮 게임패드 연결됨', 'A 경공 · B 필살기 · LB/RB 시야 · Start 정지'));
+
+  // ---------- 미니맵: camera-up, ~48 units around the hero ----------
+  const mini = $('mini'), mg = mini.getContext('2d');
+  function drawMini() {
+    const W = mini.width, R = W / 2, range = 48 * Math.max(1, camZoom * 0.8), k = R / range;
+    mg.clearRect(0, 0, W, W);
+    mg.save();
+    mg.beginPath(); mg.arc(R, R, R - 1, 0, Math.PI * 2); mg.fillStyle = 'rgba(10,14,20,.6)'; mg.fill(); mg.clip();
+    // world → minimap: rotate so the camera's forward is up
+    const cs = Math.cos(camYaw), sn = Math.sin(camYaw);
+    const tx = (x, z) => { const dx = x - P.x, dz = z - P.z; return [R + (dx * cs - dz * sn) * k, R + (dx * sn + dz * cs) * k]; };
+    const dot = (x, z, r, c) => { const [u, v] = tx(x, z); if ((u - R) ** 2 + (v - R) ** 2 > R * R) return; mg.fillStyle = c; mg.fillRect(u - r, v - r, r * 2, r * 2); };
+    for (const p of PLATEAUS) { if (p.h <= 4) continue; const [u, v] = tx(p.x, p.z); mg.fillStyle = 'rgba(200,180,140,.25)'; mg.beginPath(); mg.arc(u, v, p.r * k, 0, Math.PI * 2); mg.fill(); }
+    for (const e of enemies) if (!e.dead && !e.T.prop) dot(e.x, e.z, e.T.boss ? 4 : e.elite || e.T.duelist || e.T.gold ? 2.5 : 1.2, e.T.boss ? '#ff3030' : e.T.gold ? '#ffe070' : e.elite ? '#ffb040' : e.T.duelist ? '#7fd0ff' : '#e05a5a');
+    for (const it of pickups) if (it.kind === 'treasure' || it.kind === 'bottari' || it.kind === 'naedan') dot(it.x, it.z, 2.5, it.kind === 'naedan' ? '#c890ff' : '#ffd76a');
+    for (const c of chests) if (!c.open) dot(c.x, c.z, 3, '#ffd76a');
+    for (const sh of shrines) dot(sh.x, sh.z, 3.5, sh.buff.color);
+    for (const al of altars) dot(al.x, al.z, 3.5, '#ff9a1f');
+    for (const o of oddities) dot(o.x, o.z, 3.5, o.kind === 'duel' ? '#ffd76a' : o.kind === 'sanctum' ? '#8cffc8' : '#b48cff');
+    mg.restore();
+    // the hero: an arrow along the movement direction
+    const a = P.mvx || P.mvz ? Math.atan2((P.mvx * sn + P.mvz * cs), (P.mvx * cs - P.mvz * sn)) : -Math.PI / 2;
+    mg.save(); mg.translate(R, R); mg.rotate(a); mg.fillStyle = '#fff'; mg.beginPath(); mg.moveTo(5, 0); mg.lineTo(-3, -3.5); mg.lineTo(-3, 3.5); mg.closePath(); mg.fill(); mg.restore();
+    mg.strokeStyle = 'rgba(255,255,255,.3)'; mg.lineWidth = 1.5; mg.beginPath(); mg.arc(R, R, R - 1, 0, Math.PI * 2); mg.stroke();
   }
 
   // ---------- 카메라 & HUD ----------
@@ -1672,6 +1824,7 @@ import { createSound } from './sfx.js';
   let sealTaps = 0;
   $('seal').onclick = () => { if (++sealTaps === 7 && !M.progress.secrets?.seal) { M.progress.secrets = M.progress.secrets || {}; M.progress.secrets.seal = true; M.progress.gold += 300; M.saveProgress(); M.checkAchievements(runSummary(), onAchv); buildDiff(); } };
   buildHeroes(); selectHero(0); M.ensureQuests(HEROES);
+  applyShadow();
   buildWorld(0);
   P = newPlayer();
   buildDiff();
@@ -1681,6 +1834,15 @@ import { createSound } from './sfx.js';
     for (const [k, spec] of Object.entries(HERO_KINDS)) defineKind(k, spec);
     for (const [k, spec] of Object.entries(FOE_KINDS)) defineKind(k, spec);
     FXS.warm(renderer, camera);
+    // compile the run's remaining shaders now (solo hero rig, instanced orbs, pickups, markers) instead of on the first frames
+    const wa = makeActor(HEROES[0].key, 1), ws = new THREE.Sprite(pickMat('peach')), wm = marker(0, 0, 1, '#ffffff', '📖'), wl = propActor(lanternGeo, lanternMat, 2.6);
+    // a real render (not just compile) so the shadow-map depth variants get built too
+    const gy = H(0, 0); wa.ch.obj.position.set(0, gy, 0); ws.position.set(1, gy + 1, 0); wl.ch.obj.position.set(-1.5, gy, 0);
+    orbIM.forEach((im) => { im.setMatrixAt(0, new THREE.Matrix4().makeTranslation(0.5, gy + 1, 0.5)); im.instanceMatrix.needsUpdate = true; });
+    scene.add(ws); orbIM.forEach((im) => (im.count = 1));
+    camera.position.set(0, gy + 6, 10); camera.lookAt(0, gy, 0);
+    renderer.compile(scene, camera); renderer.render(scene, camera);
+    dropActor(wa); ws.removeFromParent(); dropMarker(wm); dropActor(wl); orbIM.forEach((im) => (im.count = 0));
     $('go').disabled = false; $('go').textContent = '출전'; $('dailyBtn').disabled = false;
   }).catch((err) => { $('go').textContent = '모델을 불러오지 못했어요'; console.error(err); });
   function beginRun(isDaily) {
@@ -1706,6 +1868,7 @@ import { createSound } from './sfx.js';
     banner(daily ? '일일 도전' : STAGES[0].name, daily ? daily.mods.map((m) => m.name).join(' · ') : `[${diff.name}] ${STAGES[0].sub}`);
     sfx('gong');
     queue(arcanaChoice);
+    setTimeout(() => $('hint').classList.add('fade'), 10000);
   }
   $('go').onclick = () => beginRun(false);
   $('dailyBtn').onclick = () => beginRun(true);
@@ -1713,7 +1876,7 @@ import { createSound } from './sfx.js';
   window.__dbg = {
     get P() { return P; }, get enemies() { return enemies; }, get pickups() { return pickups; }, M, WEAPONS, EVOS, grant, start: () => $('go').click(), daily: () => $('dailyBtn').click(), gameOver: (k) => gameOver(k), damage: (d) => damagePlayer(d), killBoss: () => { const b2 = enemies.find((e) => e.T.boss); if (b2) kill(b2); return !!b2; }, drop: (k, v) => dropPickup(k, P.x + 0.5, P.z, v), get modalQ() { return modalQ; }, get modal() { return modal; },
     perf(n) { const t0 = performance.now(); for (let i = 0; i < n; i++) { sparkBudget = 6; update(1 / 60); updateCamera(1 / 60); } const t1 = performance.now(); renderer.info.reset(); renderer.render(scene, camera); return { msPerUpdate: +((t1 - t0) / n).toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, enemies: enemies.length, fx: FXS.count() }; },
-    programs() { return renderer.info.programs.length; },
+    programs(names) { return names ? renderer.info.programs.map((pg) => pg.name + ':' + pg.cacheKey.slice(0, 60)) : renderer.info.programs.length; },
     perfStep() { sparkBudget = 6; update(1 / 60); updateCamera(1 / 60); },
     swarm(n) { for (let i = 0; i < n; i++) spawn(pickEnemy(), { d: 8 + (i % 20) }); },
     setStageTime: (t) => (stageTime = t), evolveAll: () => { for (const [id, w] of Object.entries(P.weapons)) if (EVOS[id]) { EVOS[id].apply(w); w.evolved = true; } refreshWeps(); },
@@ -1724,6 +1887,7 @@ import { createSound } from './sfx.js';
   function frame(now) {
     requestAnimationFrame(frame);
     let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    autoGfx(dt);
     // the inverted impact frame runs on wall time, so a pause, a card pick or game over can never freeze it on screen
     const fl = flashT > 0 && running && !paused && !modal;
     if (flashT > 0) flashT = running && !paused && !modal ? flashT - dt : 0;
@@ -1732,7 +1896,8 @@ import { createSound } from './sfx.js';
     if (hitStopT > 0) { hitStopT -= dt; dt *= 0.08; }
     // one bad frame must not stall the whole run: log it and keep going
     if (running && !paused && !modal) { try { update(dt); } catch (err) { console.error(err); if (!frameErr++) M.toast('오류가 나서 한 프레임을 건너뛰었어요', String(err.message || err).slice(0, 60)); } }
-    if (running) { updateCamera(dt); hud(); modalWatch(dt); }
+    pollPad(dt);
+    if (running) { updateCamera(dt); hud(); modalWatch(dt); if (frameNo % 3 === 0 || paused || modal) drawMini(); }
     else { idleA += dt * 0.08; camera.position.set(Math.sin(idleA) * 55, 28, Math.cos(idleA) * 55); camera.lookAt(0, 0, 0); world.userData.dome.position.set(camera.position.x, 0, camera.position.z); }
     renderer.info.autoReset = true;
     renderer.render(scene, camera);

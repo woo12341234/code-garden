@@ -39,8 +39,19 @@
   #ultBtn { width: 60px; height: 60px; font-size: 13px; }
   #ultBtn.ready { border-color: #ffe08a; box-shadow: 0 0 18px rgba(255, 210, 100, .8); }
   #menuBtn { position: absolute; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 14px); padding: 7px 11px; font-size: 13px; }
+  #mini { position: absolute; left: auto; bottom: auto; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 130px); width: 132px; height: 132px; opacity: .92; }
+  .card.gpsel { border-color: #7fd0ff; box-shadow: 0 0 14px rgba(127, 208, 255, .6); }
+  #build { width: min(94vw, 640px); background: rgba(20,24,32,.85); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; box-sizing: border-box; }
+  #build p { text-align: left; font-size: 13px; margin-bottom: 6px; }
+  .brow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+  .bi { --gc: var(--line); display: inline-flex; align-items: center; gap: 2px; background: rgba(255,255,255,.06); border: 1px solid var(--gc); border-radius: 8px; padding: 2px 4px; font-size: 11px; }
+  .bi img, .bi .pi { width: 22px; height: 22px; image-rendering: pixelated; } .bi.evo { border-color: #ffd06a; }
+  .tag { font-size: 11px; border-radius: 8px; padding: 2px 6px; background: rgba(255,255,255,.06); border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 3px; }
+  .tag .pi { width: 16px; height: 16px; } .tag.arc { border-color: #b48cff; } .tag.rel { border-color: #ffd06a; } .tag.gem { border-color: #c890ff; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 3px 10px; font-size: 12px; margin-top: 6px; opacity: .9; } .stats b { color: var(--gold); }
   #zoom { position: absolute; right: max(10px, env(safe-area-inset-right)); top: calc(max(6px, env(safe-area-inset-top)) + 56px); display: flex; flex-direction: column; gap: 6px; }
   #zoom .btn { padding: 5px 8px; font-size: 12px; }
+  #hint.fade { opacity: 0; transition: opacity 1.5s; }
   #hint { position: absolute; left: 12px; bottom: max(10px, env(safe-area-inset-bottom)); font-size: 11px; opacity: .65; text-shadow: 0 1px 2px #000; }
   #stick { position: absolute; width: 112px; height: 112px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); background: rgba(255,255,255,.06); display: none; transform: translate(-50%,-50%); }
   #stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: rgba(255,255,255,.4); }
@@ -126,6 +137,7 @@
     #stage { text-align: right; padding-right: 58px; top: calc(max(6px, env(safe-area-inset-top)) + 34px); }
     #boss { top: calc(max(6px, env(safe-area-inset-top)) + 118px); }
     #banner { font-size: 22px; }
+    #mini { width: 96px; height: 96px; top: calc(max(6px, env(safe-area-inset-top)) + 152px); }
   }
 </style>
 </head>
@@ -145,6 +157,7 @@
   <div id="stick"><i></i></div>
   <div id="ctl"><button id="ultBtn" class="btn">필살</button><button id="jumpBtn" class="btn">경공</button></div>
   <button id="menuBtn" class="btn">Ⅱ</button>
+  <canvas id="mini" width="132" height="132"></canvas>
   <div id="zoom"><button id="zoomIn" class="btn">🔍+</button><button id="zoomOut" class="btn">🔍−</button></div>
 </div>
 <div id="flash"></div>
@@ -170,6 +183,8 @@
 <div id="pause" class="overlay">
   <h1>정지</h1>
   <div class="row"><button class="btn main" id="resume">계속</button><button class="btn" id="camBtn">카메라: 고정</button><button class="btn" id="fxBtn">이펙트: 높음</button></div>
+  <div class="row"><button class="btn" id="gfxBtn">화질: 자동</button><button class="btn" id="shadowBtn">그림자</button></div>
+  <div id="build"></div>
   <div class="row"><button class="btn" id="retire">무사 귀환 (은자 챙기고 끝내기)</button><button class="btn" onclick="location.reload()">처음으로</button></div>
 </div>
 <div id="clear" class="overlay"><h1 id="clearTitle"></h1><p id="clearTxt"></p><div class="row"><button class="btn main" id="nextBtn">다음 장으로</button></div></div>
