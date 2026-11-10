@@ -20,7 +20,7 @@
     <button class="hb" id="menuBtn" title="메뉴">☰</button>
   </header>
   <main id="table">
-    <div class="felt"><div class="rim"></div></div>
+    <div class="felt"><div class="rim"></div><div class="logo"><span>♠ ♥</span><b>포커 열전</b><span>♦ ♣</span></div></div>
     <div id="center">
       <div id="board"></div>
       <div id="pot"></div>
@@ -28,6 +28,7 @@
     </div>
     <div id="seats"></div>
     <div id="dealerBtn">D</div>
+    <div id="banner"></div>
   </main>
   <section id="me">
     <div id="myCards"></div>
@@ -49,6 +50,7 @@
 </div>
 
 <div id="start" class="overlay on">
+  <div id="decor"></div>
   <div class="panel">
     <h1>포커 열전</h1>
     <p class="sub">컴퓨터 고수들과 한 자리에서 붙는 텍사스 홀덤 토너먼트</p>
@@ -68,6 +70,7 @@
 
 <script src="engine.js"></script>
 <script src="cards.js"></script>
+<script src="art.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>

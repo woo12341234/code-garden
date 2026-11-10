@@ -78,7 +78,7 @@
       const [x, y] = seatPos(i);
       const el = document.createElement('div'); el.className = 'seat'; el.style.left = x + '%'; el.style.top = y + '%';
       const col = p.human ? '#c88a2a' : p.persona.color;
-      el.innerHTML = `${p.human ? '' : '<div class="scards"></div>'}<div class="plate"><div class="ava" style="background:${col}">${p.human ? '나' : p.name[0]}</div><div class="nm"><b>${p.human ? '나' : p.name}</b><span class="chips"></span></div></div><div class="bubble"></div>`;
+      el.innerHTML = `${p.human ? '' : '<div class="scards"></div>'}<div class="plate"><div class="ava" style="--pc:${col}"><img src="${ART.portrait(p.human ? 'me' : p.persona.id)}" alt=""></div><div class="nm"><b>${p.human ? '나' : p.name}</b><span class="chips"></span></div></div><div class="bubble"></div>`;
       if (p.human) { el.style.top = '93%'; el.classList.add('me'); }
       box.appendChild(el);
       // the bet marker sits between the seat and the middle of the table
@@ -101,7 +101,8 @@
       s.chips.textContent = p.out ? '탈락' : fmt(p.chips);
       s.bubble.textContent = p.last === 'SB' || p.last === 'BB' ? p.last : p.last;
       s.bubble.className = 'bubble ' + bubbleClass(p.last);
-      s.bet.textContent = p.bet > 0 && T.street < 4 ? fmt(p.bet) : '';
+      const bv = p.bet > 0 && T.street < 4 ? p.bet : 0;
+      if (s.betV !== bv) { s.betV = bv; const [u, , hh] = bv ? ART.stack(bv) : []; s.bet.innerHTML = bv ? `<img src="${u}" style="height:${Math.round(hh * 0.8)}px" alt=""><span>${fmt(bv)}</span>` : ''; }
       if (s.cards) {
         const show = T.street === 4 && T.result && T.result.showdown && !p.folded;
         const key = p.out ? 'out' : !p.hole.length ? 'none' : show ? 'face' + p.hole.join() : 'back' + T.handNo;
@@ -114,11 +115,40 @@
     });
     // dealer button next to the dealer's plate
     const [dx, dy] = seatPos(T.dealer);
-    const db = $('dealerBtn'); db.style.left = (dx + (50 - dx) * 0.22 + 6) + '%'; db.style.top = ((T.dealer === 0 ? 80 : dy) + (47 - (T.dealer === 0 ? 80 : dy)) * 0.22) + '%';
+    const db = $('dealerBtn'), dy0 = T.dealer === 0 ? 82 : dy; db.style.left = (dx + (50 - dx) * 0.3 + (T.dealer === 0 ? 9 : 0)) + '%'; db.style.top = (dy0 + (47 - dy0) * 0.3 + (T.dealer === 0 ? 0 : 5)) + '%';
     const potNow = T.pot();
-    $('pot').textContent = potNow ? `팟 ${fmt(potNow)}` : '';
+    // the pot holds what earlier streets collected; this street's bets still sit in front of the players
+    const inPot = T.street < 4 ? potNow - T.players.reduce((a, q) => a + q.bet, 0) : potNow;
+    setPot(inPot, potNow);
     renderBoard();
     renderMine();
+  }
+  let potShown = -1;
+  function setPot(inPot, total) {
+    const key = inPot + '|' + total;
+    if (potShown === key) return; potShown = key;
+    const st = inPot ? ART.stack(inPot) : null;
+    $('pot').innerHTML = total ? `${st ? `<img src="${st[0]}" style="height:${Math.round(st[2] * 0.95)}px" alt="">` : ''}<span>팟 ${fmt(total)}</span>` : '';
+  }
+  // chips that slide across the felt: seat → bet, bets → pot, pot → winner
+  function centerOf(el) { const t = $('table').getBoundingClientRect(), r = el.getBoundingClientRect(); return [r.left - t.left + r.width / 2, r.top - t.top + r.height / 2]; }
+  function flyChips(fromEl, toEl, n = 3, color = 4) {
+    if (!fromEl || !toEl || speed > 2.5) return;
+    const [x0, y0] = centerOf(fromEl), [x1, y1] = centerOf(toEl);
+    for (let k = 0; k < n; k++) {
+      const c = document.createElement('img'); c.src = ART.chip((color + k) % 6); c.className = 'fly';
+      c.style.left = x0 + 'px'; c.style.top = y0 + 'px';
+      $('table').appendChild(c);
+      const jx = (Math.random() - 0.5) * 16, jy = (Math.random() - 0.5) * 10;
+      c.animate([{ transform: 'translate(-50%,-50%) scale(.9)', opacity: 0.2 }, { transform: `translate(calc(-50% + ${x1 - x0 + jx}px), calc(-50% + ${y1 - y0 + jy}px)) scale(1)`, opacity: 1, offset: 0.85 }, { transform: `translate(calc(-50% + ${x1 - x0 + jx}px), calc(-50% + ${y1 - y0 + jy}px)) scale(.8)`, opacity: 0 }],
+        { duration: 520 / Math.min(speed, 2) + k * 50, delay: k * 45, easing: 'cubic-bezier(.3,.7,.3,1)' }).onfinish = () => c.remove();
+    }
+  }
+  function banner(text, sub = '', kind = '') {
+    const b = $('banner');
+    b.innerHTML = `<b>${text}</b>${sub ? `<small>${sub}</small>` : ''}`;
+    b.className = 'show ' + kind; void b.offsetWidth; b.classList.add('go');
+    clearTimeout(banner.t); banner.t = setTimeout(() => (b.className = ''), 1700 / Math.min(speed, 2));
   }
   function renderBoard() {
     const b = $('board');
@@ -225,8 +255,16 @@
       if (p.human) a = await humanTurn();
       else { await delay(550 + Math.random() * 450); a = T.decide(i); }
       if (myGame !== gameId) return false;
+      const betsBefore = T.players.map((q) => q.bet), chipsBefore = p.chips;
       T.act(a.type, a.to);
       actSound(p);
+      if (p.chips < chipsBefore) flyChips(seatEls[i].el.querySelector('.plate'), seatEls[i].bet, p.last === '올인' ? 5 : 2, p.last === '올인' ? 0 : 4);
+      if (p.last === '올인') banner('올인!', `${p.human ? '내가' : p.name + '이(가)'} 전부 걸었어요`, 'allin');
+      if (T.street !== street) {
+        // the street closed: every bet slides into the pot
+        betsBefore.forEach((b, k) => { if (b > 0 || (k === i && p.chips < chipsBefore)) flyChips(seatEls[k].bet, $('pot'), 3, 2 + k); });
+        await delay(320);
+      }
       render();
       if (T.street !== street) { street = T.street; await catchUpBoard(); }
     }
@@ -251,7 +289,12 @@
     const names = winners.map((w) => (w.human ? '나' : w.name)).join('·');
     const how = R.showdown ? ' · ' + winners.map((w) => P.describe(R.evals.get(w))).filter((v, i, a) => a.indexOf(v) === i).join(' / ') : ' · 모두 폴드';
     $('msg').textContent = `${names} 승리${how} · +${fmt(total)}`;
-    $('pot').textContent = '';
+    for (const w of winners) flyChips($('pot'), seatEls[w.seat].el.querySelector('.plate'), 6, 0);
+    const topCat = R.showdown ? Math.max(...winners.map((w) => R.evals.get(w).cat)) : -1;
+    if (topCat >= 4) banner(P.CAT_NAME[topCat] + '!', `${names} 승리`, topCat >= 7 ? 'legend' : 'strong');
+    else if (R.won.has(me)) banner('승리!', `+${fmt(R.won.get(me))}`, 'win');
+    await delay(450);
+    setPot(0, 0);
     // stats
     stats.hands++;
     if (R.won.has(me)) {
@@ -350,7 +393,16 @@
       el.appendChild(b);
     }
   }
+  // title backdrop: a few cards and chips scattered on the felt
+  function decor() {
+    const d = $('decor'); if (d.childElementCount) return;
+    const picks = [[51, 12, -22, 8], [38, 86, 14, 9], [25, 6, 36, 74], [12, 90, -12, 78], [50, 20, 8, 22]];
+    for (const [c, x, rot, y] of picks) { const i = img(CARDS.face(c), 'dcard'); i.style.left = x + '%'; i.style.top = y + '%'; i.style.setProperty('--r', rot + 'deg'); d.appendChild(i); }
+    for (const [k, x, y] of [[0, 18, 30], [2, 82, 34], [4, 14, 60], [1, 88, 66], [3, 76, 88]]) { const i = img(ART.chip(k), 'dchip'); i.style.left = x + '%'; i.style.top = y + '%'; d.appendChild(i); }
+  }
+  document.documentElement.style.setProperty('--felt', `url(${ART.felt()})`);
   function startScreen() {
+    decor();
     seg('optN', [[1, '1명'], [2, '2명'], [3, '3명'], [4, '4명'], [5, '5명']], 'n', who);
     seg('optD', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']], 'diff');
     seg('optC', [[1000, '1,000'], [1500, '1,500'], [3000, '3,000']], 'chips');
