@@ -13,6 +13,7 @@
     calc: { bg: ['#5ac88a', '#1a5a3a'], skin: '#f2d0ae', cloth: '#2a6a4a', hair: '#2a2420', style: 'part', glasses: 'round', mouth: 'line', shirt: true },
     fish: { bg: ['#b49ae8', '#4a3a7a'], skin: '#e6b88e', cloth: '#6a7040', hair: '#3a2a20', style: 'hat', eyes: 'smile', mouth: 'smile', stubble: true },
     wild: { bg: ['#f2d06a', '#7a5a10'], skin: '#e0b088', cloth: '#5a2a7a', hair: '#141214', style: 'slick', glasses: 'shades', mouth: 'smirk', chain: true },
+    old: { bg: ['#c8b48a', '#4a3a24'], skin: '#e8c4a0', cloth: '#3a4a3a', hair: '#e8e4dc', style: 'bald', brow: 'heavy', mouth: 'smile', beard: true, eyes: 'smile' },
   };
   function portrait(id) {
     const L = LOOKS[id] || LOOKS.calc;
@@ -35,6 +36,7 @@
     else if (L.style === 'part') { g.beginPath(); g.ellipse(48, 30, 18, 12, 0, Math.PI, 0); g.fill(); g.beginPath(); g.moveTo(30, 32); g.quadraticCurveTo(40, 22, 58, 26); g.lineTo(66, 34); g.quadraticCurveTo(54, 28, 30, 36); g.fill(); }
     else if (L.style === 'slick') { g.beginPath(); g.ellipse(48, 30, 18, 13, 0, Math.PI, 0); g.fill(); g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(34 + i * 6, 22); g.quadraticCurveTo(44 + i * 6, 18, 58, 24); g.stroke(); } }
     else if (L.style === 'hat') { g.beginPath(); g.ellipse(48, 30, 26, 6, 0, 0, Math.PI * 2); g.fillStyle = '#c8b07a'; g.fill(); g.beginPath(); g.ellipse(48, 24, 16, 12, 0, Math.PI, 0); g.fill(); g.fillStyle = '#7a5a2a'; g.fillRect(32, 24, 32, 4); }
+    else if (L.style === 'bald') { g.beginPath(); g.ellipse(32, 36, 5, 9, 0.3, 0, Math.PI * 2); g.ellipse(64, 36, 5, 9, -0.3, 0, Math.PI * 2); g.fill(); }
     else if (L.style === 'band') { g.beginPath(); g.ellipse(48, 30, 18, 12, 0, Math.PI, 0); g.fill(); g.fillStyle = '#c8282e'; g.fillRect(30, 29, 36, 5); g.beginPath(); g.moveTo(64, 31); g.lineTo(74, 38); g.lineTo(70, 30); g.fill(); }
     // brows, eyes
     g.strokeStyle = L.hair === '#e8462a' ? '#a8301a' : '#1e1a1a'; g.lineCap = 'round';
@@ -55,6 +57,7 @@
     else if (L.mouth === 'smirk') { g.moveTo(43, 56); g.quadraticCurveTo(50, 57, 55, 53); }
     else { g.moveTo(43, 55.5); g.lineTo(53, 55.5); }
     g.stroke();
+    if (L.beard) { g.beginPath(); g.moveTo(36, 52); g.quadraticCurveTo(48, 76, 60, 52); g.quadraticCurveTo(48, 62, 36, 52); g.fillStyle = L.hair; g.fill(); }
     if (L.stubble) { g.fillStyle = 'rgba(60,40,30,.35)'; for (let i = 0; i < 26; i++) { const a = Math.PI * (0.15 + 0.7 * (i / 26)); g.fillRect(48 + Math.cos(a) * 13 - 0.5, 44 + Math.sin(a) * 15, 1, 1); } }
     if (L.scar) { g.strokeStyle = '#c87a6a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(57, 46); g.lineTo(62, 52); g.moveTo(58, 50); g.lineTo(61, 48); g.stroke(); }
     // soft vignette
