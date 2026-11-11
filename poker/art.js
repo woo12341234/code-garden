@@ -13,6 +13,7 @@
     calc: { bg: ['#5ac88a', '#1a5a3a'], skin: '#f2d0ae', cloth: '#2a6a4a', hair: '#2a2420', style: 'part', glasses: 'round', mouth: 'line', shirt: true },
     fish: { bg: ['#b49ae8', '#4a3a7a'], skin: '#e6b88e', cloth: '#6a7040', hair: '#3a2a20', style: 'hat', eyes: 'smile', mouth: 'smile', stubble: true },
     wild: { bg: ['#f2d06a', '#7a5a10'], skin: '#e0b088', cloth: '#5a2a7a', hair: '#141214', style: 'slick', glasses: 'shades', mouth: 'smirk', chain: true },
+    sharp: { bg: ['#4a3a4a', '#120a12'], skin: '#e0b896', cloth: '#141014', hair: '#0e0c0e', style: 'slick', mouth: 'smirk', brow: 'heavy', scar: true, tie: '#5a0e14' },
     old: { bg: ['#c8b48a', '#4a3a24'], skin: '#e8c4a0', cloth: '#3a4a3a', hair: '#e8e4dc', style: 'bald', brow: 'heavy', mouth: 'smile', beard: true, eyes: 'smile' },
   };
   function portrait(id) {

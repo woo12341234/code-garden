@@ -52,13 +52,54 @@
   </nav>
 </div>
 
+<div id="sutdaApp">
+  <header id="sdHud">
+    <div id="sdChan"></div>
+    <div class="grow"></div>
+    <div class="hbs">
+      <button class="hb" id="sdHintBtn">승률</button>
+      <button class="hb" id="sdRankBtn">족보</button>
+      <button class="hb" id="sdLogBtn">기록</button>
+      <button class="hb" id="sdSpeedBtn">보통</button>
+      <button class="hb exit" id="sdExitBtn">나가기</button>
+    </div>
+  </header>
+  <main id="sdTable">
+    <div class="blanket"><div class="stitch"></div></div>
+    <div id="smoke"><i></i><i></i><i></i></div>
+    <div id="sdDeck"></div>
+    <div id="sdCenter"><div id="sdRound"></div><div id="sdPot"></div><div id="sdMsg"></div></div>
+    <div id="sdSeats"></div>
+    <div id="sdBanner"></div>
+  </main>
+  <section id="sdMe">
+    <div id="sdPrompt"></div>
+    <div id="sdCards"></div>
+    <div id="sdInfo"><b id="sdHand"></b><span id="sdOdds"></span></div>
+  </section>
+  <nav id="sdBar">
+    <div id="sdActs">
+      <button class="bt die" data-a="die"><b>다이</b><small></small><kbd>1</kbd></button>
+      <button class="bt check" data-a="check"><b>체크</b><small></small><kbd>2</kbd></button>
+      <button class="bt call" data-a="call"><b>콜</b><small></small><kbd>3</kbd></button>
+      <button class="bt ping" data-a="ping"><b>삥</b><small></small><kbd>4</kbd></button>
+      <button class="bt ddadang" data-a="ddadang"><b>따당</b><small></small><kbd>5</kbd></button>
+      <button class="bt quarter" data-a="quarter"><b>쿼터</b><small></small><kbd>6</kbd></button>
+      <button class="bt half" data-a="half"><b>하프</b><small></small><kbd>7</kbd></button>
+    </div>
+    <button id="sdCatch">밑장 잡기<small>한 판에 한 번 · 틀리면 벌금</small></button>
+  </nav>
+  <div id="vignette"></div>
+</div>
+
 <div id="lobby" class="overlay on">
   <div id="decor"></div>
   <div class="panel wide">
     <h1>포커 열전</h1>
-    <p class="sub">세븐포커 · 컴퓨터 고수들과 붙는 1인용</p>
+    <p class="sub">세븐포커 · 섯다 · 컴퓨터 고수들과 붙는 1인용</p>
     <div id="purse"></div>
     <div id="chans"></div>
+    <div class="opt"><label>게임</label><div class="seg" id="optG"></div></div>
     <div class="opt"><label>상대</label><div class="seg" id="optN"></div></div>
     <div class="opt"><label>난이도</label><div class="seg" id="optD"></div></div>
     <div class="row"><button class="ghost" id="statsBtn">전적</button><button class="ghost" id="rulesBtn">족보·규칙</button><button class="ghost" id="aboutBtn">안내</button></div>
@@ -73,5 +114,8 @@
 <script src="cards.js"></script>
 <script src="art.js"></script>
 <script src="seven.js"></script>
+<script src="hwatu.js"></script>
+<script src="sutda.js"></script>
+<script src="sutda-ui.js"></script>
 </body>
 </html>

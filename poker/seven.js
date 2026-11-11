@@ -11,7 +11,7 @@
   };
   const K = { money: 'seven-money', stats: 'seven-stats', prefs: 'seven-prefs', gate: 'poker-yeoljeon-age', jp: 'seven-jackpot' };
   const START_MONEY = 10000000, AID = 5000000;
-  const prefs = Object.assign({ n: 4, diff: 'normal', speed: 1, sound: true, voice: true, hint: false }, store.get(K.prefs, {}));
+  const prefs = Object.assign({ n: 4, diff: 'normal', speed: 1, sound: true, voice: true, hint: false, game: 'seven' }, store.get(K.prefs, {}));
   const stats = Object.assign({ hands: 0, won: 0, bigPot: 0, bestCat: -1, peak: START_MONEY, aid: 0 }, store.get(K.stats, {}));
   let money = store.get(K.money, START_MONEY);
   let jackpot = store.get(K.jp, 1234500000);
@@ -338,6 +338,8 @@
   // ---------- lobby ----------
   function enter(ch) {
     if (money < Math.max(ch.min, ch.unit * 10)) return;
+    // the same hall runs 섯다 on its own table (sutda-ui.js), sharing the money
+    if (prefs.game === 'sutda' && window.SUTDA_UI) { audio(); $('lobby').classList.remove('on'); window.SUTDA_UI.enter(ch); return; }
     audio(); chan = ch; gameId++;
     const pool = S.PERSONAS.slice().sort(() => Math.random() - 0.5).slice(0, prefs.n);
     T = new S.StudTable({ unit: ch.unit, difficulty: prefs.diff, players: [{ name: '나', human: true, chips: money }, ...pool.map((p) => ({ name: p.name, persona: p, chips: botBankroll() }))] });
@@ -366,6 +368,7 @@
       b.disabled = !ok; b.onclick = () => enter(ch);
       box.appendChild(b);
     }
+    seg('optG', [['seven', '세븐포커'], ['sutda', '섯다']], 'game');
     seg('optN', [[1, '1명'], [2, '2명'], [3, '3명'], [4, '4명']], 'n');
     seg('optD', [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']], 'diff');
     $('lobby').classList.add('on');
@@ -451,6 +454,14 @@
   addEventListener('resize', () => { if (T && document.body.classList.contains('playing')) { buildSeats(); render(); } });
   document.documentElement.style.setProperty('--felt', `url(${ART.felt()})`);
   setInterval(() => { jackpot += Math.random() * (chan ? chan.unit : 1000) * 0.3; $('jpAmt').textContent = won(jackpot); }, 1200);
+  // what the other games in the hall share
+  window.HALL = {
+    won, sfx, tone, noise, say, audio, prefs, stats, info,
+    get speed() { return speed; },
+    getMoney: () => money, setMoney: (m) => { money = Math.round(m); saveMoney(); },
+    back: () => lobby(),
+    aid: () => { if (money >= AID) return false; money = AID; stats.aid++; saveMoney(); sfx('coin'); return true; },
+  };
   window.__seven = { get T() { return T; }, answer, pickChoose, get waitAct() { return !!actResolve; }, get waitChoose() { return !!chooseResolve; }, setSpeed: (s) => (speed = s), enter: (i) => enter(CHANNELS[i]), get money() { return money; }, setMoney: (m) => { money = m; saveMoney(); } };
 
   syncHud();
