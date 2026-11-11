@@ -434,6 +434,13 @@
     <tr><td>최고 족보</td><td>${stats.bestCat >= 0 ? S.CAT_NAME[stats.bestCat] : '-'}</td></tr>
     <tr><td>지원금</td><td>${stats.aid}번 받음</td></tr></table>`);
   $('aboutBtn').onclick = () => gate(true);
+  // start over: money back to the starting amount (records stay unless asked)
+  $('resetBtn').onclick = () => {
+    if (!confirm(`보유 머니를 처음 금액 ${won(START_MONEY)}으로 되돌릴까요?`)) return;
+    money = START_MONEY;
+    if (confirm('전적(판 수, 승률, 최고 기록)도 같이 지울까요?')) Object.assign(stats, { hands: 0, won: 0, bigPot: 0, bestCat: -1, aid: 0 });
+    stats.peak = START_MONEY; saveMoney(); sfx('coin'); lobby();
+  };
 
   // ---------- first-launch notice (adults only) ----------
   function gate(force) {
