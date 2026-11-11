@@ -2,7 +2,7 @@
 // a heartbeat that rises with the pot, table talk, and a slow one-by-one showdown.
 (function () {
   'use strict';
-  const D = window.SUTDA, HW = window.HWATU, ART = window.ART, H = window.HALL;
+  const D = window.SUTDA, HW = window.HWATU, HWATU = HW, ART = window.ART, H = window.HALL;
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const won = (n) => H.won(n);
@@ -128,7 +128,7 @@
       mySecondOpen = true; $('sdPrompt').textContent = '';
       $('sdCards').dataset.key = ''; render();
       const me = T.players[0], h = D.hand(me.cards[0], me.cards[1]);
-      if (h.val >= 801 || h.tier === 'trick') { H.sfx('big'); banner(h.name + '!', '', h.val >= 900 ? 'legend' : 'gold'); H.say(h.name); } else H.sfx('chip');
+      slap(); if (h.val >= 801 || h.tier === 'trick') { H.sfx('big'); banner(h.name + '!', '', h.val >= 900 ? 'legend' : 'gold'); H.say(h.name); } else H.sfx('chip');
       r();
     };
     const start = (e) => { y0 = (e.touches ? e.touches[0] : e).clientY; e.preventDefault(); };
@@ -223,6 +223,8 @@
         { duration: 500 / Math.min(sd.speed, 2) + k * 50, delay: k * 45, easing: 'cubic-bezier(.3,.7,.3,1)' }).onfinish = () => c.remove();
     }
   }
+  // the sharp crack of a hwatu card hitting the blanket
+  function slap() { H.noise(0.035, 0.32, 1400); H.tone(180, 0.05, 'square', 0.08); }
   const WHISPER = { easy: 0.7, normal: 0.35, hard: 0 };
 
   // ---------- a hand ----------
@@ -296,7 +298,7 @@
       // lights down, then each hand turns over one card at a time
       document.body.classList.add('sd-dim');
       showCards = true;
-      for (const p of T.contenders()) { if (p.human) continue; const s = seats[p.seat]; s.reveal = 1; render(); H.sfx('deal'); await delay(380); s.reveal = 2; render(); H.sfx('check'); await delay(520); }
+      for (const p of T.contenders()) { if (p.human) continue; const s = seats[p.seat]; s.reveal = 1; render(); H.sfx('deal'); await delay(380); s.reveal = 2; render(); slap(); await delay(520); }
       document.body.classList.remove('sd-dim');
     }
     const winners = [...R.won.keys()];
@@ -363,9 +365,11 @@
     if (broke) { const got = H.aid(); H.info(`<h2>보유 머니가 부족해요</h2><p>이 채널 학교(기본 판돈)는 ${won(chan.unit)}이에요.${got ? ` 가상 머니라 지원금으로 ${won(H.getMoney())}까지 채워 드렸어요.` : ' 로비에서 더 낮은 채널로 가 보세요.'}</p>`); }
   }
   const SPEEDS = [[1, '보통'], [1.8, '빠름'], [3, '매우 빠름']];
-  function syncHud() { $('sdSpeedBtn').textContent = (SPEEDS.find((x) => x[0] === sd.speed) || SPEEDS[0])[1]; $('sdHintBtn').classList.toggle('on', H.prefs.hint); }
+  function setMonths(v) { HWATU.months = v; H.prefs.months = v; H.savePrefs(); if (T) { seats.forEach((s) => (s.key = '')); $('sdCards').dataset.key = ''; render(); } }
+  $('sdMonthBtn').onclick = () => { setMonths(!H.prefs.months); syncHud(); };
+  function syncHud() { HWATU.months = !!H.prefs.months; $('sdMonthBtn').classList.toggle('on', !!H.prefs.months); $('sdSpeedBtn').textContent = (SPEEDS.find((x) => x[0] === sd.speed) || SPEEDS[0])[1]; $('sdHintBtn').classList.toggle('on', H.prefs.hint); }
   $('sdSpeedBtn').onclick = () => { const i = SPEEDS.findIndex((x) => x[0] === sd.speed); sd.speed = SPEEDS[(i + 1) % SPEEDS.length][0]; syncHud(); };
-  $('sdHintBtn').onclick = () => { H.prefs.hint = !H.prefs.hint; syncHud(); if (actResolve) odds(); };
+  $('sdHintBtn').onclick = () => { H.prefs.hint = !H.prefs.hint; H.savePrefs(); syncHud(); if (actResolve) odds(); };
   $('sdExitBtn').onclick = () => { if (confirm('나가면 이번 판에 건 돈은 잃어요. 나갈까요?')) leave(false); };
   $('sdLogBtn').onclick = () => {
     const list = $('logList'); list.innerHTML = '';

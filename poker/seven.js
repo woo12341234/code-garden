@@ -459,7 +459,7 @@
     won, sfx, tone, noise, say, audio, prefs, stats, info,
     get speed() { return speed; },
     getMoney: () => money, setMoney: (m) => { money = Math.round(m); saveMoney(); },
-    back: () => lobby(),
+    back: () => lobby(), savePrefs: () => savePrefs(),
     aid: () => { if (money >= AID) return false; money = AID; stats.aid++; saveMoney(); sfx('coin'); return true; },
   };
   window.__seven = { get T() { return T; }, answer, pickChoose, get waitAct() { return !!actResolve; }, get waitChoose() { return !!chooseResolve; }, setSpeed: (s) => (speed = s), enter: (i) => enter(CHANNELS[i]), get money() { return money; }, setMoney: (m) => { money = m; saveMoney(); } };
